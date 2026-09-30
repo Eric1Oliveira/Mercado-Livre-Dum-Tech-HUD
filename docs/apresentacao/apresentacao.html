@@ -1,0 +1,765 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Um módulo ou sete — DumTech Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  /* Documento de leitura e de impressao: uma coluna, tema claro, A4. */
+  @page { size: A4; margin: 15mm 14mm 14mm; }
+
+  :root {
+    --paper: #ffffff;
+    --tint: #f5f7f9;
+    --ink: #16202b;          /* a mesma tinta dos documentos do produto */
+    --muted: #5d6b7a;
+    --rule: #d7dee6;
+    --rule-strong: #b3bfcb;
+    --accent: #2f6bdb;
+    --accent-soft: #e8effb;
+    --ok: #1c7a58;
+    --ok-soft: #e3f2ea;
+    --warn: #8d5d0d;
+    --warn-soft: #f8efdb;
+    --bad: #a8352b;
+    --bad-soft: #f9e8e5;
+    --display: "Archivo", "Segoe UI", system-ui, sans-serif;
+    --body: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0 auto; max-width: 182mm; padding: 0 6mm;
+    background: var(--paper); color: var(--ink);
+    font-family: var(--body); font-size: 10.5pt; line-height: 1.55;
+  }
+
+  h1, h2, h3, h4, .ui, th, .eyebrow { font-family: var(--display); }
+  h2 { font-size: 17pt; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 4pt; }
+  h3 { font-size: 11.5pt; font-weight: 600; margin: 0 0 4pt; }
+  p { margin: 0 0 9pt; }
+  strong, b { font-weight: 600; }
+  em { font-style: normal; font-weight: 600; }
+  code, .mono { font-family: var(--mono); font-size: 0.86em; }
+
+  .eyebrow {
+    font-size: 7.5pt; font-weight: 600; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--muted); margin: 0 0 5pt;
+  }
+  .intro { color: var(--muted); max-width: 64ch; margin-bottom: 14pt; }
+  .nota {
+    border-left: 2pt solid var(--accent); padding: 2pt 0 2pt 10pt;
+    color: var(--muted); font-size: 9.5pt; margin: 12pt 0 0;
+  }
+  .nota b { color: var(--ink); }
+
+  section { break-before: page; padding-top: 2mm; }
+  /* titulo nunca fica sozinho no pe da pagina */
+  h2, h3, h4, .eyebrow, figure, table, .resposta, .cenario, .trocas, .limite,
+  .combo > div { break-inside: avoid; }
+  h2, h3, h4, .eyebrow { break-after: avoid; }
+  section:first-of-type { break-before: auto; }
+
+  /* ------------------------------------------------------------------ capa */
+  .capa {
+    break-after: page; break-before: auto;
+    height: 250mm; display: flex; flex-direction: column; justify-content: space-between;
+    padding-top: 20mm;
+  }
+  .capa .marca {
+    font-family: var(--display); font-weight: 700; font-size: 10pt;
+    letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent);
+  }
+  .capa h1 {
+    font-family: var(--display); font-size: 46pt; font-weight: 700;
+    line-height: 0.98; letter-spacing: -0.035em; margin: 6mm 0 8mm;
+  }
+  .capa .lede { font-size: 13pt; color: var(--muted); max-width: 58ch; margin: 0; }
+  .capa .rodape { font-size: 9pt; color: var(--muted); font-family: var(--display); }
+
+  .fatos {
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    border-top: 1pt solid var(--ink); border-bottom: 1pt solid var(--rule);
+    margin: 10mm 0;
+  }
+  .fato { padding: 7pt 10pt 9pt 0; }
+  .fato dt {
+    font-family: var(--display); font-size: 7pt; font-weight: 600;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted);
+    margin-bottom: 2pt;
+  }
+  .fato dd {
+    margin: 0; font-family: var(--mono); font-size: 11pt; font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .sumario { columns: 2; column-gap: 14mm; font-size: 9.5pt; }
+  .sumario ol { margin: 0; padding-left: 16pt; }
+  .sumario li { margin-bottom: 4pt; break-inside: avoid; }
+
+  /* -------------------------------------------------------------- respostas */
+  .resposta {
+    display: grid; grid-template-columns: 34mm 1fr; gap: 8mm;
+    padding: 9pt 10pt; background: var(--tint);
+    border-left: 2.5pt solid var(--rule-strong);
+    margin-bottom: 7pt; break-inside: avoid;
+  }
+  .resposta[data-tom="sim"] { border-left-color: var(--ok); }
+  .resposta[data-tom="talvez"] { border-left-color: var(--warn); }
+  .resposta[data-tom="nao"] { border-left-color: var(--bad); }
+  .resposta .quem { font-family: var(--display); font-weight: 600; font-size: 10pt; line-height: 1.3; }
+  .resposta .quem span {
+    display: block; font-family: var(--mono); font-size: 7.5pt;
+    font-weight: 400; color: var(--muted); margin-top: 2pt;
+  }
+  .resposta p { margin: 0; font-size: 10pt; }
+  .veredito { font-weight: 600; }
+  .veredito[data-tom="sim"] { color: var(--ok); }
+  .veredito[data-tom="talvez"] { color: var(--warn); }
+  .veredito[data-tom="nao"] { color: var(--bad); }
+
+  /* ---------------------------------------------------------------- figuras */
+  figure { margin: 0 0 10pt; break-inside: avoid; }
+  figure img { width: 100%; display: block; border: 1pt solid var(--rule); }
+  figcaption {
+    font-family: var(--display); font-size: 8.5pt; color: var(--muted);
+    margin-top: 5pt; line-height: 1.4;
+  }
+  figcaption b { color: var(--ink); font-weight: 600; }
+  .par { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; }
+
+  /* ---------------------------------------------------------------- tabelas */
+  table { border-collapse: collapse; width: 100%; break-inside: avoid; }
+  th, td {
+    text-align: left; padding: 6pt 8pt; vertical-align: top;
+    border-bottom: 0.75pt solid var(--rule); font-size: 9.5pt;
+  }
+  thead th {
+    font-size: 7.5pt; font-weight: 600; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--muted);
+    border-bottom: 1pt solid var(--ink);
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  .liga { font-family: var(--mono); font-size: 8.5pt; white-space: nowrap; }
+  .liga i { font-style: normal; color: var(--muted); padding: 0 2pt; }
+  .selo {
+    display: inline-block; font-family: var(--display); font-size: 7.5pt;
+    font-weight: 600; padding: 1pt 5pt; white-space: nowrap;
+  }
+  .selo[data-t="auto"] { background: var(--ok-soft); color: var(--ok); }
+  .selo[data-t="clique"] { background: var(--accent-soft); color: var(--accent); }
+
+  /* --------------------------------------------------------------- cenarios */
+  .cenario { border: 1pt solid var(--rule); padding: 10pt 12pt; break-inside: avoid; }
+  .cenario .cab { display: flex; align-items: baseline; gap: 8pt; margin-bottom: 8pt; }
+  .contagem {
+    font-family: var(--mono); font-size: 21pt; font-weight: 600;
+    line-height: 1; color: var(--accent);
+  }
+  .cenario h3 { font-size: 13pt; margin: 0; }
+  .duas { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; margin-top: 10pt; }
+  .duas h4 {
+    font-size: 7.5pt; font-weight: 600; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--muted); margin: 0 0 6pt;
+  }
+  ul.lista { margin: 0; padding: 0; list-style: none; font-size: 9.5pt; }
+  ul.lista li { position: relative; padding-left: 12pt; margin-bottom: 5pt; }
+  ul.lista li::before {
+    content: ""; position: absolute; left: 0; top: 0.6em;
+    width: 6pt; height: 0.75pt; background: var(--rule-strong);
+  }
+  ul.lista.ganha li::before { background: var(--ok); }
+  ul.lista.perde li::before { background: var(--bad); }
+
+  /* ---------------------------------------------------------------- modulos */
+  .modulo { break-before: page; padding-top: 2mm; }
+  .modulo .cab {
+    display: flex; align-items: baseline; justify-content: space-between;
+    border-bottom: 1pt solid var(--ink); padding-bottom: 4pt; margin-bottom: 9pt;
+  }
+  .modulo .cab h2 { margin: 0; }
+  .modulo .cab .qual { font-family: var(--mono); font-size: 8.5pt; color: var(--muted); }
+  .trocas {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 6mm;
+    margin-top: 10pt; break-inside: avoid;
+  }
+  .troca h4 {
+    font-size: 7.5pt; font-weight: 600; letter-spacing: 0.11em;
+    text-transform: uppercase; margin: 0 0 4pt;
+  }
+  .troca[data-d="da"] h4 { color: var(--ok); }
+  .troca[data-d="recebe"] h4 { color: var(--accent); }
+  .troca[data-d="sem"] h4 { color: var(--warn); }
+  .troca p { margin: 0; font-size: 9pt; color: var(--muted); }
+  .troca p em { color: var(--ink); }
+
+  /* -------------------------------------------------------------- limitacoes */
+  .limite {
+    display: grid; grid-template-columns: 42mm 1fr; gap: 6mm;
+    padding: 7pt 0; border-bottom: 0.75pt solid var(--rule); break-inside: avoid;
+  }
+  .limite b { font-family: var(--display); font-weight: 600; font-size: 10pt; }
+  .limite p { margin: 0; font-size: 9.5pt; color: var(--muted); }
+
+  .combo { border-top: 1pt solid var(--ink); }
+  .combo > div {
+    padding: 9pt 0; border-bottom: 0.75pt solid var(--rule); break-inside: avoid;
+  }
+  .combo .nome { font-family: var(--display); font-weight: 600; font-size: 10.5pt; }
+  .combo .peca { font-family: var(--mono); font-size: 8.5pt; color: var(--accent); margin: 2pt 0 4pt; }
+  .combo p { margin: 0; font-size: 9.5pt; color: var(--muted); }
+
+  .fecho {
+    margin-top: 12pt; padding-top: 8pt; border-top: 1pt solid var(--ink);
+    font-family: var(--display); font-size: 8.5pt; color: var(--muted);
+  }
+</style>
+</head>
+<body>
+
+<div class="capa">
+  <div>
+    <p class="marca">DumTech Hub</p>
+    <h1>Um módulo<br>ou sete</h1>
+    <p class="lede">
+      Os sete módulos são vendidos separados e cada um resolve o trabalho dele
+      sozinho. O que muda quando o cliente compra o segundo, e o terceiro, é que
+      eles param de ser sete programas e viram um só.
+    </p>
+    <dl class="fatos">
+      <div class="fato"><dt>Módulos</dt><dd>7</dd></div>
+      <div class="fato"><dt>Por módulo</dt><dd>R$ 50–70</dd></div>
+      <div class="fato"><dt>Pontes</dt><dd>5</dd></div>
+      <div class="fato"><dt>Internet</dt><dd>só ativação</dd></div>
+      <div class="fato"><dt>Licença</dt><dd>1 máquina</dd></div>
+    </dl>
+    <div class="sumario">
+      <ol>
+        <li>Um módulo basta?</li>
+        <li>A primeira tela cresce com a licença</li>
+        <li>As cinco pontes</li>
+        <li>Cenário: compra um módulo só</li>
+        <li>Cenário: compra um agora e mais depois</li>
+        <li>Cenário: compra os sete</li>
+        <li>Os sete módulos, um a um</li>
+        <li>O que vem junto em qualquer compra</li>
+        <li>O que a plataforma não faz</li>
+        <li>Combinações que se sustentam</li>
+      </ol>
+    </div>
+  </div>
+  <p class="rodape">
+    Feito sobre a instalação real, com a loja de demonstração carregada.
+    Todas as imagens são telas do produto, sem montagem.
+  </p>
+</div>
+
+<section>
+  <p class="eyebrow">A resposta curta</p>
+  <h2>Um módulo basta?</h2>
+  <p class="intro">
+    Depende de quantas coisas diferentes o negócio faz. Cada módulo cobre uma
+    operação inteira, do cadastro ao documento impresso. O problema nunca é o
+    módulo ser incompleto — é o negócio ter duas operações e comprar uma.
+  </p>
+
+  <div class="resposta" data-tom="sim">
+    <div class="quem">Loja de balcão<span>vende e pronto</span></div>
+    <p><span class="veredito" data-tom="sim">Basta.</span> O Vendas sozinho abre
+    caixa, recebe em várias formas, faz venda a prazo, devolução e imprime o
+    comprovante. Sem o Estoque, o item vira texto livre e ninguém sabe quanto
+    sobrou na prateleira.</p>
+  </div>
+  <div class="resposta" data-tom="talvez">
+    <div class="quem">Oficina ou prestador<span>orça, executa, entrega</span></div>
+    <p><span class="veredito" data-tom="talvez">Quase.</span> O Ordens cobre da
+    entrada à garantia. Mas quem orça antes de executar vai digitar a mesma lista
+    duas vezes até comprar o Orçamentos — e quem parcela o serviço não tem onde
+    cobrar sem o Financeiro.</p>
+  </div>
+  <div class="resposta" data-tom="nao">
+    <div class="quem">Comércio com estoque e prazo<span>compra, vende, cobra</span></div>
+    <p><span class="veredito" data-tom="nao">Não basta.</span> Um módulo só
+    resolve um terço do dia. Estoque, Vendas e Financeiro são a mesma operação
+    vista de três lugares: a venda tira do estoque e vira conta a receber, e
+    nenhuma das duas coisas acontece sem os três.</p>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">O efeito de somar</p>
+  <h2>A primeira tela cresce com a licença</h2>
+  <p class="intro">
+    O Início mostra o que precisa de atenção hoje, juntando o que cada módulo já
+    sabia sozinho. É a mesma instalação e o mesmo banco de dados nas duas imagens
+    — muda só o que a licença libera.
+  </p>
+  <div class="par">
+    <figure>
+      <img src="../imagens/telas/09_licenca/02_inicio_1_modulo.png"
+           alt="Início com apenas o módulo Vendas liberado">
+      <figcaption><b>Um módulo.</b> Um aviso, um aplicativo no trilho. O resto da
+      tela é espaço vazio.</figcaption>
+    </figure>
+    <figure>
+      <img src="../imagens/telas/09_licenca/01_inicio_7_modulos.png"
+           alt="Início com os sete módulos liberados">
+      <figcaption><b>Sete módulos.</b> Oito avisos — conta vencida, ordem
+      atrasada, proposta parada, estoque no mínimo, venda a receber, compromisso
+      do dia, aniversariante.</figcaption>
+    </figure>
+  </div>
+  <p class="nota">
+    É por isso que o segundo módulo é mais fácil de vender que o primeiro: o
+    cliente já viu a tela pela metade.
+  </p>
+</section>
+
+<section>
+  <p class="eyebrow">Como eles se ligam</p>
+  <h2>As cinco pontes</h2>
+  <p class="intro">
+    Cada módulo tem banco próprio e não enxerga o dos outros. As exceções são
+    combinadas uma a uma, e todas seguem a mesma regra: <strong>sem o outro
+    módulo na licença, o botão não aparece e nada quebra</strong>.
+  </p>
+  <table>
+    <thead>
+      <tr><th>Ponte</th><th>Entre</th><th>O que acontece</th><th>Como</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><b>Catálogo</b></td>
+        <td class="liga">Estoque <i>→</i> Vendas</td>
+        <td>Bipe o código de barras no balcão e o item entra com nome, preço e
+        unidade. A venda dá baixa no estoque; a devolução devolve.</td>
+        <td><span class="selo" data-t="auto">automático</span></td>
+      </tr>
+      <tr>
+        <td><b>Conta a receber</b></td>
+        <td class="liga">Vendas <i>→</i> Financeiro</td>
+        <td>Venda a prazo vira conta a receber sozinha. Quando o cliente volta e
+        paga no balcão, a conta se fecha junto.</td>
+        <td><span class="selo" data-t="auto">automático</span></td>
+      </tr>
+      <tr>
+        <td><b>Conta a receber</b></td>
+        <td class="liga">Ordens <i>→</i> Financeiro</td>
+        <td>Ordem entregue vira conta a receber. É botão, não automático: boa
+        parte das ordens é paga na hora da entrega.</td>
+        <td><span class="selo" data-t="clique">um clique</span></td>
+      </tr>
+      <tr>
+        <td><b>Proposta aprovada</b></td>
+        <td class="liga">Orçamentos <i>→</i> Vendas / Ordens</td>
+        <td>Vira venda pendente ou ordem já aprovada, com os itens e o desconto
+        por linha embutidos no preço.</td>
+        <td><span class="selo" data-t="clique">um clique</span></td>
+      </tr>
+      <tr>
+        <td><b>Agenda de clientes</b></td>
+        <td class="liga">Clientes <i>→</i> todos</td>
+        <td>O nome se completa sozinho em qualquer formulário, e o botão de
+        WhatsApp já abre com o número certo.</td>
+        <td><span class="selo" data-t="auto">automático</span></td>
+      </tr>
+      <tr>
+        <td><b>Avisos do Início</b></td>
+        <td class="liga">todos <i>→</i> Hub</td>
+        <td>Cada módulo responde “o que precisa de atenção hoje” e o Hub junta na
+        primeira tela.</td>
+        <td><span class="selo" data-t="auto">automático</span></td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="nota">
+    Duas ligações que <b>ainda não existem</b> e o cliente pode supor que sim:
+    peça usada numa ordem de serviço <b>não</b> baixa do Estoque, e o item de uma
+    proposta é texto livre — o Orçamentos não lê o catálogo. Vale dizer antes da
+    venda.
+  </p>
+</section>
+
+<section>
+  <p class="eyebrow">Cenário 1</p>
+  <h2>Compra um módulo só</h2>
+  <p class="intro">
+    Nenhum módulo é uma versão reduzida esperando os outros.
+  </p>
+  <div class="cenario">
+    <div class="cab">
+      <span class="contagem">1</span>
+      <h3>O módulo entrega o trabalho inteiro dele</h3>
+    </div>
+    <p>Quem compra um só tem a operação completa daquela função — cadastro,
+    movimento, painel com números e documento impresso — mais toda a plataforma
+    em volta, que não é vendida à parte.</p>
+    <div class="duas">
+      <div>
+        <h4>Vem junto, sem custo extra</h4>
+        <ul class="lista ganha">
+          <li>Dados da empresa no cabeçalho de todo documento, com logotipo</li>
+          <li>Mensagens de WhatsApp em um clique, com os textos editáveis</li>
+          <li>Backup automático diário e restauração pela tela</li>
+          <li>Tema claro e escuro, busca por <code>Ctrl+K</code></li>
+          <li>Funciona sem internet, para sempre, depois de ativado</li>
+        </ul>
+      </div>
+      <div>
+        <h4>O que ele não tem</h4>
+        <ul class="lista perde">
+          <li>A tela Início quase vazia — um aviso, um cartão</li>
+          <li>Nome do cliente digitado na mão toda vez (sem o Clientes)</li>
+          <li>Número de WhatsApp digitado toda vez (sem o Clientes)</li>
+          <li>Nenhuma ponte ativa: o que ele registra não vira nada em lugar
+          nenhum</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <p class="nota">
+    O mais completo sozinho é o <b>Estoque</b> — cinco telas, importação e
+    exportação em CSV, contagem de inventário. O mais dependente é o
+    <b>Orçamentos</b>: ele existe para virar trabalho em outro módulo, e sem
+    Vendas ou Ordens a proposta aprovada morre ali.
+  </p>
+</section>
+
+<section>
+  <p class="eyebrow">Cenário 2</p>
+  <h2>Compra um agora e mais depois</h2>
+  <p class="intro">
+    Inclusive um ano depois — o tempo entre uma compra e outra não muda nada.
+  </p>
+  <div class="cenario">
+    <div class="cab">
+      <span class="contagem">+1</span>
+      <h3>Um ano depois é o mesmo dia depois</h3>
+    </div>
+    <p>Não existe migração, importação nem reinstalação. A chave é a mesma: o
+    cliente compra o módulo novo, abre <b>Licença → Verificar licença</b>, e o
+    aplicativo aparece no trilho com as pontes já ligadas.</p>
+    <p>Os dados de cada módulo vivem em arquivos separados e <b>nunca são
+    apagados pela licença</b>. Se um módulo sair da licença, ele some do trilho e
+    o banco continua no lugar — voltou a licença, voltou tudo.</p>
+    <div class="duas">
+      <div>
+        <h4>Acende na hora</h4>
+        <ul class="lista ganha">
+          <li>Os avisos do módulo novo entram no Início</li>
+          <li>As pontes com quem já estava ligam sozinhas</li>
+          <li>O histórico antigo continua lá, intacto</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Não se recupera para trás</h4>
+        <ul class="lista perde">
+          <li>Vendas a prazo fechadas <em>antes</em> do Financeiro não viram
+          conta a receber retroativamente</li>
+          <li>O estoque começa do saldo digitado, não do histórico de vendas
+          anterior</li>
+          <li>Clientes já digitados na mão não viram cadastro sozinhos</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <p class="nota">
+    Isso é argumento de venda, não defeito: quanto antes o segundo módulo entra,
+    mais história ele aproveita. Vale dizer já na primeira venda.
+  </p>
+</section>
+
+<section>
+  <p class="eyebrow">Cenário 3</p>
+  <h2>Compra os sete</h2>
+  <p class="intro">
+    O dia inteiro numa janela só, sem ninguém redigitar nada.
+  </p>
+  <div class="cenario">
+    <div class="cab">
+      <span class="contagem">7</span>
+      <h3>Um caminho só, do orçamento ao recebimento</h3>
+    </div>
+    <p>O cliente é cadastrado uma vez, a proposta vira ordem de serviço ou venda,
+    a venda tira do estoque, o que ficou a prazo vira conta a receber, a conta se
+    fecha quando ele paga, e cada etapa manda o WhatsApp com o texto da loja.</p>
+    <div class="duas">
+      <div>
+        <h4>Só existe com o conjunto</h4>
+        <ul class="lista ganha">
+          <li>Início com oito avisos de cinco módulos, em ordem de urgência</li>
+          <li>Cliente cadastrado uma vez, usado em todos os formulários</li>
+          <li>Proposta → trabalho → recebimento sem digitação repetida</li>
+          <li>Um backup só, que leva todos os módulos juntos</li>
+        </ul>
+      </div>
+      <div>
+        <h4>O que continua faltando</h4>
+        <ul class="lista perde">
+          <li>Peça da ordem de serviço não baixa do estoque</li>
+          <li>Proposta não lê o catálogo de produtos</li>
+          <li>Nota fiscal (NFC-e) — os documentos saem sem valor fiscal</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="modulo">
+  <div class="cab"><h2>Estoque</h2><span class="qual">5 telas · o mais completo sozinho</span></div>
+  <p>Produtos com código de barras, unidade e mínimo; entrada com nota e custo
+  médio; movimentações com histórico; contagem de inventário; importação e
+  exportação em CSV.</p>
+  <figure>
+    <img src="../imagens/telas/01_estoque/02_produtos.png" alt="Tela de produtos do Estoque">
+    <figcaption>Lista de produtos: saldo, mínimo, custo médio e preço de venda.</figcaption>
+  </figure>
+  <div class="trocas">
+    <div class="troca" data-d="da"><h4>Dá</h4>
+      <p>O catálogo para o <em>Vendas</em>: bipe, preço e baixa automática.</p></div>
+    <div class="troca" data-d="recebe"><h4>Recebe</h4>
+      <p>Baixa e devolução vindas do <em>Vendas</em>, com o número da venda no histórico.</p></div>
+    <div class="troca" data-d="sem"><h4>Sem os outros</h4>
+      <p>Toda saída é digitada na mão — ninguém tira do estoque ao vender.</p></div>
+  </div>
+</div>
+
+<div class="modulo">
+  <div class="cab"><h2>Vendas</h2><span class="qual">PDV · 4 telas</span></div>
+  <p>Balcão com bipe e atalhos, várias formas de pagamento na mesma venda, troco,
+  venda a prazo, devolução parcial, caixa com sangria e suprimento, comprovante
+  em bobina de 40 colunas.</p>
+  <figure>
+    <img src="../imagens/telas/05_vendas/01_balcao_pdv.png" alt="Balcão do módulo Vendas">
+    <figcaption>Balcão: bipe, confira e receba. O aviso de estoque insuficiente
+    alerta sem travar a venda.</figcaption>
+  </figure>
+  <div class="trocas">
+    <div class="troca" data-d="da"><h4>Dá</h4>
+      <p>Conta a receber ao <em>Financeiro</em>; baixa ao <em>Estoque</em>.</p></div>
+    <div class="troca" data-d="recebe"><h4>Recebe</h4>
+      <p>Catálogo do <em>Estoque</em>; proposta aprovada do <em>Orçamentos</em>.</p></div>
+    <div class="troca" data-d="sem"><h4>Sem os outros</h4>
+      <p>Item vira texto livre, sem preço nem saldo; o que ficou a prazo vira
+      anotação no papel.</p></div>
+  </div>
+</div>
+
+<div class="modulo">
+  <div class="cab"><h2>Financeiro</h2><span class="qual">fluxo de caixa · 4 telas</span></div>
+  <p>Contas a pagar e receber, parcelamento e recorrência que geram lançamentos
+  de verdade, baixa parcial, contas de caixa e banco, transferência entre elas e
+  a projeção que mostra o dia em que o saldo cruza o zero.</p>
+  <figure>
+    <img src="../imagens/telas/03_financeiro/01_fluxo_de_caixa.png" alt="Fluxo de caixa do Financeiro">
+    <figcaption>Fluxo: saldo de hoje, projeção de 15 a 90 dias e a data do
+    aperto.</figcaption>
+  </figure>
+  <div class="trocas">
+    <div class="troca" data-d="da"><h4>Dá</h4>
+      <p>Avisos de vencido e a vencer para o Início.</p></div>
+    <div class="troca" data-d="recebe"><h4>Recebe</h4>
+      <p>Contas prontas do <em>Vendas</em> e do <em>Ordens</em>, sem digitar de novo.</p></div>
+    <div class="troca" data-d="sem"><h4>Sem os outros</h4>
+      <p>Toda conta é digitada à mão, uma a uma, depois da venda.</p></div>
+  </div>
+</div>
+
+<div class="modulo">
+  <div class="cab"><h2>Ordem de Serviço</h2><span class="qual">oficina · 3 telas</span></div>
+  <p>Bancada por etapa, aprovação com nome e data, peças e serviços separados,
+  garantia contada da entrega, histórico que nunca é apagado, comprovante de
+  entrada em bobina e de entrega em A4.</p>
+  <figure>
+    <img src="../imagens/telas/06_ordens/01_bancada.png" alt="Bancada do módulo Ordens">
+    <figcaption>Bancada: o que está em cada etapa agora, com o atraso em
+    destaque.</figcaption>
+  </figure>
+  <div class="trocas">
+    <div class="troca" data-d="da"><h4>Dá</h4>
+      <p>Conta a receber ao <em>Financeiro</em>, com um clique.</p></div>
+    <div class="troca" data-d="recebe"><h4>Recebe</h4>
+      <p>Proposta aprovada do <em>Orçamentos</em>, já com os itens.</p></div>
+    <div class="troca" data-d="sem"><h4>Sem os outros</h4>
+      <p>Peça trocada não sai do estoque, e o serviço fiado não vira cobrança em
+      lugar nenhum.</p></div>
+  </div>
+</div>
+
+<div class="modulo">
+  <div class="cab"><h2>Orçamentos</h2><span class="qual">funil · 2 telas</span></div>
+  <p>Proposta com desconto por linha, condição de pagamento e validade; funil com
+  taxa de conversão sobre quem respondeu; o motivo de cada perda; duplicar sem
+  refazer.</p>
+  <figure>
+    <img src="../imagens/telas/04_orcamentos/01_funil.png" alt="Funil do módulo Orçamentos">
+    <figcaption>Funil: quanto está em aberto, quanto converteu e por que se
+    perdeu.</figcaption>
+  </figure>
+  <div class="trocas">
+    <div class="troca" data-d="da"><h4>Dá</h4>
+      <p>O trabalho pronto para o <em>Vendas</em> ou o <em>Ordens</em>.</p></div>
+    <div class="troca" data-d="recebe"><h4>Recebe</h4>
+      <p>Só os nomes de cliente — é o módulo que mais empurra e menos puxa.</p></div>
+    <div class="troca" data-d="sem"><h4>Sem os outros</h4>
+      <p>A proposta aprovada acaba num PDF: alguém digita tudo de novo do outro
+      lado.</p></div>
+  </div>
+</div>
+
+<div class="modulo">
+  <div class="cab"><h2>Clientes</h2><span class="qual">2 telas · base compartilhada</span></div>
+  <p>Ficha com documento validado, endereço, aniversário e segmento; anotações
+  datadas do atendimento; aniversariantes do mês; exportação da carteira em CSV.</p>
+  <figure>
+    <img src="../imagens/telas/02_clientes/02_lista_de_clientes.png" alt="Lista de clientes">
+    <figcaption>A carteira que todos os outros módulos consultam ao digitar um
+    nome.</figcaption>
+  </figure>
+  <div class="trocas">
+    <div class="troca" data-d="da"><h4>Dá</h4>
+      <p>O nome que se completa sozinho e o número do WhatsApp — <em>a todos os
+      módulos</em>.</p></div>
+    <div class="troca" data-d="recebe"><h4>Recebe</h4>
+      <p>Nada. Ele é a base que os outros consultam.</p></div>
+    <div class="troca" data-d="sem"><h4>Sem os outros</h4>
+      <p>Vira uma agenda bonita que não conversa com o trabalho do dia.</p></div>
+  </div>
+</div>
+
+<div class="modulo">
+  <div class="cab"><h2>Agenda</h2><span class="qual">2 telas · o mais independente</span></div>
+  <p>Grade da semana desenhada por hora, conflito que avisa em vez de travar,
+  bloqueio de almoço e folga, repetição que gera compromissos de verdade.</p>
+  <figure>
+    <img src="../imagens/telas/07_agenda/01_grade_da_semana.png" alt="Grade da semana da Agenda">
+    <figcaption>A semana desenhada: bloco por duração, coluna de hoje destacada,
+    dois no mesmo horário dividindo a coluna.</figcaption>
+  </figure>
+  <div class="trocas">
+    <div class="troca" data-d="da"><h4>Dá</h4>
+      <p>Os compromissos de hoje para o Início.</p></div>
+    <div class="troca" data-d="recebe"><h4>Recebe</h4>
+      <p>Nome e WhatsApp do <em>Clientes</em>, para confirmar o horário.</p></div>
+    <div class="troca" data-d="sem"><h4>Sem os outros</h4>
+      <p>Funciona inteiro — é o que menos depende de companhia.</p></div>
+  </div>
+</div>
+
+<section>
+  <p class="eyebrow">Não é vendido à parte</p>
+  <h2>O que vem junto em qualquer compra</h2>
+  <p class="intro">
+    Comprando um módulo ou os sete, a plataforma em volta é a mesma.
+  </p>
+  <div class="par">
+    <figure>
+      <img src="../imagens/telas/08_documentos/01_proposta_comercial_a4.png"
+           alt="Proposta comercial em folha A4">
+      <figcaption><b>Documento A4, com PDF.</b> Proposta e comprovante de entrega
+      saem em folha, com o logotipo e os dados da loja.</figcaption>
+    </figure>
+    <figure>
+      <img src="../imagens/telas/08_documentos/06_mensagem_de_whatsapp.png"
+           alt="Janela de mensagem de WhatsApp">
+      <figcaption><b>WhatsApp em um clique.</b> Seis mensagens prontas e
+      editáveis; quem aperta enviar é a pessoa.</figcaption>
+    </figure>
+  </div>
+  <div class="par" style="margin-top:6pt">
+    <figure>
+      <img src="../imagens/telas/00_hub/03_config_minha_empresa.png"
+           alt="Configurações, seção Minha empresa">
+      <figcaption><b>Identidade da loja.</b> Nome, CNPJ, endereço e logotipo, com
+      prévia ao vivo de como o documento sai.</figcaption>
+    </figure>
+    <figure>
+      <img src="../imagens/telas/00_hub/09_inicio_no_outro_tema.png"
+           alt="Início no tema escuro">
+      <figcaption><b>Tema escuro, se quiser.</b> O padrão é o claro; o escuro é
+      uma opção de um clique, para quem trabalha à noite.</figcaption>
+    </figure>
+  </div>
+  <p class="nota">
+    Também entram sem custo: backup automático diário com restauração pela tela,
+    busca por <code>Ctrl+K</code>, avisos configuráveis e a licença que funciona
+    para sempre sem internet depois de ativada.
+  </p>
+</section>
+
+<section>
+  <p class="eyebrow">Honestidade comercial</p>
+  <h2>O que a plataforma não faz</h2>
+  <p class="intro">
+    Dito antes da venda, isso protege o negócio. Descoberto depois, vira
+    devolução.
+  </p>
+  <div class="limite"><b>Nota fiscal</b>
+    <p>Não emite NFC-e nem NF-e. Todo documento sai marcado “sem valor fiscal”.
+    Quem precisa de nota usa outro sistema junto.</p></div>
+  <div class="limite"><b>Um computador</b>
+    <p>A licença vale por máquina e os dados ficam nela. Não há rede, dois caixas
+    ao mesmo tempo nem sincronização entre lojas.</p></div>
+  <div class="limite"><b>Sem usuários e senhas</b>
+    <p>Quem abre o programa vê tudo. Não há login, permissão por função nem
+    registro de quem fez o quê.</p></div>
+  <div class="limite"><b>Sem celular</b>
+    <p>É um programa de Windows. Não há aplicativo, painel web nem acesso de fora
+    da loja.</p></div>
+  <div class="limite"><b>Sem banco nem boleto</b>
+    <p>O Financeiro registra o que aconteceu; ele não conversa com banco, não
+    gera boleto e não concilia extrato.</p></div>
+  <div class="limite"><b>WhatsApp é assistido</b>
+    <p>O link abre a conversa com o texto pronto — quem aperta enviar é a pessoa.
+    Não há disparo em massa nem automação.</p></div>
+  <div class="limite"><b>Backup no mesmo HD</b>
+    <p>A cópia diária é automática, mas por padrão fica no próprio computador. Se
+    o HD queimar, some junto — a tela avisa e pede um pendrive ou pasta de
+    nuvem.</p></div>
+  <div class="limite"><b>Estoque de oficina</b>
+    <p>Peça usada numa ordem de serviço não dá baixa. Hoje o controle é manual, e
+    é a ponte mais pedida a fazer.</p></div>
+</section>
+
+<section>
+  <p class="eyebrow">Como empacotar</p>
+  <h2>Combinações que se sustentam sozinhas</h2>
+  <div class="combo">
+    <div>
+      <p class="nome">Balcão</p>
+      <p class="peca">Vendas + Estoque</p>
+      <p>A menor combinação que já se paga: bipa, vende, tira do estoque e avisa
+      quando o produto chega ao mínimo. Para mercearia, papelaria, loja de
+      peças.</p>
+    </div>
+    <div>
+      <p class="nome">Balcão com fiado</p>
+      <p class="peca">Vendas + Estoque + Financeiro</p>
+      <p>A anterior mais a venda a prazo virando cobrança sozinha, com o dia em
+      que o saldo cruza o zero. Resolve o dia inteiro de um comércio pequeno.</p>
+    </div>
+    <div>
+      <p class="nome">Oficina</p>
+      <p class="peca">Ordens + Orçamentos + Clientes</p>
+      <p>Orça, vira ordem com um clique, entrega com garantia no papel e avisa o
+      cliente no WhatsApp que o aparelho está pronto.</p>
+    </div>
+    <div>
+      <p class="nome">Serviço com hora marcada</p>
+      <p class="peca">Agenda + Clientes + Financeiro</p>
+      <p>Para salão, consultório, assistência que vai até o cliente: a grade da
+      semana, a confirmação por WhatsApp e o que entra por mês.</p>
+    </div>
+  </div>
+  <p class="fecho">
+    DumTech Hub 1.0 · as 54 telas do produto estão em
+    <code>docs/imagens/telas/</code>, uma pasta por módulo.
+  </p>
+</section>
+
+</body>
+</html>

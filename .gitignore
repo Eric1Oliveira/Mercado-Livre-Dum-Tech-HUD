@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Build / distribuicao
+build/dist/
+build/work/
+dist/
+*.spec.bak
+# o site montado para publicar e o zip do cPanel (saida, nao fonte:
+# a fonte e landingpage/ e painel/)
+build/site/
+build/site.zip
+# instaladores gerados - ~28 MB cada. build/instalador.iss E fonte e fica.
+build/versoes/
+build/versoes-antigas/
+build/Guia-DumTech-Hub.pdf
+
+# Dados locais de desenvolvimento
+data_dev/
+*.db
+*.db-journal
+*.db-wal
+
+# Supabase CLI (estado local do link com o projeto)
+supabase/.temp/
+
+# Editor / SO
+.idea/
+Thumbs.db
+desktop.ini
+
+# Imagens geradas por tools/gerar_capturas.py sao versionadas de proposito
+.shots/

@@ -1,0 +1,65 @@
+plugins = []
+redirects = []
+
+[functions]
+
+[functions."*"]
+
+[build]
+publish = "C:\\Users\\User\\Desktop\\Apps\\MILIONARY\\EMPRESAS\\DumTech\\Projetos Próprios\\Mercado Livre Dum Tech HUD"
+publishOrigin = "default"
+base = "C:\\Users\\User\\Desktop\\Apps\\MILIONARY\\EMPRESAS\\DumTech\\Projetos Próprios\\Mercado Livre Dum Tech HUD"
+
+[build.environment]
+
+[build.processing]
+
+[build.processing.css]
+
+[build.processing.html]
+
+[build.processing.images]
+
+[build.processing.js]
+
+[build.services]
+
+[[headers]]
+for = "/*"
+
+[headers.values]
+Strict-Transport-Security = "max-age=31536000"
+X-Content-Type-Options = "nosniff"
+Referrer-Policy = "strict-origin-when-cross-origin"
+Permissions-Policy = "camera=(), microphone=(), geolocation=(), usb=()"
+X-Frame-Options = "DENY"
+Content-Security-Policy = "frame-ancestors 'none'"
+Cache-Control = "no-cache"
+
+[[headers]]
+for = "/painel/*"
+
+[headers.values]
+X-Robots-Tag = "noindex, nofollow"
+Cross-Origin-Opener-Policy = "same-origin"
+
+[[headers]]
+for = "/baixar/DumTech-Hub-Setup.exe"
+
+[headers.values]
+Content-Type = "application/vnd.microsoft.portable-executable"
+Content-Disposition = "attachment; filename=\"DumTech-Hub-Setup.exe\""
+Cache-Control = "no-cache"
+
+[[headers]]
+for = "/baixar/DumTech-Hub-Setup-*"
+
+[headers.values]
+Content-Type = "application/vnd.microsoft.portable-executable"
+Content-Disposition = "attachment"
+
+[[headers]]
+for = "/guia/Guia-DumTech-Hub.pdf"
+
+[headers.values]
+Content-Type = "application/pdf"

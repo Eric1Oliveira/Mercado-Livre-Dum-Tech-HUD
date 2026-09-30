@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- A pagina recebe na URL o codigo que abre a chave: nenhum script de fora, e
+     nenhum endereco (nem o desta pagina) vai para outro site pelo Referer. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://kpiyhhmtteojqxhhmcyr.supabase.co http://127.0.0.1:* http://localhost:*; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex">
+<title>Seu pedido DumTech</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect width='24' height='24' rx='6' fill='%237353F6'/><path d='M6 6h4v4H6z M14 6h4v4h-4z M6 14h4v4H6z M14 14h4v4h-4z' fill='none' stroke='white' stroke-width='2'/></svg>">
+<link rel="modulepreload" href="../js/pedido.js">
+<link rel="modulepreload" href="../js/api.js">
+<link rel="modulepreload" href="../js/pagamento.js">
+<link rel="modulepreload" href="../js/config.js">
+<link rel="modulepreload" href="../js/dados.js">
+<link rel="preconnect" href="https://kpiyhhmtteojqxhhmcyr.supabase.co" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/estilo.css">
+<link rel="stylesheet" href="../css/paginas.css">
+</head>
+<body>
+
+<header class="topo" data-rolou="sim">
+  <div class="envolve">
+    <a class="marca" href="../">
+      <span class="selo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h6v6H4z M14 4h6v6h-6z M4 14h6v6H4z M14 14h6v6h-6z"/></svg></span>
+      DumTech Hub
+    </a>
+    <nav>
+      <a href="../baixar/">Baixar</a>
+      <a href="../guia/">Guia de instalação</a>
+    </nav>
+  </div>
+</header>
+
+<main class="pagina pedido">
+  <div class="envolve">
+    <p class="sobrenome">Seu pedido</p>
+
+    <!-- conferindo: o primeiro estado, antes de o servidor responder -->
+    <section class="estado" data-estado="conferindo">
+      <div class="indicador" aria-hidden="true"><span class="giro"></span></div>
+      <h1>Conferindo o seu pagamento…</h1>
+      <p class="lede">Isto leva só alguns segundos. Não feche esta página.</p>
+    </section>
+
+    <!-- aguardando: link aberto, pagamento ainda nao confirmado -->
+    <section class="estado" data-estado="aguardando" hidden>
+      <div class="indicador" aria-hidden="true"><span class="giro"></span></div>
+      <h1>Esperando a confirmação do pagamento</h1>
+      <p class="lede" id="aguardando-texto">Pagou com Pix? A confirmação costuma chegar em menos de um minuto. Esta página se atualiza sozinha.</p>
+      <div class="acoes-pedido">
+        <a class="botao botao-primario" id="voltar-pagamento" href="../" hidden>Voltar ao pagamento</a>
+        <a class="botao botao-fantasma" data-whatsapp href="https://wa.me/5511978042160" rel="noopener" target="_blank">Falar no WhatsApp</a>
+      </div>
+    </section>
+
+    <!-- liberando: pago, a entrega ainda nao saiu (ou falhou e o painel resolve) -->
+    <section class="estado" data-estado="liberando" hidden>
+      <div class="indicador ok" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17.5 19.5 7"/></svg></div>
+      <h1>Pagamento confirmado</h1>
+      <p class="lede" id="liberando-texto">Estamos liberando a sua chave. Esta página se atualiza sozinha.</p>
+      <div class="acoes-pedido">
+        <a class="botao botao-fantasma" data-whatsapp href="https://wa.me/5511978042160" rel="noopener" target="_blank">Falar no WhatsApp</a>
+      </div>
+    </section>
+
+    <!-- pronto: licenca nova, com a chave -->
+    <section class="estado" data-estado="chave" hidden>
+      <div class="indicador ok" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17.5 19.5 7"/></svg></div>
+      <h1>Pronto! Esta é a sua chave</h1>
+      <p class="lede">Guarde num lugar seguro: é com ela que você ativa o DumTech Hub. Ela é só sua.</p>
+
+      <div class="chave-caixa">
+        <span class="chave-rotulo">Chave de ativação</span>
+        <code class="chave-valor" id="chave-valor">XXXX-XXXX-XXXX-XXXX</code>
+        <div class="chave-acoes">
+          <button class="botao botao-primario" id="copiar-chave" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 9h11v11H9z M5 15H4V4h11v1"/></svg>
+            <span>Copiar chave</span>
+          </button>
+          <a class="botao botao-fantasma" href="../baixar/DumTech-Hub-Setup.exe" download>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11 M7 10l5 5 5-5 M5 20h14"/></svg>
+            Baixar para Windows
+          </a>
+        </div>
+        <p class="chave-nota" id="chave-computadores">Ativa em 1 computador.</p>
+      </div>
+
+      <h2>Agora é só instalar</h2>
+      <ol class="etapas">
+        <li><strong>Baixe e abra o instalador</strong>O arquivo <code>DumTech-Hub-Setup.exe</code> vai para a pasta Downloads. Se o Windows avisar que protegeu o computador, clique em <b>Mais informações</b> e em <b>Executar assim mesmo</b>.</li>
+        <li><strong>Informe seu nome e e-mail</strong>Use o mesmo e-mail desta compra: <b id="chave-email">—</b>.</li>
+        <li><strong>Cole a chave e clique em Ativar</strong>Os módulos comprados aparecem na hora.</li>
+      </ol>
+    </section>
+
+    <!-- pronto: cliente que ja tinha chave -->
+    <section class="estado" data-estado="modulos" hidden>
+      <div class="indicador ok" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17.5 19.5 7"/></svg></div>
+      <h1>Módulos liberados na sua chave</h1>
+      <p class="lede" id="modulos-texto">Os módulos entraram na chave que você já usa.</p>
+      <ol class="etapas">
+        <li><strong>Abra o DumTech Hub</strong>Com internet, os módulos novos aparecem sozinhos em alguns minutos.</li>
+        <li><strong>Quer agora?</strong>Vá em <b>Licença</b> e clique em <b>Verificar licença</b>.</li>
+      </ol>
+      <div class="acoes-pedido">
+        <a class="botao botao-fantasma" href="../baixar/">Baixar o Hub de novo</a>
+      </div>
+    </section>
+
+    <!-- sem o codigo do pedido neste navegador -->
+    <section class="estado" data-estado="nao-encontrado" hidden>
+      <h1>Não encontramos este pedido</h1>
+      <p class="lede">A página do pedido só abre no navegador em que a compra foi feita. Se você já pagou, fale com a gente no WhatsApp com o comprovante: a sua chave sai na hora.</p>
+      <div class="acoes-pedido">
+        <a class="botao botao-primario" data-whatsapp href="https://wa.me/5511978042160" rel="noopener" target="_blank">Falar no WhatsApp</a>
+        <a class="botao botao-fantasma" href="../#montador">Voltar à loja</a>
+      </div>
+    </section>
+
+    <div class="resumo-pedido" id="resumo-pedido" hidden>
+      <h2>Resumo</h2>
+      <div class="resumo-linhas" id="resumo-itens"></div>
+      <div class="resumo-total"><span>Total</span><b id="resumo-total">—</b></div>
+      <p class="resumo-meta" id="resumo-meta"></p>
+    </div>
+  </div>
+</main>
+
+<footer class="rodape">
+  <div class="envolve">
+    <span>DumTech · sistemas para quem atende no balcão</span>
+    <span><a href="../termos.html">Termos de uso</a> · <a href="../privacidade.html">Privacidade</a> · <a href="https://wa.me/5511978042160" rel="noopener">WhatsApp (11) 97804-2160</a></span>
+  </div>
+</footer>
+
+<script type="module" src="../js/pedido.js"></script>
+</body>
+</html>

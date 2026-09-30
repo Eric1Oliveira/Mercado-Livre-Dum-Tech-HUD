@@ -1,0 +1,725 @@
+/* =============================================================================
+   DumTech — landing page
+   O sistema visual é o do próprio programa: fundo #F6F6F9, cartão branco com
+   fio, violeta #7353F6 e Plus Jakarta Sans. Quem vê a página reconhece o Hub.
+   ============================================================================= */
+
+:root {
+  --violeta: #7353f6;
+  --violeta-forte: #5b3fe0;
+  --violeta-claro: #ede9fe;
+  --fundo: #f6f6f9;
+  --cartao: #ffffff;
+  --fio: #e7e7ef;
+  --fio-forte: #d7d7e4;
+  --tinta: #17171f;
+  --tinta-media: #4a4a5a;
+  --tinta-fraca: #75758a;
+  --sucesso: #2e9e6b;
+
+  --raio: 16px;
+  --raio-pequeno: 10px;
+  --sombra: 0 1px 2px rgba(23, 23, 31, .04), 0 8px 24px rgba(23, 23, 31, .06);
+  --sombra-alta: 0 2px 4px rgba(23, 23, 31, .06), 0 18px 44px rgba(23, 23, 31, .12);
+
+  --largura: 1180px;
+  --transicao: 180ms cubic-bezier(.2, .7, .3, 1);
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--fundo);
+  color: var(--tinta);
+  font-family: "Plus Jakarta Sans", -apple-system, "Segoe UI", system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 { margin: 0; line-height: 1.12; letter-spacing: -.022em; font-weight: 800; }
+h1 { font-size: clamp(2.2rem, 5.2vw, 3.5rem); }
+h2 { font-size: clamp(1.6rem, 3.2vw, 2.25rem); }
+h3 { font-size: 1.05rem; letter-spacing: -.01em; font-weight: 700; }
+p { margin: 0; }
+a { color: inherit; }
+
+.envolve { width: min(100% - 40px, var(--largura)); margin-inline: auto; }
+
+.sobrenome {
+  font-size: .74rem; font-weight: 700; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--tinta-fraca);
+}
+
+:where(a, button, input, [tabindex]):focus-visible {
+  outline: 2px solid var(--violeta);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* ------------------------------------------------------------------- topo -- */
+/* Sem backdrop-filter de proposito: a barra do proprio programa e solida, e o
+   blur em elemento fixo custa caro em maquina fraca - que e onde este sistema
+   roda. */
+.topo {
+  position: sticky; top: 0; z-index: 30;
+  background: rgba(246, 246, 249, .97);
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--transicao);
+}
+.topo[data-rolou="sim"] { border-bottom-color: var(--fio); }
+.topo .envolve { display: flex; align-items: center; gap: 28px; height: 68px; }
+
+.marca {
+  display: flex; align-items: center; gap: 10px;
+  font-weight: 800; letter-spacing: -.02em; text-decoration: none; color: inherit;
+}
+.marca .selo {
+  width: 34px; height: 34px; border-radius: 11px;
+  background: var(--violeta); color: #fff;
+  display: grid; place-items: center;
+}
+.marca .selo svg { width: 19px; height: 19px; }
+
+.topo nav { display: flex; gap: 22px; margin-left: auto; }
+.topo nav a {
+  text-decoration: none; color: var(--tinta-media); font-weight: 600; font-size: .93rem;
+  padding: 6px 0; border-bottom: 2px solid transparent; transition: color var(--transicao);
+}
+.topo nav a:hover { color: var(--tinta); }
+
+/* ----------------------------------------------------------------- botões -- */
+.botao {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 12px 20px; border-radius: 12px; border: 1px solid transparent;
+  font: inherit; font-weight: 700; font-size: .95rem;
+  cursor: pointer; text-decoration: none;
+  transition: transform var(--transicao), background var(--transicao),
+              box-shadow var(--transicao), border-color var(--transicao);
+}
+.botao svg { width: 18px; height: 18px; }
+.botao-primario { background: var(--violeta); color: #fff; box-shadow: 0 6px 18px rgba(115, 83, 246, .28); }
+.botao-primario:hover { background: var(--violeta-forte); transform: translateY(-1px); }
+.botao-primario:disabled { background: var(--fio-forte); color: #fff; box-shadow: none; cursor: not-allowed; transform: none; }
+.botao-claro { background: rgba(255, 255, 255, .16); color: #fff; border-color: rgba(255, 255, 255, .34); }
+.botao-claro:hover { background: rgba(255, 255, 255, .26); }
+.botao-fantasma { background: transparent; color: var(--tinta-media); border-color: var(--fio-forte); }
+.botao-fantasma:hover { border-color: var(--tinta-fraca); color: var(--tinta); }
+/* o botao principal sobre o roxo do topo: branco com texto violeta */
+.botao-branco { background: #fff; color: var(--violeta-forte); box-shadow: 0 8px 22px rgba(23, 23, 31, .18); }
+.botao-branco:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(23, 23, 31, .22); }
+
+/* download sempre a vista: no topo (inclusive no celular), no hero e em "Como funciona" */
+.topo .botao-topo-baixar { padding: 9px 14px; }
+.hero .acoes-nota { margin-top: 12px; font-size: .86rem; color: rgba(255, 255, 255, .78); }
+.faixa-baixar {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 24px;
+  margin-top: 18px; padding: 20px 22px; border-radius: var(--raio);
+  background: var(--violeta-claro); border: 1px solid color-mix(in srgb, var(--violeta) 22%, transparent);
+}
+.faixa-baixar-texto { flex: 1 1 320px; }
+.faixa-baixar-texto strong { display: block; font-size: 1.05rem; }
+.faixa-baixar-texto p { margin-top: 4px; font-size: .92rem; color: var(--tinta-media); }
+
+/* ------------------------------------------------------------------ hero -- */
+.hero {
+  position: relative; overflow: hidden; color: #fff;
+  background: var(--violeta);
+  padding: clamp(52px, 8vw, 96px) 0 clamp(110px, 13vw, 150px);
+}
+/* A onda e desenhada para 1440 px. Esticada a 100% num celular ela era espremida
+   (curvas tortas) e, com a animacao andando 40 px, deixava um degrau roxo no canto
+   direito. Agora ela nunca fica mais estreita que 1100 px (o celular ve um trecho,
+   com a curva inteira) e sobra 80 px para os lados, para a animacao nao descobrir
+   a borda. */
+.hero .onda {
+  position: absolute; bottom: -2px; left: -40px;
+  width: max(calc(100% + 80px), 1100px); height: 120px; display: block;
+}
+.hero .envolve { position: relative; z-index: 1; }
+.hero h1 { max-width: 17ch; }
+.hero .sobrenome { color: rgba(255, 255, 255, .82); }
+.hero .chamada {
+  margin-top: 18px; max-width: 56ch; font-size: clamp(1.02rem, 1.6vw, 1.18rem);
+  color: rgba(255, 255, 255, .9);
+}
+.hero .acoes { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+.hero .marcas { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 34px; }
+.hero .marcas span {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 7px 13px; border-radius: 999px;
+  background: rgba(255, 255, 255, .14); border: 1px solid rgba(255, 255, 255, .2);
+  font-size: .85rem; font-weight: 600;
+}
+
+/* O topo em duas colunas: o texto e o "Qual é o seu negócio?". O cartão é
+   branco sólido, como o de boas-vindas: é uma pergunta para responder, não
+   um enfeite. Abaixo de 1040 px ele desce para baixo do texto. */
+.hero-grade { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 390px);
+              gap: clamp(28px, 4vw, 56px); align-items: center; }
+.negocio {
+  background: #fff; color: var(--tinta); border-radius: calc(var(--raio) + 4px);
+  padding: 22px 20px 18px; box-shadow: 0 18px 50px rgba(30, 14, 110, .28);
+}
+.negocio h2 { font-size: 1.22rem; letter-spacing: -.02em; }
+.negocio > p { font-size: .9rem; color: var(--tinta-media); margin: 4px 0 14px; }
+.negocio-lista { display: grid; gap: 8px; }
+.ramo {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+  padding: 10px 12px; border-radius: 12px; border: 1px solid var(--fio);
+  background: var(--cartao); font: inherit; color: inherit; cursor: pointer;
+  transition: border-color var(--transicao), transform var(--transicao), box-shadow var(--transicao);
+}
+.ramo:hover, .ramo:focus-visible {
+  border-color: var(--cor); transform: translateX(2px);
+  box-shadow: 0 0 0 1px var(--cor);
+}
+.ramo .chip {
+  width: 36px; height: 36px; border-radius: 11px; flex: none; display: grid; place-items: center;
+  background: color-mix(in srgb, var(--cor) 14%, #fff); color: var(--cor);
+}
+.ramo .chip svg { width: 19px; height: 19px; }
+.ramo-texto { flex: 1; min-width: 0; display: grid; }
+.ramo-texto strong { font-size: .95rem; }
+.ramo-texto small { font-size: .8rem; color: var(--tinta-fraca); font-variant-numeric: tabular-nums; }
+.ramo-seta { color: var(--tinta-fraca); display: grid; }
+.ramo-seta svg { width: 16px; height: 16px; }
+@media (max-width: 1040px) {
+  .hero-grade { grid-template-columns: 1fr; }
+  .negocio { max-width: 520px; }
+}
+
+/* O cartão de quem chegou pelo Hub. Branco sólido sobre o violeta: é a
+   primeira coisa que a pessoa reconhecida enxerga, e não pode parecer um
+   aviso do sistema. */
+/* A primeira coisa que o cliente conhecido ve: mora no ALTO do hero, antes do
+   titulo. Quem chega pela primeira vez nao ve nada disto (display: none). */
+.boas-vindas {
+  display: none; align-items: center; gap: 20px;
+  margin: 0 0 30px; max-width: 760px;
+  padding: 20px 24px; border-radius: 22px;
+  background: var(--cartao); color: var(--tinta);
+  border-left: 5px solid var(--violeta);
+  box-shadow: 0 20px 48px rgba(23, 23, 31, .22);
+}
+.boas-vindas[data-visivel="sim"] { display: flex; }
+
+.boas-vindas .avatar {
+  width: 56px; height: 56px; border-radius: 18px; flex: none;
+  background: var(--violeta-claro); color: var(--violeta);
+  display: grid; place-items: center;
+  font-size: 1.45rem; font-weight: 800; letter-spacing: -.02em;
+}
+.boas-vindas-texto { flex: 1; min-width: 0; }
+.boas-vindas .sobrenome { color: var(--tinta-fraca); }
+.boas-vindas strong {
+  display: block; margin: 3px 0 5px;
+  font-size: clamp(1.45rem, 2.6vw, 1.85rem); font-weight: 800;
+  letter-spacing: -.024em; line-height: 1.12;
+}
+.boas-vindas p:not(.sobrenome) { font-size: .93rem; color: var(--tinta-media); }
+
+.tem { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+.pilula-modulo {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 11px; border-radius: 999px;
+  font-size: .8rem; font-weight: 700;
+  background: color-mix(in srgb, var(--cor) 13%, #fff); color: var(--cor);
+}
+.pilula-modulo svg { width: 14px; height: 14px; }
+
+.boas-vindas-acoes { display: grid; gap: 8px; flex: none; justify-items: stretch; }
+.boas-vindas-acoes .botao { justify-content: center; white-space: nowrap; }
+.boas-vindas .sair {
+  background: transparent; border: 1px solid var(--fio-forte); color: var(--tinta-fraca);
+  font: inherit; font-size: .8rem; font-weight: 600;
+  padding: 7px 12px; border-radius: 999px; cursor: pointer;
+  transition: background var(--transicao), border-color var(--transicao), color var(--transicao);
+}
+.boas-vindas .sair:hover { background: var(--fundo); border-color: var(--tinta-fraca); color: var(--tinta); }
+
+/* --------------------------------------------------------------- seções --- */
+.secao { padding: clamp(56px, 7vw, 88px) 0; }
+.secao-cabeca { max-width: 62ch; margin-bottom: 34px; }
+.secao-cabeca p { margin-top: 12px; color: var(--tinta-media); font-size: 1.05rem; }
+
+/* ------------------------------------------------------------- montador --- */
+.montador { display: grid; grid-template-columns: minmax(0, 1fr) 384px; gap: 26px; align-items: start; }
+
+.modulos { display: grid; grid-template-columns: repeat(auto-fill, minmax(252px, 1fr)); gap: 14px; }
+
+.modulo {
+  position: relative; text-align: left; cursor: pointer;
+  background: var(--cartao); border: 1px solid var(--fio); border-radius: var(--raio);
+  padding: 18px 18px 16px; font: inherit; color: inherit;
+  display: flex; flex-direction: column; gap: 10px;
+  transition: border-color var(--transicao), box-shadow var(--transicao),
+              transform var(--transicao);
+}
+.modulo:hover { transform: translateY(-2px); box-shadow: var(--sombra); }
+.modulo[aria-pressed="true"] {
+  border-color: var(--cor); box-shadow: 0 0 0 1px var(--cor), var(--sombra);
+}
+.modulo[data-ja-tem="sim"] { cursor: default; opacity: .96; background: #fbfbfd; }
+.modulo[data-ja-tem="sim"]:hover { transform: none; box-shadow: none; }
+
+.modulo .cabeca { display: flex; align-items: center; gap: 11px; }
+.modulo .chip {
+  width: 38px; height: 38px; border-radius: 12px; flex: none;
+  display: grid; place-items: center;
+  background: color-mix(in srgb, var(--cor) 14%, #fff);
+  color: var(--cor);
+}
+.modulo .chip svg { width: 20px; height: 20px; }
+.modulo h3 { flex: 1; }
+.modulo .marca-estado {
+  width: 22px; height: 22px; border-radius: 999px; flex: none;
+  border: 1.5px solid var(--fio-forte); display: grid; place-items: center;
+  color: #fff; transition: background var(--transicao), border-color var(--transicao);
+}
+.modulo[aria-pressed="true"] .marca-estado { background: var(--cor); border-color: var(--cor); }
+.modulo[data-ja-tem="sim"] .marca-estado { background: var(--sucesso); border-color: var(--sucesso); }
+.modulo .marca-estado svg { width: 13px; height: 13px; opacity: 0; transition: opacity var(--transicao); }
+.modulo[aria-pressed="true"] .marca-estado svg,
+.modulo[data-ja-tem="sim"] .marca-estado svg { opacity: 1; }
+
+.modulo p { font-size: .92rem; color: var(--tinta-media); }
+.modulo .detalhe { font-size: .86rem; color: var(--tinta-fraca); }
+.modulo .rodape {
+  display: flex; align-items: baseline; gap: 8px; margin-top: auto; padding-top: 6px;
+  border-top: 1px dashed var(--fio); font-variant-numeric: tabular-nums;
+}
+.modulo .preco { font-weight: 800; font-size: 1.12rem; letter-spacing: -.02em; border-radius: 6px; }
+/* o preco que acabou de mudar no painel: um realce so, que se apaga sozinho */
+.modulo .preco.preco-mudou { animation: preco-mudou 1.6s ease-out; }
+@keyframes preco-mudou {
+  0%, 35% { background: color-mix(in srgb, var(--cor) 22%, transparent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--cor) 22%, transparent); }
+  100%    { background: transparent; box-shadow: 0 0 0 4px transparent; }
+}
+.modulo[data-a-venda="nao"] { cursor: default; opacity: .6; }
+.modulo[data-a-venda="nao"]:hover { transform: none; box-shadow: none; }
+.modulo .preco-nota { font-size: .8rem; color: var(--tinta-fraca); }
+.modulo .selo-tem {
+  font-size: .78rem; font-weight: 700; color: var(--sucesso);
+  text-transform: uppercase; letter-spacing: .06em;
+}
+
+/* kits prontos: o mesmo cartao .modulo, com a economia na frente */
+.kits-prontos { margin-bottom: 26px; }
+.kits-cabeca { margin-bottom: 12px; }
+.kits-cabeca p { font-size: .92rem; color: var(--tinta-media); margin-top: 2px; }
+.kits-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(252px, 1fr)); gap: 14px; }
+.kit-pronto { --cor: var(--violeta); }
+.kit-pronto .kit-selo {
+  flex: 1; font-size: .74rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--violeta);
+}
+.kit-pronto .kit-desconto {
+  font-size: .8rem; font-weight: 800; color: var(--sucesso);
+  background: color-mix(in srgb, var(--sucesso) 12%, #fff); padding: 3px 8px; border-radius: 999px;
+}
+.kit-pronto h3 { font-size: 1.08rem; }
+.kit-modulos { display: flex; flex-wrap: wrap; gap: 6px; }
+.kit-chip {
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px 3px 6px; border-radius: 999px;
+  font-size: .78rem; font-weight: 600; color: var(--tinta-media);
+  background: color-mix(in srgb, var(--cor) 10%, #fff);
+}
+.kit-chip svg { width: 14px; height: 14px; color: var(--cor); }
+.kit-pronto .preco-antes { font-size: .88rem; color: var(--tinta-fraca); font-variant-numeric: tabular-nums; }
+.kits-ou {
+  margin: 22px 0 0; font-size: .8rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--tinta-fraca); display: flex; align-items: center; gap: 12px;
+}
+.kits-ou::after { content: ""; flex: 1; height: 1px; background: var(--fio); }
+
+/* cupom: um link discreto que vira campo; quem nao tem cupom nem nota */
+.cupom { margin: 2px 0 14px; }
+.cupom-abrir {
+  background: none; border: 0; padding: 0; font: inherit; font-size: .88rem; font-weight: 600;
+  color: var(--violeta); cursor: pointer; text-decoration: underline; text-underline-offset: 3px;
+}
+.cupom-campo { display: flex; gap: 8px; }
+.cupom-campo input { flex: 1; text-transform: uppercase; letter-spacing: .04em; }
+.cupom-aviso { font-size: .84rem; margin-top: 6px; min-height: 0; }
+.cupom-aviso[data-tom="ok"] { color: var(--sucesso); }
+.cupom-aviso[data-tom="erro"] { color: #c2413b; }
+.resumo-item.cupom-linha span:last-child { color: var(--sucesso); font-weight: 700; }
+
+/* no carrinho: os modulos marcados formaram um kit */
+.kit-reconhecido {
+  margin: 8px 0 4px; padding: 9px 12px; border-radius: 10px; font-size: .86rem; line-height: 1.4;
+  background: var(--violeta-claro); color: var(--violeta-forte);
+}
+
+/* oferta do combo */
+/* A oferta mora DENTRO da caixa do kit, entre o que ele escolheu e o que vai
+   pagar - e uma etapa da venda, nao um cartaz ao lado dela. Como a coluna tem
+   384px, o desenho e empilhado: texto em cima, botao em largura total. */
+.oferta {
+  display: none; margin: 12px 0; padding: 14px;
+  border: 1px dashed var(--violeta); border-radius: var(--raio-pequeno);
+  background: var(--violeta-claro);
+  gap: 10px;
+}
+.oferta[data-visivel="sim"] { display: grid; }
+.oferta strong { display: block; font-size: .95rem; line-height: 1.35; }
+.oferta p { font-size: .88rem; color: var(--tinta-media); line-height: 1.45; }
+.oferta .botao { width: 100%; justify-content: center; }
+
+/* ------------------------------------------------------- painel do kit --- */
+/* O aside inteiro e sticky, entao quem gruda e o PRIMEIRO bloco - por isso
+   "Seu kit" vem antes das integracoes no HTML. `align-self: start` impede a
+   grade de esticar a coluna e matar o sticky. */
+.painel { position: sticky; top: 88px; align-self: start; display: grid; gap: 14px; }
+/* o bloco do dinheiro nunca some por baixo: se a tela for baixa, ele rola
+   sozinho em vez de empurrar o resto para fora do alcance */
+.bloco-kit { max-height: calc(100vh - 104px); overflow-y: auto; }
+
+.bloco {
+  background: var(--cartao); border: 1px solid var(--fio);
+  border-radius: var(--raio); padding: 18px;
+}
+.bloco > h3 { margin-bottom: 4px; }
+.bloco .legenda { font-size: .88rem; color: var(--tinta-fraca); }
+
+/* O grafo é o elemento de assinatura da página: ele ganha espaço de verdade,
+   senão vira enfeite no canto do cartão. */
+#grafo { width: 100%; height: 300px; display: block; margin: 10px 0 2px; }
+#grafo .fio-ligacao { stroke-width: 2.4; fill: none; stroke-linecap: round; transition: opacity var(--transicao); }
+#grafo .fio-dormente { stroke: var(--fio-forte); stroke-width: 1.6; stroke-dasharray: 3 5; }
+#grafo .no { transition: opacity var(--transicao), r var(--transicao); }
+#grafo .no-fora { opacity: .34; }
+#grafo text { font-size: 10.5px; font-weight: 700; fill: var(--tinta-media); }
+
+.contador { display: flex; align-items: baseline; gap: 8px; }
+.contador b { font-size: 1.45rem; letter-spacing: -.02em; }
+
+.integracoes { display: grid; gap: 10px; margin-top: 12px; }
+.integracao {
+  border: 1px solid var(--fio); border-radius: var(--raio-pequeno);
+  padding: 11px 13px; background: #fff;
+  transition: border-color var(--transicao), background var(--transicao);
+}
+.integracao[data-estado="ativa"] { border-color: color-mix(in srgb, var(--sucesso) 40%, #fff); background: #f5fbf8; }
+.integracao[data-estado="dormente"] { background: #fbfbfd; }
+.integracao[data-estado="fora"] { display: none; }
+.integracao .titulo { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: .92rem; }
+.integracao .ponto { width: 8px; height: 8px; border-radius: 999px; background: var(--fio-forte); flex: none; }
+.integracao[data-estado="ativa"] .ponto { background: var(--sucesso); }
+.integracao p { font-size: .86rem; color: var(--tinta-media); margin-top: 4px; }
+.integracao[data-estado="dormente"] p { color: var(--tinta-fraca); }
+
+.resumo-itens { display: grid; gap: 8px; margin: 10px 0 4px; }
+.resumo-item {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  font-size: .93rem; font-variant-numeric: tabular-nums;
+}
+.resumo-item span { color: var(--tinta-media); }
+.resumo-item.combo span { font-weight: 700; color: var(--tinta); }
+.resumo-item .produtos-do-combo { display: block; font-size: .8rem; color: var(--tinta-fraca); font-weight: 500; }
+.resumo-vazio { font-size: .92rem; color: var(--tinta-fraca); }
+
+.total { display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+         border-top: 1px dashed var(--fio); margin-top: 12px; padding-top: 12px; }
+.total b { font-size: 1.7rem; letter-spacing: -.025em; font-variant-numeric: tabular-nums; }
+.economia { font-size: .85rem; font-weight: 700; color: var(--sucesso); }
+.painel .botao-primario { width: 100%; justify-content: center; margin-top: 12px; }
+.painel .nota { font-size: .8rem; color: var(--tinta-fraca); margin-top: 8px; text-align: center; }
+
+/* ---------------------------------------------------------- integrações --- */
+.pontes { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.ponte { background: var(--cartao); border: 1px solid var(--fio); border-radius: var(--raio); padding: 20px; }
+.ponte .fluxo { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.ponte .pilula {
+  display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px;
+  font-size: .82rem; font-weight: 700;
+  background: color-mix(in srgb, var(--cor) 12%, #fff); color: var(--cor);
+}
+.ponte .seta { color: var(--fio-forte); display: grid; place-items: center; }
+.ponte .seta svg { width: 16px; height: 16px; }
+.ponte p { font-size: .94rem; color: var(--tinta-media); margin-top: 6px; }
+
+/* ------------------------------------------------------------- passos ----- */
+.passos { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; counter-reset: passo; }
+.passo { background: var(--cartao); border: 1px solid var(--fio); border-radius: var(--raio); padding: 20px; }
+.passo .numero {
+  counter-increment: passo; font-variant-numeric: tabular-nums;
+  font-size: .8rem; font-weight: 800; color: var(--violeta);
+}
+.passo .numero::before { content: "0" counter(passo); }
+.passo h3 { margin: 8px 0 6px; }
+.passo p { font-size: .92rem; color: var(--tinta-media); }
+
+.inclui { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-top: 16px; }
+.inclui li { list-style: none; display: flex; gap: 10px; align-items: flex-start; }
+.inclui .marca-ok { color: var(--sucesso); flex: none; margin-top: 2px; }
+.inclui .marca-ok svg { width: 17px; height: 17px; }
+.inclui strong { display: block; font-size: .95rem; }
+.inclui p { font-size: .88rem; color: var(--tinta-media); }
+ul.inclui { padding: 0; margin: 16px 0 0; }
+
+/* ------------------------------------------------------------- fechar ----- */
+.fechar { background: var(--cartao); border: 1px solid var(--fio); border-radius: 22px; padding: clamp(24px, 4vw, 40px); }
+.fechar-grade { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; align-items: start; }
+.campo { display: grid; gap: 6px; margin-bottom: 14px; }
+.campo label { font-size: .86rem; font-weight: 700; color: var(--tinta-media); }
+.campo input, .cupom-campo input {
+  font: inherit; padding: 12px 14px; border-radius: 12px;
+  border: 1px solid var(--fio-forte); background: #fff; color: inherit;
+  transition: border-color var(--transicao), box-shadow var(--transicao);
+}
+.campo input:focus, .cupom-campo input:focus { outline: none; border-color: var(--violeta); box-shadow: 0 0 0 3px rgba(115, 83, 246, .16); }
+.campo input::placeholder, .cupom-campo input::placeholder { color: #a6a6b8; }
+.aviso-form { font-size: .88rem; margin-top: 10px; min-height: 1.2em; }
+.aviso-form[data-tom="erro"] { color: #c2453c; }
+.aviso-form[data-tom="ok"] { color: var(--sucesso); }
+.ajuda-pagamento { display: inline-block; margin-top: 6px; font-size: .9rem; font-weight: 600; color: var(--violeta-forte); }
+.selos-pagamento { margin-top: 12px; font-size: .84rem; color: var(--tinta-media); }
+
+.kit-espelho { background: var(--fundo); border: 1px solid var(--fio); border-radius: var(--raio); padding: 18px; }
+.kit-espelho .total { border-top-color: var(--fio-forte); }
+
+/* ------------------------------------------------------------- rodapé ----- */
+.rodape { border-top: 1px solid var(--fio); padding: 30px 0 44px; color: var(--tinta-fraca); font-size: .89rem; }
+.rodape .envolve { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; }
+.rodape .chave {
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  letter-spacing: .04em; color: var(--tinta-media);
+}
+
+/* =============================================================== movimento ==
+   Regra da casa: a pagina funciona inteira sem JavaScript e sem animacao. O
+   que se move so se move depois que o JS marca <html class="anima"> - assim
+   nada nasce invisivel por acidente. Tudo morre em prefers-reduced-motion.
+   ========================================================================== */
+
+@keyframes surgir {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes surgir-curto {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes pulsar-ponto {
+  0%   { transform: scale(1);   opacity: 1; }
+  70%  { transform: scale(2.6); opacity: 0; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+@keyframes entrar-selo {
+  from { transform: scale(.4); opacity: 0; }
+  60%  { transform: scale(1.12); opacity: 1; }
+  to   { transform: scale(1); opacity: 1; }
+}
+@keyframes onda-flutua {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-40px); }
+}
+
+/* --- entrada do hero, em cascata --- */
+.anima .hero [data-entra] { animation: surgir .62s cubic-bezier(.2,.7,.3,1) backwards; }
+.anima .hero [data-entra="1"] { animation-delay: .04s; }
+.anima .hero [data-entra="2"] { animation-delay: .12s; }
+.anima .hero [data-entra="3"] { animation-delay: .2s; }
+.anima .hero [data-entra="4"] { animation-delay: .28s; }
+.anima .hero [data-entra="5"] { animation-delay: .36s; }
+.anima .hero [data-entra="6"] { animation-delay: .46s; }
+.anima .hero .onda { animation: onda-flutua 9s ease-in-out infinite alternate; }
+
+/* --- blocos que aparecem quando a pagina chega neles --- */
+.anima [data-revelar] { opacity: 0; }
+.anima [data-revelar][data-visto="sim"] {
+  animation: surgir .6s cubic-bezier(.2,.7,.3,1) forwards;
+  animation-delay: var(--atraso, 0s);
+}
+
+/* --- cartao do modulo: o toque de selecionar --- */
+.modulo { transition: border-color var(--transicao), box-shadow var(--transicao),
+                      transform var(--transicao), background var(--transicao); }
+.modulo:active { transform: translateY(0) scale(.985); }
+.anima .modulo[aria-pressed="true"] .marca-estado,
+.anima .modulo[data-ja-tem="sim"] .marca-estado { animation: entrar-selo .34s cubic-bezier(.2,.7,.3,1); }
+.modulo .chip { transition: transform var(--transicao); }
+.modulo[aria-pressed="true"] .chip { transform: scale(1.08) rotate(-3deg); }
+
+/* --- integracoes que acabaram de mudar de estado --- */
+.anima .integracao { animation: surgir-curto .4s cubic-bezier(.2,.7,.3,1) backwards; }
+.anima .integracao:nth-child(2) { animation-delay: .05s; }
+.anima .integracao:nth-child(3) { animation-delay: .1s; }
+.anima .integracao:nth-child(4) { animation-delay: .15s; }
+.anima .integracao:nth-child(5) { animation-delay: .2s; }
+.integracao[data-estado="ativa"] .ponto { position: relative; }
+.anima .integracao[data-estado="ativa"] .ponto::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  background: var(--sucesso); animation: pulsar-ponto 2.4s ease-out infinite;
+}
+
+/* --- o total conta, em vez de saltar --- */
+.total b { transition: color var(--transicao); }
+.total b[data-mudou="sim"] { color: var(--violeta); }
+.anima .economia { animation: surgir-curto .4s cubic-bezier(.2,.7,.3,1); }
+
+/* --- a oferta do combo entra deslizando --- */
+.anima .oferta[data-visivel="sim"] { animation: surgir .45s cubic-bezier(.2,.7,.3,1); }
+
+/* --- o ponto que corre pela ligacao acesa (o "kit se montando") --- */
+#grafo .particula { fill: #fff; stroke-width: 1.5; }
+
+/* ---------------------------------------------------------- responsivo --- */
+@media (max-width: 1040px) {
+  .montador { grid-template-columns: 1fr; }
+  .painel { position: static; }
+  #grafo { height: 260px; }
+}
+
+@media (max-width: 780px) {
+  .topo nav { display: none; }
+  .topo .envolve { gap: 10px; }
+  /* sem o menu, o "Baixar" do topo e o caminho do celular para o download */
+  .topo .botao-topo-baixar { margin-left: auto; }
+  .topo .marca, .topo .botao { white-space: nowrap; }
+  .topo .botao { font-size: .88rem; padding: 9px 12px; gap: 6px; }
+  /* no celular o cartão vira uma coluna: avatar e nome em cima, ações embaixo */
+  /* so o jeito de mostrar muda: escondido continua escondido (antes o celular
+     mostrava "Olá / Estamos carregando o seu kit…" para qualquer visitante) */
+  .boas-vindas { padding: 20px; }
+  .boas-vindas[data-visivel="sim"] { display: block; }
+  .boas-vindas .avatar { margin-bottom: 12px; }
+  .boas-vindas-acoes { margin-top: 16px; grid-template-columns: 1fr; }
+  .fechar-grade { grid-template-columns: 1fr; gap: 22px; }
+  .hero { padding-bottom: 100px; }
+  .hero .onda { height: 84px; }
+}
+/* celular estreito: "Montar kit" curto para o topo caber numa linha */
+@media (max-width: 440px) {
+  .topo .so-largo { display: none; }
+  .topo .envolve { gap: 8px; }
+  .topo .botao { font-size: .84rem; padding: 8px 10px; }
+  .topo .marca { gap: 8px; font-size: .95rem; }
+  .topo .marca .selo { width: 30px; height: 30px; border-radius: 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+}
+
+/* ================================================= barra de valor (fixa) ===
+   O total acompanha quem esta escolhendo, em vez de ficar so no alto da
+   coluna. Nasce escondida e so existe quando ha kit: barra vazia ocupando o
+   rodape e peso sem informacao. */
+.barra-valor {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 40;
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--cartao) 88%, transparent);
+  backdrop-filter: saturate(1.6) blur(12px);
+  -webkit-backdrop-filter: saturate(1.6) blur(12px);
+  border-top: 1px solid var(--fio);
+  box-shadow: var(--sombra-alta);
+  transform: translateY(110%);
+  transition: transform var(--transicao);
+  pointer-events: none;
+}
+.barra-valor[data-visivel="sim"] { transform: translateY(0); pointer-events: auto; }
+
+.barra-valor-dentro {
+  max-width: var(--largura);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.barra-valor-texto { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.barra-valor-kit {
+  font-weight: 700; color: var(--tinta);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.barra-valor-itens { font-size: .85rem; color: var(--tinta-fraca); }
+
+/* o numero e o maior elemento da barra: e o que a pessoa veio saber */
+.barra-valor-numeros { display: flex; align-items: baseline; gap: 10px; }
+.barra-valor-numeros b {
+  font-size: 1.6rem; letter-spacing: -.025em;
+  font-variant-numeric: tabular-nums;   /* nao balanca enquanto conta */
+}
+.barra-valor-economia {
+  font-size: .85rem; font-weight: 700; color: var(--sucesso);
+  background: color-mix(in srgb, var(--sucesso) 12%, transparent);
+  padding: 3px 9px; border-radius: 999px; white-space: nowrap;
+}
+.barra-valor #barra-fechar { flex: 0 0 auto; }
+
+@media (max-width: 720px) {
+  .barra-valor-dentro { flex-wrap: wrap; gap: 8px 12px; }
+  .barra-valor-texto { flex: 1 1 100%; order: 1; }
+  .barra-valor-numeros { order: 2; flex: 1; }
+  .barra-valor #barra-fechar { order: 3; }
+  .barra-valor-numeros b { font-size: 1.35rem; }
+}
+
+/* ============================================== o combo fechado sem querer ==
+   O cliente marcava modulo a modulo e o conjunto virou um combo. A sensacao de
+   premio vem do numero subindo e do selo aparecendo - nao de enfeite voando
+   pela tela. Tudo isso morre no bloco de prefers-reduced-motion la em cima. */
+@keyframes selo-entra {
+  from { opacity: 0; transform: scale(.8); }
+  60%  { opacity: 1; transform: scale(1.06); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes brilho-passa {
+  from { background-position: -140% 0; }
+  to   { background-position: 240% 0; }
+}
+@keyframes total-assenta {
+  50% { transform: translateY(-3px); }
+}
+
+.kit-reconhecido[data-comemorar="sim"] {
+  animation: selo-entra 420ms cubic-bezier(.2, .7, .3, 1) both;
+}
+/* o brilho atravessa UMA vez: repetir vira letreiro de loja */
+.kit-reconhecido[data-comemorar="sim"]::after {
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(100deg,
+    transparent 30%,
+    color-mix(in srgb, var(--violeta) 26%, transparent) 50%,
+    transparent 70%);
+  background-size: 220% 100%;
+  animation: brilho-passa 700ms 120ms ease-out 1 both;
+}
+.kit-reconhecido { position: relative; overflow: hidden; }
+
+/* Fechou o combo com a tela rolada? A comemoracao precisa acontecer ONDE a
+   pessoa esta olhando - e ali embaixo, nao no cartao que ficou para tras. */
+.barra-valor-kit { position: relative; overflow: hidden; border-radius: 6px; }
+.barra-valor-kit[data-comemorar="sim"] {
+  animation: selo-entra 420ms cubic-bezier(.2, .7, .3, 1) both;
+}
+.barra-valor-kit[data-comemorar="sim"]::after {
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(100deg,
+    transparent 30%,
+    color-mix(in srgb, var(--violeta) 30%, transparent) 50%,
+    transparent 70%);
+  background-size: 220% 100%;
+  animation: brilho-passa 700ms 120ms ease-out 1 both;
+}
+
+.barra-valor-numeros b[data-comemorar="sim"] {
+  animation: total-assenta 420ms cubic-bezier(.2, .7, .3, 1);
+}
+.barra-valor-economia[data-comemorar="sim"] {
+  animation: selo-entra 460ms 80ms cubic-bezier(.2, .7, .3, 1) both;
+}

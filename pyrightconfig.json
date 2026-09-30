@@ -1,0 +1,9 @@
+{
+    "include": ["src", "tests", "tools", "run_hub.py"],
+    "exclude": ["**/__pycache__", ".venv", "build/work", "build/dist"],
+    "extraPaths": ["src"],
+    "venvPath": ".",
+    "venv": ".venv",
+    "typeCheckingMode": "basic",
+    "reportMissingImports": "error"
+}

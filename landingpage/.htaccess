@@ -1,0 +1,73 @@
+# Landing DumTech - configuracao do Apache (HostGator).
+#
+# Este arquivo e a UNICA fonte de verdade da hospedagem. O `_headers` ao lado
+# so serve para Netlify/Cloudflare Pages, que nao leem .htaccess; quem publica
+# na HostGator e o `tools/publicar_site.ps1`, e ele manda ESTE arquivo.
+#
+# (O Hub, quando serve esta pasta em 127.0.0.1, ignora tudo isto.)
+
+Options -Indexes
+
+# ------------------------------------------------------------- enderecos ----
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # 1) "www" sempre vira a raiz do dominio.
+  #
+  #    Isto NAO e estetica. Tres coisas exigem exatamente o mesmo host:
+  #      - core/versao.py  so aceita atualizacao vinda do host compilado no .exe
+  #      - a Edge Function `checkout` devolve UM Access-Control-Allow-Origin
+  #      - core/loja.py    so leva o codigo do cliente para a nossa loja
+  #    Cliente que chegasse por "www" teria o checkout recusado pelo navegador.
+  RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
+  RewriteRule ^ https://%1%{REQUEST_URI} [L,R=301]
+
+  # 2) sempre https (nome, e-mail e telefone nunca trafegam abertos)
+  RewriteCond %{HTTPS} !=on
+  RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+  # 3) nada de arquivo de desenvolvimento publicado
+  RewriteRule ^(tests/|servidor\.mjs|package\.json|README\.md|_headers|netlify\.toml) - [F,L]
+</IfModule>
+
+# ---------------------------------------------------------------- tipos -----
+# O Apache da HostGator nao conhece estas extensoes de fabrica. Sem a linha do
+# webmanifest o navegador recusa o arquivo e o app do celular deixa de instalar.
+<IfModule mod_mime.c>
+  AddType application/manifest+json            .webmanifest
+  AddType application/vnd.microsoft.portable-executable .exe
+  AddType font/ttf                             .ttf
+  AddType image/svg+xml                        .svg
+  AddType text/javascript                      .js .mjs
+</IfModule>
+
+# ------------------------------------------------------------ cabecalhos ----
+<IfModule mod_headers.c>
+  Header always set Strict-Transport-Security "max-age=31536000"
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), usb=()"
+  # ninguem embute a loja num iframe para capturar o formulario
+  Header always set X-Frame-Options "DENY"
+  Header always set Content-Security-Policy "frame-ancestors 'none'"
+
+  # sem build com hash no nome: o navegador revalida (304 rapido) em vez de
+  # guardar JS velho depois de uma publicacao
+  <FilesMatch "\.(html|js|mjs|css|webmanifest)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+
+  # o instalador BAIXA, nunca abre no navegador. Cada versao tem endereco
+  # proprio e conteudo que nunca muda - mas o Hub confere o SHA-256 de todo
+  # jeito, entao nada de cache longo aqui.
+  <FilesMatch "\.exe$">
+    Header set Content-Disposition "attachment"
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+
+  # o service worker do app do celular nao pode ficar preso em cache
+  <FilesMatch "^sw\.js$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+  </FilesMatch>
+</IfModule>

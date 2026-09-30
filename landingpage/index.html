@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- So scripts desta pasta; a pagina so conversa com o Supabase da DumTech (e com
+     um servidor neste computador, em desenvolvimento). Um script injetado nao
+     roda, e mesmo que rodasse nao teria para onde mandar dado. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://kpiyhhmtteojqxhhmcyr.supabase.co wss://kpiyhhmtteojqxhhmcyr.supabase.co http://127.0.0.1:* ws://127.0.0.1:* http://localhost:* ws://localhost:*; object-src 'none'; base-uri 'none'; form-action 'self'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>DumTech — monte o sistema da sua empresa</title>
+<link rel="modulepreload" href="js/app.js">
+<link rel="modulepreload" href="js/api.js">
+<link rel="modulepreload" href="js/kit.js">
+<link rel="modulepreload" href="js/dados.js">
+<link rel="modulepreload" href="js/memoria.js">
+<link rel="modulepreload" href="js/tempo-real.js">
+<link rel="modulepreload" href="js/config.js">
+<link rel="modulepreload" href="js/pagamento.js">
+<link rel="preconnect" href="https://kpiyhhmtteojqxhhmcyr.supabase.co" crossorigin>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect width='24' height='24' rx='6' fill='%237353F6'/><path d='M6 6h4v4H6z M14 6h4v4h-4z M6 14h4v4H6z M14 14h4v4h-4z' fill='none' stroke='white' stroke-width='2'/></svg>">
+<meta name="description" content="Sete módulos que conversam entre si: estoque, balcão, financeiro, orçamentos, ordem de serviço, clientes e agenda. Você monta o seu kit, ativa com uma chave e trabalha offline.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/estilo.css">
+</head>
+<body>
+
+<header class="topo" id="topo">
+  <div class="envolve">
+    <a class="marca" href="#topo">
+      <span class="selo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 4h6v6H4z M14 4h6v6h-6z M4 14h6v6H4z M14 14h6v6h-6z"/>
+        </svg>
+      </span>
+      DumTech Hub
+    </a>
+    <nav>
+      <a href="#montador">Montar kit</a>
+      <a href="#integracoes">Integrações</a>
+      <a href="#como-funciona">Como funciona</a>
+    </nav>
+    <a class="botao botao-fantasma botao-topo-baixar" href="baixar/" title="Baixar o DumTech Hub para Windows">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11 M7 10l5 5 5-5 M5 20h14"/></svg>
+      <span>Baixar</span>
+    </a>
+    <a class="botao botao-primario" href="#montador"><span>Montar <span class="so-largo">meu </span>kit</span></a>
+  </div>
+</header>
+
+<main>
+  <!-- ------------------------------------------------------------- hero -- -->
+  <section class="hero">
+    <div class="envolve">
+      <!-- quem ja e cliente ve isto ANTES de qualquer outra coisa da pagina -->
+      <div class="boas-vindas" id="reconhecido" data-entra="1">
+        <span class="avatar" id="reconhecido-avatar">·</span>
+
+        <div class="boas-vindas-texto">
+          <p class="sobrenome" id="reconhecido-selo">Você já é cliente DumTech</p>
+          <strong id="reconhecido-nome">Bem-vindo de volta</strong>
+          <p id="reconhecido-nota">Estamos carregando o seu kit…</p>
+          <div class="tem" id="reconhecido-tem"></div>
+        </div>
+
+        <div class="boas-vindas-acoes">
+          <a class="botao botao-primario" href="#montador">Continuar montando</a>
+          <button type="button" class="sair" id="reconhecido-sair"
+                  title="Esquecer estes dados neste navegador">Não é você?</button>
+        </div>
+      </div>
+
+      <div class="hero-grade">
+        <div class="hero-texto">
+        <p class="sobrenome" data-entra="1">Programa para o seu computador · sem mensalidade</p>
+        <h1 data-entra="2">Você não compra um sistema. Você monta o seu.</h1>
+        <p class="chamada" data-entra="3">
+          São sete módulos independentes que conversam entre si. Escolha os que
+          a sua empresa usa hoje, ative com uma chave e trabalhe — inclusive sem
+          internet. Quando precisar de mais um, ele aparece no mesmo programa.
+        </p>
+
+        <div class="acoes" data-entra="4">
+          <a class="botao botao-branco" href="#montador">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2.2l2.3 11.2a1.5 1.5 0 0 0 1.5 1.2h8.4a1.5 1.5 0 0 0 1.5-1.2L21 8H6 M9.5 20.5h.01 M17.5 20.5h.01"/></svg>
+            Montar meu kit
+          </a>
+          <a class="botao botao-claro" href="baixar/">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11 M7 10l5 5 5-5 M5 20h14"/></svg>
+            Baixar o DumTech Hub
+          </a>
+          <a class="botao botao-claro" href="#integracoes">Ver integrações</a>
+        </div>
+        <p class="acoes-nota" data-entra="4">Para Windows 10 e 11 · instale agora e ative os módulos quando tiver a chave</p>
+
+        <div class="marcas" data-entra="5">
+          <span>Funciona offline</span>
+          <span>Uma chave ativa os módulos</span>
+          <span>Cópia de segurança diária</span>
+          <span>Documento com a sua marca</span>
+        </div>
+        </div>
+
+        <!-- kit por ramo: vem do painel (Kits > Ramo). Some se nenhum kit tiver ramo -->
+        <aside class="negocio" id="negocio" data-entra="3" hidden>
+          <h2>Qual é o seu negócio?</h2>
+          <p>Toque no seu ramo: o kit certo já vem montado, com o desconto.</p>
+          <div class="negocio-lista" id="negocio-lista"></div>
+        </aside>
+      </div>
+
+    </div>
+
+    <svg class="onda" viewBox="0 0 1440 120" preserveAspectRatio="none" aria-hidden="true">
+      <path fill="#f6f6f9" d="M0 62c180 42 340 42 520 12s360-52 540-16 260 54 380 44v18H0z"/>
+    </svg>
+  </section>
+
+  <!-- --------------------------------------------------------- montador -- -->
+  <section class="secao" id="montador">
+    <div class="envolve">
+      <div class="secao-cabeca">
+        <p class="sobrenome">Monte seu kit</p>
+        <h2>Escolha os módulos e veja o que passa a acontecer sozinho</h2>
+        <p>
+          Cada módulo funciona por conta própria. Juntos, eles trocam informação:
+          o painel ao lado acende as ligações que o seu kit ativa — e mostra,
+          sem rodeio, as que ficam apagadas.
+        </p>
+      </div>
+
+      <div class="montador">
+        <div>
+          <!-- kits prontos: vem do painel (tela Kits). Some se nao houver nenhum -->
+          <div class="kits-prontos" id="kits-prontos" hidden>
+            <div class="kits-cabeca">
+              <h3>Kits prontos</h3>
+              <p>Escolha um kit ou monte o seu: se os módulos que você marcar formarem um kit, o preço dele entra sozinho.</p>
+            </div>
+            <div class="kits-lista" id="kits-lista"></div>
+            <p class="kits-ou">ou escolha módulo a módulo</p>
+          </div>
+
+          <div class="modulos" id="modulos"></div>
+        </div>
+
+        <!-- "Seu kit" vem ANTES das integracoes: o aside e sticky, e quem gruda
+             e o primeiro bloco. O dinheiro tem de ser o que acompanha a
+             rolagem; o grafo e explicacao, e pode sair de vista. -->
+        <aside class="painel">
+          <div class="bloco bloco-kit">
+            <h3>Seu kit</h3>
+            <p class="kit-reconhecido" id="kit-reconhecido" hidden></p>
+            <div class="resumo-itens" id="resumo-itens">
+              <p class="resumo-vazio">Nenhum módulo escolhido ainda.</p>
+            </div>
+
+            <!-- a oferta e uma ETAPA da venda: entra entre o que ele escolheu e
+                 o que vai pagar, onde a decisao esta sendo tomada -->
+            <div class="oferta" id="oferta" data-visivel="nao">
+              <div class="texto">
+                <strong id="oferta-titulo"></strong>
+                <p id="oferta-texto"></p>
+              </div>
+              <button class="botao botao-primario" id="oferta-botao" type="button">Aproveitar</button>
+            </div>
+
+            <div class="total">
+              <span>Total</span>
+              <div style="text-align:right">
+                <b id="total-valor">R$ 0,00</b>
+                <div class="economia" id="total-economia" hidden></div>
+              </div>
+            </div>
+            <button class="botao botao-primario" id="ir-para-fechar" type="button" disabled>
+              Quero este kit
+            </button>
+            <p class="nota">Pix ou cartão em até 12x. Chave na hora. Licença sem prazo.</p>
+          </div>
+
+          <div class="bloco">
+            <h3>Integrações do seu kit</h3>
+            <p class="legenda" id="grafo-legenda">Escolha um módulo para começar.</p>
+            <svg id="grafo" viewBox="0 0 340 300" role="img" aria-labelledby="grafo-titulo"></svg>
+            <p class="contador"><b id="contador-numero">0</b> <span id="contador-texto">ligação ativa</span></p>
+            <div class="integracoes" id="integracoes-lista"></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------ integrações -- -->
+  <section class="secao" id="integracoes" style="background:#fff;border-block:1px solid var(--fio)">
+    <div class="envolve">
+      <div class="secao-cabeca">
+        <p class="sobrenome">O que integra com o quê</p>
+        <h2>Seis coisas que deixam de ser digitadas duas vezes</h2>
+        <p>
+          Não é promessa de integração: é o que o programa faz quando os dois
+          módulos estão na mesma licença. Sem nenhum deles, o outro continua
+          funcionando igual — só sem o atalho.
+        </p>
+      </div>
+      <div class="pontes" id="pontes"></div>
+    </div>
+  </section>
+
+  <!-- ----------------------------------------------------- como funciona -- -->
+  <section class="secao" id="como-funciona">
+    <div class="envolve">
+      <div class="secao-cabeca">
+        <p class="sobrenome">Como funciona</p>
+        <h2>Da compra ao balcão em quatro passos</h2>
+      </div>
+
+      <div class="passos">
+        <div class="passo">
+          <span class="numero"></span>
+          <h3>Você monta e paga</h3>
+          <p>Escolhe os módulos aqui e paga com Pix ou cartão em até 12x, pela InfinitePay.</p>
+        </div>
+        <div class="passo">
+          <span class="numero"></span>
+          <h3>Recebe a chave na hora</h3>
+          <p>Pagamento confirmado, a chave <span class="chave">XXXX-XXXX-XXXX-XXXX</span> aparece na tela. Sua e de mais ninguém.</p>
+        </div>
+        <div class="passo">
+          <span class="numero"></span>
+          <h3>Instala o Hub</h3>
+          <p>Um programa só, para Windows. <a href="baixar/">Baixe aqui</a>; ele pede o seu nome, o e-mail e a chave.</p>
+        </div>
+        <div class="passo">
+          <span class="numero"></span>
+          <h3>Os módulos aparecem</h3>
+          <p>Só os que você comprou. Comprou outro depois? Ele aparece sem reinstalar nada.</p>
+        </div>
+      </div>
+
+      <div class="faixa-baixar">
+        <div class="faixa-baixar-texto">
+          <strong>Baixe o DumTech Hub agora</strong>
+          <p>Um instalador só, para Windows 10 e 11 (cerca de 27 MB). O programa abre na hora e os módulos aparecem quando você ativar a sua chave.</p>
+        </div>
+        <a class="botao botao-primario" href="baixar/">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11 M7 10l5 5 5-5 M5 20h14"/></svg>
+          Baixar para Windows
+        </a>
+      </div>
+
+      <ul class="inclui" id="inclui"></ul>
+    </div>
+  </section>
+
+  <!-- --------------------------------------------------------- fechar ---- -->
+  <section class="secao" id="fechar">
+    <div class="envolve">
+      <div class="fechar">
+        <div class="fechar-grade">
+          <div>
+            <p class="sobrenome">Último passo</p>
+            <h2>Quero este kit</h2>
+            <p style="color:var(--tinta-media);margin-top:12px">
+              Pague com Pix ou cartão em até 12x na InfinitePay. Assim que o
+              pagamento é confirmado, a sua chave aparece na tela, com o link
+              para baixar o programa.
+            </p>
+            <p style="color:var(--tinta-fraca);margin-top:8px;font-size:.9rem">
+              Já usa o DumTech Hub? Compre por dentro do programa, em
+              <b>Adquirir novo produto</b>: o módulo entra na mesma chave e aparece sozinho.
+            </p>
+
+            <form id="formulario" style="margin-top:22px" novalidate>
+              <div class="campo">
+                <label for="campo-nome">Nome</label>
+                <input id="campo-nome" name="nome" type="text" autocomplete="name"
+                       placeholder="Seu nome ou o da empresa" required>
+              </div>
+              <div class="campo">
+                <label for="campo-email">E-mail</label>
+                <input id="campo-email" name="email" type="email" autocomplete="email"
+                       placeholder="voce@suaempresa.com.br" required>
+              </div>
+              <div class="campo">
+                <label for="campo-telefone">WhatsApp (opcional)</label>
+                <input id="campo-telefone" name="telefone" type="tel" autocomplete="tel"
+                       placeholder="(00) 00000-0000">
+              </div>
+              <div class="cupom" id="cupom">
+                <button type="button" class="cupom-abrir" id="cupom-abrir">Tem cupom de desconto?</button>
+                <div class="cupom-campo" id="cupom-campo" hidden>
+                  <input id="campo-cupom" name="cupom" type="text" autocomplete="off" spellcheck="false"
+                         placeholder="Ex.: PRIMEIRA10" maxlength="32" aria-label="Cupom de desconto">
+                  <button type="button" class="botao botao-fantasma" id="cupom-aplicar">Aplicar</button>
+                </div>
+                <p class="cupom-aviso" id="cupom-aviso" role="status"></p>
+              </div>
+              <button class="botao botao-primario" id="enviar" type="submit">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 10V8a6 6 0 0 1 12 0v2 M5 10h14v10H5z M12 14v2"/></svg>
+                Ir para o pagamento
+              </button>
+              <p class="aviso-form" id="aviso-form" role="status"></p>
+              <a class="ajuda-pagamento" id="ajuda-pagamento" href="https://wa.me/5511978042160" rel="noopener" target="_blank" hidden>Prefere falar com a gente? Chame no WhatsApp</a>
+              <p class="selos-pagamento">Pix · cartão de crédito em até 12x · pagamento processado pela InfinitePay</p>
+              <p style="margin-top:10px;font-size:.84rem;color:var(--tinta-fraca)">
+                Ao continuar, você concorda com os <a href="termos.html">Termos de uso</a> e a
+                <a href="privacidade.html">Política de privacidade</a>.
+              </p>
+            </form>
+          </div>
+
+          <div class="kit-espelho">
+            <h3>O que vai no pedido</h3>
+            <div class="resumo-itens" id="espelho-itens">
+              <p class="resumo-vazio">Volte ao montador e escolha os módulos.</p>
+            </div>
+            <div class="total">
+              <span>Total</span>
+              <b id="espelho-total">R$ 0,00</b>
+            </div>
+            <p class="nota" style="margin-top:10px;color:var(--tinta-fraca);font-size:.84rem">
+              O valor é calculado pelo servidor da DumTech no momento do envio.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="rodape">
+  <div class="envolve">
+    <span>DumTech · sistemas para quem atende no balcão</span>
+    <span>
+      <a href="baixar/">Baixar</a> · <a href="guia/">Guia de instalação</a> ·
+      <a href="termos.html">Termos</a> · <a href="privacidade.html">Privacidade</a> ·
+      <a href="https://wa.me/5511978042160" rel="noopener">WhatsApp (11) 97804-2160</a>
+    </span>
+    <span class="chave" id="rodape-versao">catálogo carregado do servidor</span>
+  </div>
+</footer>
+
+<!-- ------------------------------------------------ barra de valor (fixa) ---
+     O preco acompanha quem esta escolhendo. Some sozinha quando a secao de
+     fechamento entra na tela: la o resumo completo ja mostra o total, e dois
+     totais na mesma tela viram ruido. -->
+<aside class="barra-valor" id="barra-valor" aria-hidden="true">
+  <div class="barra-valor-dentro">
+    <div class="barra-valor-texto">
+      <span class="barra-valor-kit" id="barra-kit"></span>
+      <span class="barra-valor-itens" id="barra-itens"></span>
+    </div>
+    <div class="barra-valor-numeros">
+      <b id="barra-total">R$ 0,00</b>
+      <span class="barra-valor-economia" id="barra-economia" hidden></span>
+    </div>
+    <button class="botao botao-primario" id="barra-fechar" type="button">
+      Fechar pedido
+    </button>
+  </div>
+</aside>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

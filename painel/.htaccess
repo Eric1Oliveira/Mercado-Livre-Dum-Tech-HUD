@@ -1,0 +1,41 @@
+# Painel DumTech - cabecalhos de seguranca (Apache / HostGator).
+# Netlify e Cloudflare Pages leem o arquivo `_headers` ao lado, com as mesmas regras.
+
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  # As regras da pasta de cima NAO sao herdadas: o painel repete as dele.
+  # "www" vira a raiz (o Supabase Auth so volta para o endereco cadastrado)
+  RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
+  RewriteRule ^ https://%1%{REQUEST_URI} [L,R=301]
+  # so HTTPS: senha e codigo nunca trafegam abertos
+  RewriteCond %{HTTPS} !=on
+  RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+  # nada de arquivo de desenvolvimento publicado
+  RewriteRule ^(tests/|servidor\.mjs|package\.json|README\.md|_headers) - [F,L]
+</IfModule>
+
+<IfModule mod_mime.c>
+  AddType text/javascript .js .mjs
+</IfModule>
+
+<IfModule mod_headers.c>
+  Header always set Strict-Transport-Security "max-age=31536000"
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "no-referrer"
+  Header always set X-Robots-Tag "noindex, nofollow"
+  Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+  # a meta CSP do index.html nao consegue proibir o painel dentro de iframe
+  # (clickjacking): isto so funciona como cabecalho
+  Header always set X-Frame-Options "DENY"
+  Header always set Content-Security-Policy "frame-ancestors 'none'"
+  Header always set Cross-Origin-Opener-Policy "same-origin"
+
+  # sem build com hash no nome: o navegador revalida (304 rapido) em vez de
+  # guardar JS velho depois de uma publicacao
+  <FilesMatch "\.(html|js|css)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>

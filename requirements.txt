@@ -1,0 +1,9 @@
+# Interface grafica da plataforma DumTech
+PySide6-Essentials==6.8.1.1
+
+# QR Code do Pix no balcao (Python puro; nao usamos o gerador de imagem dele,
+# so a matriz - por isso Pillow nao entra)
+qrcode==8.2
+
+# Empacotamento para Windows (somente para gerar o .exe/instalador)
+pyinstaller==6.11.1

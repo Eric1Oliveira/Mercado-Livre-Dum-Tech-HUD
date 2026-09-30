@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="pt-BR" data-tema="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- O codigo do QR chega depois do # e vira um acesso guardado so neste
+     aparelho: nenhum script de fora, e nenhum endereco sai pelo Referer. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; worker-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://kpiyhhmtteojqxhhmcyr.supabase.co http://127.0.0.1:* http://localhost:*; object-src 'none'; base-uri 'none'; form-action 'none'; manifest-src 'self'">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex">
+<!-- uma cor so: quem manda nela e o tema escolhido (js/tema.js) -->
+<meta name="theme-color" content="#f4f4f8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="DumTech">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>DumTech no celular</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icone-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icone-180.png">
+<link rel="preconnect" href="https://kpiyhhmtteojqxhhmcyr.supabase.co" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/celular.css">
+<!-- antes da tela aparecer: no escuro, nao pode piscar branco -->
+<script src="../js/tema.js"></script>
+<link rel="modulepreload" href="../js/celular-tela.js">
+<link rel="modulepreload" href="../js/celular.js">
+<link rel="modulepreload" href="../js/config.js">
+<link rel="modulepreload" href="../js/dados.js">
+</head>
+<body>
+
+<header class="barra" id="barra">
+  <div class="barra-topo">
+  <span class="selo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h6v6H4z M14 4h6v6h-6z M4 14h6v6H4z M14 14h6v6h-6z"/></svg></span>
+  <div class="barra-texto">
+    <strong id="empresa">DumTech</strong>
+    <span id="quando" class="quando"></span>
+  </div>
+  <div class="barra-acoes">
+    <button id="tema" class="icone-botao" type="button" aria-label="Tema: automático. Tocar para claro.">
+      <svg class="i-auto" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="9"/></svg>
+      <svg class="i-claro" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.2 M12 19.2v2.2 M2.6 12h2.2 M19.2 12h2.2 M5.3 5.3l1.6 1.6 M17.1 17.1l1.6 1.6 M18.7 5.3l-1.6 1.6 M6.9 17.1l-1.6 1.6"/></svg>
+      <svg class="i-escuro" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.3A8.6 8.6 0 0 1 9.7 3.5a8.8 8.8 0 1 0 10.8 10.8z"/></svg>
+    </button>
+    <button id="recarregar" class="icone-botao" type="button" aria-label="Atualizar agora" hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66 M20 4v5h-5"/></svg>
+    </button>
+  </div>
+  </div>
+  <!-- os modulos: acompanham a rolagem e dizem onde voce esta -->
+  <nav class="modulos" id="modulos" aria-label="Ir para o módulo" hidden>
+    <div class="modulos-trilha" id="modulos-trilha">
+      <span class="modulos-marca" id="modulos-marca" aria-hidden="true"></span>
+    </div>
+  </nav>
+</header>
+
+<main id="tela" aria-live="polite" aria-busy="true">
+  <!-- o formato do que vem, nao uma roda girando -->
+  <div class="esqueleto" aria-hidden="true">
+    <div class="esqueleto-bloco" data-alto="titulo"></div>
+    <div class="esqueleto-bloco" data-alto="secao"></div>
+    <div class="esqueleto-bloco" data-alto="curto"></div>
+  </div>
+  <p class="rodape-nota">Abrindo o resumo da sua empresa...</p>
+</main>
+
+<template id="modelo-estado">
+  <section class="estado">
+    <span class="estado-icone" aria-hidden="true"></span>
+    <h1></h1>
+    <p></p>
+    <ol class="passos" hidden>
+      <li>No computador, abra o <strong>DumTech Hub</strong>.</li>
+      <li>Clique no nome da sua empresa (canto de cima, à direita) e em <strong>Ver no celular</strong>.</li>
+      <li>Aponte a câmera deste celular para o QR Code.</li>
+    </ol>
+    <button class="botao" type="button" hidden>Tentar de novo</button>
+  </section>
+</template>
+
+<script type="module" src="../js/celular-tela.js"></script>
+</body>
+</html>

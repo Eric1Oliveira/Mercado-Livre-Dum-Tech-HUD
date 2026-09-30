@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<!-- O GUIA EM PDF (anexo da venda no Mercado Livre).
+     tools/publicar_site.ps1 imprime esta pagina com o Edge em /guia/Guia-DumTech-Hub.pdf.
+     Regras do Mercado Livre: NADA de telefone, e-mail, WhatsApp, preco ou link de
+     compra fora da plataforma. Ajuda = chat da propria compra. O unico link externo
+     e o download do programa (a entrega do produto). -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'none'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'">
+<title>Guia do DumTech Hub</title>
+<meta name="author" content="DumTech">
+<meta name="description" content="Instalação, ativação e primeiros passos do DumTech Hub.">
+<style>
+/* a fonte vem junto (a mesma do Hub): o PDF nao depende de internet para sair com a marca */
+@font-face { font-family: "Plus Jakarta Sans"; font-weight: 400; src: url("fontes/PlusJakartaSans-Regular.ttf") format("truetype"); }
+@font-face { font-family: "Plus Jakarta Sans"; font-weight: 500; src: url("fontes/PlusJakartaSans-Medium.ttf") format("truetype"); }
+@font-face { font-family: "Plus Jakarta Sans"; font-weight: 600; src: url("fontes/PlusJakartaSans-Bold.ttf") format("truetype"); }
+@font-face { font-family: "Plus Jakarta Sans"; font-weight: 700; src: url("fontes/PlusJakartaSans-Bold.ttf") format("truetype"); }
+@font-face { font-family: "Plus Jakarta Sans"; font-weight: 800; src: url("fontes/PlusJakartaSans-ExtraBold.ttf") format("truetype"); }
+@page { size: A4; margin: 0; }
+:root {
+  --violeta: #7353f6; --violeta-forte: #5b3fe0; --violeta-claro: #ede9fe; --violeta-fundo: #f5f2ff;
+  --fundo: #f6f6f9; --cartao: #fff; --fio: #e7e7ef; --tinta: #17171f; --media: #4a4a5a; --fraca: #75758a;
+  --ok: #2e9e6b; --aviso: #b26b00; --aviso-fundo: #fff6e5;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body { font-family: "Plus Jakarta Sans", "Segoe UI", sans-serif; color: var(--tinta); font-size: 10.5pt; line-height: 1.5; background: #d9d9e3; }
+a { color: var(--violeta-forte); text-decoration: none; font-weight: 700; }
+b, strong { font-weight: 700; color: var(--tinta); }
+code, .chave { font-family: "Cascadia Code", Consolas, monospace; font-size: .92em; background: var(--violeta-fundo); color: var(--violeta-forte); padding: 1px 6px; border-radius: 5px; }
+
+/* ------------------------------------------------------------- a folha --- */
+.folha {
+  width: 210mm; height: 297mm; overflow: hidden; position: relative;
+  background: var(--fundo); padding: 16mm 16mm 20mm; page-break-after: always; break-after: page;
+  margin: 0 auto;
+}
+.folha:last-child { page-break-after: auto; break-after: auto; }
+@media screen { .folha { margin: 12px auto; box-shadow: 0 4px 24px rgba(0,0,0,.15); } }
+.rodape {
+  position: absolute; left: 16mm; right: 16mm; bottom: 9mm; display: flex; justify-content: space-between;
+  font-size: 8pt; color: var(--fraca); border-top: 1px solid var(--fio); padding-top: 3mm;
+}
+.rodape b { color: var(--media); }
+.marca { display: flex; align-items: center; gap: 9px; font-weight: 800; font-size: 12pt; letter-spacing: -.01em; }
+.selo { width: 30px; height: 30px; border-radius: 9px; background: var(--violeta); color: #fff; display: grid; place-items: center; flex: none; }
+.selo svg { width: 17px; height: 17px; }
+
+.etiqueta { display: inline-flex; align-items: center; gap: 8px; font-size: 8.5pt; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--violeta); }
+.etiqueta .num { width: 22px; height: 22px; border-radius: 7px; background: var(--violeta); color: #fff; display: grid; place-items: center; letter-spacing: 0; font-size: 9.5pt; }
+h1 { font-size: 26pt; line-height: 1.08; letter-spacing: -.03em; font-weight: 800; }
+h2 { font-size: 20pt; line-height: 1.12; letter-spacing: -.025em; font-weight: 800; margin: 3mm 0 2mm; }
+h3 { font-size: 11.5pt; font-weight: 800; letter-spacing: -.01em; margin-bottom: 1mm; }
+.lede { font-size: 11.5pt; color: var(--media); max-width: 150mm; }
+p + p { margin-top: 2mm; }
+.muted { color: var(--fraca); }
+
+.cartao { background: var(--cartao); border: 1px solid var(--fio); border-radius: 14px; padding: 5mm 6mm; }
+.grade2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; }
+.grade3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; }
+
+.tela { border-radius: 12px; overflow: hidden; border: 1px solid var(--fio); box-shadow: 0 6px 22px rgba(23,23,31,.10); background: #fff; }
+.tela img { display: block; width: 100%; }
+.tela-barra { height: 7mm; background: #fff; border-bottom: 1px solid var(--fio); display: flex; align-items: center; gap: 5px; padding: 0 4mm; }
+.tela-barra i { width: 7px; height: 7px; border-radius: 50%; background: var(--fio); }
+.legenda { font-size: 8.5pt; color: var(--fraca); margin-top: 2mm; }
+
+.passos { list-style: none; counter-reset: p; display: grid; gap: 3mm; }
+.passos li { counter-increment: p; position: relative; padding-left: 10mm; color: var(--media); }
+.passos li::before {
+  content: counter(p); position: absolute; left: 0; top: 0; width: 7mm; height: 7mm; border-radius: 50%;
+  background: var(--violeta-claro); color: var(--violeta-forte); font-weight: 800; display: grid; place-items: center; font-size: 9.5pt;
+}
+.passos li strong { display: block; color: var(--tinta); }
+
+.dica { display: flex; gap: 3mm; background: var(--violeta-fundo); border-radius: 12px; padding: 4mm 5mm; color: var(--media); font-size: 9.5pt; }
+.dica .ic { flex: none; width: 8mm; height: 8mm; border-radius: 8px; background: var(--violeta); color: #fff; display: grid; place-items: center; font-weight: 800; }
+.alerta { background: var(--aviso-fundo); }
+.alerta .ic { background: var(--aviso); }
+
+.icone { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; color: var(--cor); background: color-mix(in srgb, var(--cor) 15%, transparent); flex: none; }
+.icone svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------------------------------------------------------------- capa --- */
+.capa { padding: 0; background: #fff; }
+.capa-topo {
+  height: 158mm; padding: 16mm 16mm 0; color: #fff; position: relative; overflow: hidden;
+  background: linear-gradient(135deg, #6a48f2 0%, #7c5cf7 55%, #9d86fb 100%);
+}
+.capa-topo .marca { color: #fff; }
+.capa-topo .selo { background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.35); }
+.capa-topo h1 { color: #fff; font-size: 38pt; margin-top: 22mm; max-width: 150mm; }
+.capa-topo .lede { color: rgba(255,255,255,.88); margin-top: 5mm; font-size: 13pt; max-width: 135mm; }
+.capa-onda { position: absolute; left: 0; right: 0; bottom: -2px; width: 100%; height: 42mm; display: block; }
+.capa-grade { position: absolute; right: -10mm; top: 12mm; width: 95mm; opacity: .16; }
+.capa-trilha { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; margin: -22mm 16mm 0; position: relative; }
+.capa-trilha .cartao { box-shadow: 0 10px 30px rgba(60,40,160,.14); padding: 5mm; }
+.capa-trilha .n { font-size: 8.5pt; font-weight: 800; color: var(--violeta); letter-spacing: .08em; }
+.capa-trilha h3 { font-size: 13pt; margin-top: 1mm; }
+.capa-trilha p { font-size: 9pt; color: var(--fraca); }
+.capa-baixo { display: grid; grid-template-columns: 1fr 44mm; gap: 8mm; margin: 9mm 16mm 0; align-items: start; }
+.botao { display: inline-flex; align-items: center; gap: 8px; background: var(--violeta); color: #fff !important; font-weight: 800; font-size: 12pt; padding: 4mm 7mm; border-radius: 12px; box-shadow: 0 8px 20px rgba(115,83,246,.30); }
+.endereco { display: block; margin-top: 3mm; font-size: 10pt; color: var(--fraca); }
+.endereco b { color: var(--violeta-forte); }
+.qr { background: #fff; border: 1px solid var(--fio); border-radius: 12px; padding: 3mm; text-align: center; }
+.qr img { width: 100%; display: block; }
+.qr span { display: block; font-size: 7.5pt; color: var(--fraca); margin-top: 1.5mm; line-height: 1.3; }
+.precisa { margin: 8mm 16mm 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; }
+.precisa div { display: flex; gap: 3mm; align-items: flex-start; font-size: 9pt; color: var(--media); }
+.check { flex: none; width: 6mm; height: 6mm; border-radius: 50%; background: #e3f5ec; color: var(--ok); display: grid; place-items: center; font-weight: 800; font-size: 9pt; }
+
+/* ------------------------------------------------------ janela Windows --- */
+.win { border-radius: 8px; overflow: hidden; box-shadow: 0 6px 18px rgba(0,0,0,.18); font-family: "Segoe UI", sans-serif; }
+.win-azul { background: #0b5cad; color: #fff; padding: 5mm 5mm 4mm; min-height: 44mm; }
+.win-azul .t { font-size: 13pt; font-weight: 600; font-family: "Segoe UI", sans-serif; }
+.win-azul p { font-size: 8.5pt; color: rgba(255,255,255,.9); margin-top: 2mm; }
+.win-azul .link { text-decoration: underline; font-size: 8.5pt; margin-top: 2mm; display: inline-block; color: #fff; }
+.win-botoes { background: #0a4f95; padding: 3mm 5mm; display: flex; justify-content: flex-end; gap: 2mm; }
+.win-botoes span { border: 1px solid rgba(255,255,255,.6); color: #fff; padding: 1.5mm 4mm; font-size: 8pt; }
+.win-botoes span.foco { background: #fff; color: #0b5cad; font-weight: 700; }
+.marcador { outline: 2.5px solid #ffcc33; outline-offset: 2px; border-radius: 3px; }
+.seta { font-size: 8pt; color: var(--aviso); font-weight: 800; margin-top: 2mm; }
+
+/* ------------------------------------------------------------- modulos --- */
+.modulos { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm; }
+.modulo { display: flex; gap: 3.5mm; align-items: flex-start; background: #fff; border: 1px solid var(--fio); border-radius: 12px; padding: 3.5mm 4mm; }
+.modulo strong { font-size: 10.5pt; }
+.modulo span { display: block; font-size: 8.5pt; color: var(--fraca); line-height: 1.4; }
+
+.checklist { display: grid; gap: 3mm; }
+.item { display: grid; grid-template-columns: 9mm 1fr auto; gap: 3mm; align-items: start; background: #fff; border: 1px solid var(--fio); border-radius: 12px; padding: 4mm; }
+.item .caixa { width: 7mm; height: 7mm; border: 2px solid var(--violeta); border-radius: 6px; margin-top: .5mm; }
+.item p { color: var(--media); font-size: 9.5pt; }
+.item .tempo { font-size: 8pt; font-weight: 800; color: var(--violeta); background: var(--violeta-claro); border-radius: 999px; padding: 1mm 3mm; white-space: nowrap; }
+
+.recorte { background: #f6f6f9; border: 1px solid var(--fio); border-radius: 14px; padding: 4mm; }
+.recorte img { display: block; width: 100%; border-radius: 10px; box-shadow: 0 6px 20px rgba(23,23,31,.10); }
+.fluxos { display: grid; gap: 3mm; }
+.fluxo { display: grid; grid-template-columns: 30mm 8mm 1fr; align-items: center; gap: 2mm; background: #fff; border: 1px solid var(--fio); border-radius: 12px; padding: 3.5mm 4mm; }
+.fluxo .de { font-weight: 800; font-size: 9.5pt; }
+.fluxo .seta2 { color: var(--violeta); font-weight: 800; font-size: 13pt; text-align: center; }
+.fluxo p { font-size: 9pt; color: var(--media); }
+.celular { width: 62mm; margin: 0 auto; border-radius: 34px; background: #17171f; padding: 3mm; box-shadow: 0 16px 40px rgba(23,23,31,.28); }
+.celular img { display: block; width: 100%; border-radius: 26px; }
+.compactos .cartao { padding: 4mm 4.5mm; }
+.compactos p { font-size: 9pt; }
+.faq { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm; }
+.faq .cartao { padding: 4mm 5mm; }
+.faq h3 { font-size: 10pt; }
+.faq p { font-size: 9pt; color: var(--media); }
+
+.estrelas { font-size: 16pt; color: #f5b301; letter-spacing: 2px; }
+.fim { background: linear-gradient(135deg, #6a48f2, #9d86fb); color: #fff; border-radius: 16px; padding: 7mm 8mm; display: grid; grid-template-columns: 1fr auto; gap: 6mm; align-items: center; }
+.fim h3 { color: #fff; font-size: 14pt; }
+.fim p { color: rgba(255,255,255,.88); font-size: 9.5pt; }
+</style>
+</head>
+<body>
+
+<!-- ======================================================== 1. CAPA ====== -->
+<section class="folha capa">
+  <div class="capa-topo">
+    <svg class="capa-grade" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h6v6H4z M14 4h6v6h-6z M4 14h6v6H4z M14 14h6v6h-6z"/></svg>
+    <div class="marca"><span class="selo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h6v6H4z M14 4h6v6h-6z M4 14h6v6H4z M14 14h6v6h-6z"/></svg></span>DumTech Hub</div>
+    <h1>Seu negócio organizado a partir de hoje.</h1>
+    <p class="lede">Obrigado pela compra! Este guia leva você do download até a primeira venda em cerca de 5 minutos — e mostra tudo o que o seu Hub faz por você.</p>
+    <svg class="capa-onda" viewBox="0 0 800 160" preserveAspectRatio="none"><path d="M0 110 C 160 60, 300 150, 470 100 S 720 40, 800 70 L800 160 L0 160 Z" fill="#fff"/></svg>
+  </div>
+
+  <div class="capa-trilha">
+    <div class="cartao"><span class="n">PASSO 1 · 1 MIN</span><h3>Baixar</h3><p>O instalador oficial, direto do nosso site.</p></div>
+    <div class="cartao"><span class="n">PASSO 2 · 2 MIN</span><h3>Instalar</h3><p>Avançar, avançar, concluir. Sem pedir senha de administrador.</p></div>
+    <div class="cartao"><span class="n">PASSO 3 · 1 MIN</span><h3>Ativar</h3><p>Cole a sua chave e os módulos comprados aparecem na hora.</p></div>
+  </div>
+
+  <div class="capa-baixo">
+    <div>
+      <h3>Comece por aqui, no computador da loja:</h3>
+      <p class="muted" style="margin-bottom:4mm">Abra o link no navegador do computador onde você vai usar o programa.</p>
+      <a class="botao" href="https://dumtechsolution.com/baixar/">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11 M7 10l5 5 5-5 M5 20h14"/></svg>
+        Baixar o DumTech Hub
+      </a>
+      <span class="endereco">ou digite: <b>dumtechsolution.com/baixar</b></span>
+    </div>
+    <div class="qr"><img src="img/qr-baixar.svg" alt="QR Code para a página de download"><span>Está lendo no celular? Aponte a câmera para abrir o link.</span></div>
+  </div>
+
+  <div class="precisa">
+    <div><span class="check">✓</span><span><b>Windows 10 ou 11</b><br>Computador ou notebook comum.</span></div>
+    <div><span class="check">✓</span><span><b>A sua chave</b><br>Enviada na mensagem da sua compra no Mercado Livre.</span></div>
+    <div><span class="check">✓</span><span><b>Internet só para ativar</b><br>Depois, o programa funciona sem ela.</span></div>
+  </div>
+
+  <div class="rodape"><span><b>DumTech Hub</b> · Guia de instalação e primeiros passos</span><span>1</span></div>
+</section>
+
+<!-- ============================================== 2. BAIXAR E INSTALAR == -->
+<section class="folha">
+  <span class="etiqueta"><span class="num">1</span>Baixar</span>
+  <h2>Baixe o instalador oficial</h2>
+  <div class="grade2" style="align-items:start">
+    <ol class="passos">
+      <li><strong>Abra o link no computador</strong>Clique em <a href="https://dumtechsolution.com/baixar/">dumtechsolution.com/baixar</a> ou digite o endereço no Chrome ou no Edge.</li>
+      <li><strong>Clique em “Baixar o instalador para Windows”</strong>O arquivo <code>DumTech-Hub-Setup.exe</code> vai para a pasta <b>Downloads</b>.</li>
+      <li><strong>O navegador perguntou se quer manter o arquivo?</strong>Clique em <b>Manter</b> (no Edge, fica nos “…” ao lado do download). Isso acontece com programas novos e pequenos — o arquivo é o oficial.</li>
+    </ol>
+    <div class="dica"><span class="ic">i</span><span><b>Baixe sempre do nosso endereço.</b> As atualizações são conferidas por assinatura digital: o Hub só instala arquivos publicados pela DumTech. Arquivo de outro lugar não é o nosso.</span></div>
+  </div>
+
+  <div style="height:9mm"></div>
+  <span class="etiqueta"><span class="num">2</span>Instalar</span>
+  <h2>Instale com dois cliques</h2>
+  <p class="lede" style="margin-bottom:5mm">Abra o arquivo baixado. Se o Windows mostrar a tela azul abaixo, é normal: ela aparece para programas que ainda não têm o selo pago de “editora conhecida”. Faça assim:</p>
+
+  <div class="grade2">
+    <div>
+      <div class="win">
+        <div class="win-azul">
+          <div class="t">O Windows protegeu o computador</div>
+          <p>O Microsoft Defender SmartScreen impediu a inicialização de um aplicativo não reconhecido.</p>
+          <span class="link marcador">Mais informações</span>
+        </div>
+        <div class="win-botoes"><span>Não executar</span></div>
+      </div>
+      <p class="seta">① Clique em “Mais informações”</p>
+    </div>
+    <div>
+      <div class="win">
+        <div class="win-azul">
+          <div class="t">O Windows protegeu o computador</div>
+          <p>Aplicativo: DumTech-Hub-Setup.exe<br>Editor: Editor desconhecido</p>
+        </div>
+        <div class="win-botoes"><span class="foco marcador">Executar assim mesmo</span><span>Não executar</span></div>
+      </div>
+      <p class="seta">② Clique em “Executar assim mesmo”</p>
+    </div>
+  </div>
+
+  <div style="height:6mm"></div>
+  <div class="grade3">
+    <div class="cartao"><h3>Avance até o fim</h3><p class="muted">O instalador não pede senha de administrador e leva menos de 1 minuto.</p></div>
+    <div class="cartao"><h3>Atalho pronto</h3><p class="muted">Fica o ícone <b>DumTech Hub</b> na área de trabalho e no menu Iniciar.</p></div>
+    <div class="cartao"><h3>Antivírus perguntou?</h3><p class="muted">Permita o <b>DumTech Hub</b>. Ele só acessa a internet para ativar e atualizar.</p></div>
+  </div>
+
+  <div class="rodape"><span><b>DumTech Hub</b> · Baixar e instalar</span><span>2</span></div>
+</section>
+
+<!-- ======================================================== 3. ATIVAR ==== -->
+<section class="folha">
+  <span class="etiqueta"><span class="num">3</span>Ativar</span>
+  <h2>Ative com a sua chave</h2>
+  <p class="lede" style="margin-bottom:5mm">Na primeira vez que o Hub abre, ele faz só duas perguntas.</p>
+
+  <div class="grade2" style="grid-template-columns: 1.25fr 1fr; align-items:center; gap:8mm">
+    <div class="recorte"><img src="img/guia_1_boas_vindas.jpg" alt="Tela de boas-vindas do DumTech Hub"></div>
+    <div>
+      <h3>① Quem é você</h3>
+      <p class="muted">Digite o <b>nome da empresa</b> e o seu <b>e-mail</b> e clique em <b>Continuar</b>. O nome sai nos comprovantes; o e-mail liga o programa à sua compra.</p>
+    </div>
+  </div>
+  <div style="height:6mm"></div>
+  <div class="grade2" style="grid-template-columns: 1.25fr 1fr; align-items:center; gap:8mm">
+    <div class="recorte"><img src="img/guia_2_chave.jpg" alt="Tela para digitar a chave da licença"></div>
+    <div>
+      <h3>② Sua chave DumTech</h3>
+      <p class="muted">Cole a chave no formato <span class="chave">XXXX-XXXX-XXXX-XXXX</span> e clique em <b>Ativar</b>. Pronto: os módulos comprados aparecem no topo.</p>
+      <p class="muted" style="font-size:9pt">A internet só é usada neste momento. Depois, o Hub funciona offline.</p>
+    </div>
+  </div>
+
+  <div style="height:7mm"></div>
+  <div class="grade2">
+    <div class="dica"><span class="ic">?</span><span><b>Onde está a minha chave?</b> Na mensagem da sua compra: <b>Mercado Livre › Minhas compras</b> › esta compra › mensagens. Copie e cole — assim não há erro de digitação.</span></div>
+    <div class="dica alerta"><span class="ic">!</span><span><b>Guarde a chave.</b> Ela é só sua e vale para reinstalar o programa. Não compartilhe: cada licença abre no número de computadores do seu plano.</span></div>
+  </div>
+
+  <div class="rodape"><span><b>DumTech Hub</b> · Ativar a licença</span><span>3</span></div>
+</section>
+
+<!-- ======================================================= 4. INICIO ===== -->
+<section class="folha">
+  <span class="etiqueta">Pronto!</span>
+  <h2>Conheça a sua tela de Início</h2>
+  <p class="lede" style="margin-bottom:5mm">Tudo que precisa de você hoje, num lugar só. Esta é uma loja de exemplo com alguns dias de uso:</p>
+  <div class="tela"><img src="img/guia_3_inicio.jpg" alt="Tela de Início do DumTech Hub"></div>
+
+  <div style="height:6mm"></div>
+  <div class="grade2">
+    <div class="cartao"><h3>A barra do topo</h3><p class="muted">Cada módulo comprado vira uma aba. Clique para abrir; o <b>×</b> fecha sem perder nada.</p></div>
+    <div class="cartao"><h3>Os números do dia</h3><p class="muted">Caixa, vendas, contas, serviços e estoque — atualizados sozinhos enquanto você trabalha.</p></div>
+    <div class="cartao"><h3>“Precisa de você”</h3><p class="muted">Conta vencida, ordem atrasada, estoque no mínimo, aniversariante: o Hub avisa antes de virar problema.</p></div>
+    <div class="cartao"><h3>Ctrl + K</h3><p class="muted">Busca qualquer cliente, produto, venda ou tela a partir de qualquer lugar do programa.</p></div>
+  </div>
+  <div style="height:5mm"></div>
+  <div class="dica"><span class="ic">★</span><span><b>Os avisos são seus.</b> Em <b>Configurações › Avisos do Início</b> você liga, desliga e escolhe com quantos dias de antecedência quer ser lembrado de cada coisa.</span></div>
+
+  <div class="rodape"><span><b>DumTech Hub</b> · Tela de Início</span><span>4</span></div>
+</section>
+
+<!-- ============================================ 5. PRIMEIROS 15 MINUTOS == -->
+<section class="folha">
+  <span class="etiqueta">Primeiros 15 minutos</span>
+  <h2>Deixe o Hub com a cara da sua empresa</h2>
+  <p class="lede" style="margin-bottom:5mm">Quem faz estes cinco passos no primeiro dia já sai vendendo com comprovante bonito. Marque conforme for fazendo:</p>
+
+  <div class="checklist">
+    <div class="item"><span class="caixa"></span><div><h3>Coloque o seu logotipo e os seus dados</h3><p>Clique no nome da empresa (canto de cima, à direita) › <b>Minha empresa</b>: logotipo, CNPJ ou CPF, endereço e WhatsApp. Tudo sai nos comprovantes e nas propostas.</p></div><span class="tempo">3 min</span></div>
+    <div class="item"><span class="caixa"></span><div><h3>Cadastre a sua chave Pix</h3><p><b>Configurações › Pagamentos</b>. Confirmamos por um código no seu e-mail — assim ninguém troca a chave e desvia o seu dinheiro. O QR Code do Pix passa a sair no balcão e no comprovante.</p></div><span class="tempo">2 min</span></div>
+    <div class="item"><span class="caixa"></span><div><h3>Traga os seus produtos</h3><p>No <b>Estoque</b>, cadastre os principais ou importe uma planilha (CSV) de uma vez. Com leitor de código de barras, é só bipar.</p></div><span class="tempo">5 min</span></div>
+    <div class="item"><span class="caixa"></span><div><h3>Faça a primeira venda</h3><p>Em <b>Vendas › Balcão</b>: bipe ou digite o produto e aperte <b>F12</b> para receber — dinheiro, Pix, cartão ou fiado. O estoque baixa sozinho.</p></div><span class="tempo">2 min</span></div>
+    <div class="item"><span class="caixa"></span><div><h3>Guarde uma cópia fora do computador</h3><p>O Hub faz uma cópia de segurança por dia, sozinho. Em <b>Configurações › Backup</b> escolha um pen drive ou uma pasta na nuvem para ficar tranquilo de verdade.</p></div><span class="tempo">1 min</span></div>
+  </div>
+
+  <div style="height:6mm"></div>
+  <div class="grade2" style="grid-template-columns: 1.4fr 1fr; align-items:center">
+    <div class="tela"><img src="img/guia_4_balcao.jpg" alt="Balcão de vendas do DumTech Hub"></div>
+    <p class="muted"><b>O Balcão</b> foi feito para fila: tudo pelo teclado, sem abrir janela. Vendeu fiado? A conta a receber nasce sozinha no Financeiro.</p>
+  </div>
+
+  <div class="rodape"><span><b>DumTech Hub</b> · Primeiros passos</span><span>5</span></div>
+</section>
+
+<!-- ================================================ 6. MODULOS E TESTE === -->
+<section class="folha">
+  <span class="etiqueta">Um sistema, sete módulos</span>
+  <h2>Eles conversam entre si</h2>
+  <p class="lede" style="margin-bottom:5mm">Cada módulo funciona sozinho — e fica ainda melhor junto dos outros. O que você faz em um já aparece no outro, sem digitar duas vezes.</p>
+
+  <div class="modulos">
+    <div class="modulo"><span class="icone" style="--cor:#D8574F"><svg viewBox="0 0 24 24"><path d="M3 4h2.2l2.3 11.2a1.5 1.5 0 0 0 1.5 1.2h8.4a1.5 1.5 0 0 0 1.5-1.2L21 8H6 M9.5 20.5h.01 M17.5 20.5h.01"/></svg></span><div><strong>Vendas</strong><span>PDV de balcão: bipe, receba de várias formas e feche o caixa.</span></div></div>
+    <div class="modulo"><span class="icone" style="--cor:#8A7BF8"><svg viewBox="0 0 24 24"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z M3 7.5 12 12l9-4.5 M12 12v9"/></svg></span><div><strong>Estoque</strong><span>Código de barras, entrada de nota, contagem e planilha.</span></div></div>
+    <div class="modulo"><span class="icone" style="--cor:#2E9E6B"><svg viewBox="0 0 24 24"><path d="M3 6h18v12H3z M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M6.5 9.5h.01 M17.5 14.5h.01"/></svg></span><div><strong>Financeiro</strong><span>Fluxo de caixa, contas a pagar e receber, parcelas.</span></div></div>
+    <div class="modulo"><span class="icone" style="--cor:#4C7EF3"><svg viewBox="0 0 24 24"><path d="M20.5 6.2a5.5 5.5 0 0 1-7.3 7.3L6 20.7a2 2 0 0 1-2.8-2.8l7.2-7.2a5.5 5.5 0 0 1 7.3-7.3l-3.2 3.2 2.8 2.8 3.2-3.2z"/></svg></span><div><strong>Ordem de Serviço</strong><span>Serviços por etapa, aprovação, garantia e comprovante.</span></div></div>
+    <div class="modulo"><span class="icone" style="--cor:#E0902F"><svg viewBox="0 0 24 24"><path d="M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7l-4-4z M14 3v4h4 M9 12.5h6 M9 16.5h6"/></svg></span><div><strong>Orçamentos</strong><span>Proposta em PDF com a sua marca; aprovou, vira venda ou ordem.</span></div></div>
+    <div class="modulo"><span class="icone" style="--cor:#2FB6A6"><svg viewBox="0 0 24 24"><path d="M9 11.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z M2.5 20a6.5 6.5 0 0 1 13 0 M17 5.2a3.5 3.5 0 0 1 0 6.6 M18 14.4a6.5 6.5 0 0 1 3.5 5.6"/></svg></span><div><strong>Clientes</strong><span>Um cadastro só para balcão, proposta, serviço e agenda.</span></div></div>
+    <div class="modulo" style="grid-column: 1 / -1"><span class="icone" style="--cor:#C05FD4"><svg viewBox="0 0 24 24"><path d="M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z M4 10h16 M8.5 3v4 M15.5 3v4 M8 14h.01 M12 14h.01 M16 14h.01"/></svg></span><div><strong>Agenda</strong><span>Grade da semana com conflito de horário, bloqueio e repetição — para salão, clínica, visita técnica e entrega.</span></div></div>
+  </div>
+
+  <div style="height:6mm"></div>
+  <h3 style="margin-bottom:3mm">Na prática, quando você tem mais de um:</h3>
+  <div class="fluxos">
+    <div class="fluxo"><span class="de">Venda a prazo</span><span class="seta2">→</span><p>vira <b>conta a receber</b> no Financeiro, no dia combinado. O cliente pagou, ela se quita.</p></div>
+    <div class="fluxo"><span class="de">Nota de compra</span><span class="seta2">→</span><p>sobe o <b>estoque</b> e cria a <b>conta a pagar</b> com o vencimento do fornecedor.</p></div>
+    <div class="fluxo"><span class="de">Proposta aprovada</span><span class="seta2">→</span><p>vira <b>venda no balcão</b> ou <b>ordem de serviço</b>, com os itens já dentro.</p></div>
+    <div class="fluxo"><span class="de">Ordem entregue</span><span class="seta2">→</span><p>a peça sai do <b>estoque</b> e o valor cai no <b>caixa</b> — ou fica a receber.</p></div>
+  </div>
+  <div style="height:6mm"></div>
+  <div class="fim" style="grid-template-columns: 1fr">
+    <div>
+      <h3>Experimente qualquer módulo por 7 dias, grátis</h3>
+      <p>Clique no nome da empresa › <b style="color:#fff">Licença</b>. Ao lado de cada módulo que você ainda não tem, está o botão <b style="color:#fff">Testar 7 dias grátis</b>: ele abre na hora, com tudo funcionando, sem cadastrar cartão. Gostou? O botão <b style="color:#fff">Comprar</b> fica ali mesmo, e o módulo continua com tudo o que você já lançou — sem chave nova e sem reinstalar.</p>
+    </div>
+  </div>
+
+  <div class="rodape"><span><b>DumTech Hub</b> · Módulos</span><span>6</span></div>
+</section>
+
+<!-- ============================================== 7. VEM JUNTO ========== -->
+<section class="folha">
+  <span class="etiqueta">Vem junto, sem pagar a mais</span>
+  <h2>Seu negócio no celular</h2>
+  <div class="grade2" style="grid-template-columns: 1fr 1.05fr; align-items:center">
+    <div>
+      <p class="lede">Vendas do dia, contas atrasadas, ordens prontas, estoque acabando e a agenda — de onde você estiver.</p>
+      <div style="height:4mm"></div>
+      <ol class="passos">
+        <li><strong>No computador</strong>Clique no nome da empresa › <b>Ver no celular</b>.</li>
+        <li><strong>No celular</strong>Aponte a câmera para o QR Code e toque no link. Não precisa baixar aplicativo nem criar senha.</li>
+        <li><strong>Deixe o atalho</strong>A página ensina a colocar o ícone na tela inicial do celular.</li>
+      </ol>
+      <p class="muted" style="margin-top:3mm;font-size:9pt">O celular só mostra — nada muda no computador por ele. Perdeu o aparelho? Desconecte na mesma janela.</p>
+    </div>
+    <div class="celular"><img src="img/guia_6_celular.jpg" alt="O DumTech Hub aberto no celular"></div>
+  </div>
+
+  <div style="height:8mm"></div>
+  <div class="grade3 compactos">
+    <div class="cartao"><h3>Funciona sem internet</h3><p class="muted">A internet é usada só para ativar e atualizar. Caiu a conexão? O balcão continua vendendo.</p></div>
+    <div class="cartao"><h3>Atualiza sozinho</h3><p class="muted">Quando sai versão nova, aparece o botão <b>Atualizar</b> no topo: um clique e o Hub instala e reabre. Seus dados não são tocados.</p></div>
+    <div class="cartao"><h3>Cópia de segurança diária</h3><p class="muted">Todo dia, automática. As cópias que você faz à mão nunca são apagadas.</p></div>
+    <div class="cartao"><h3>Documentos com a sua marca</h3><p class="muted">Comprovante de bobina, recibo e proposta em PDF com o seu logotipo e contato.</p></div>
+    <div class="cartao"><h3>WhatsApp sem digitar</h3><p class="muted">Mensagem de cobrança, orçamento e “sua ordem está pronta” montada a partir da tela — você revisa e envia.</p></div>
+    <div class="cartao"><h3>Tema claro e escuro</h3><p class="muted">Escolha no botão da lua/sol, no topo. O Hub se ajusta a monitores pequenos também.</p></div>
+  </div>
+
+  <div class="rodape"><span><b>DumTech Hub</b> · Recursos incluídos</span><span>7</span></div>
+</section>
+
+<!-- ======================================================= 8. AJUDA ====== -->
+<section class="folha">
+  <span class="etiqueta">Deu algo diferente?</span>
+  <h2>Respostas rápidas</h2>
+  <div style="height:3mm"></div>
+  <div class="faq">
+    <div class="cartao"><h3>“Chave inválida” ao ativar</h3><p>Copie e cole a chave da mensagem da compra, em vez de digitar. Letras e números iguais (O e 0, I e 1) costumam ser a causa.</p></div>
+    <div class="cartao"><h3>A chave já está em outro computador</h3><p>No computador antigo, abra <b>Licença › Trocar chave</b> para liberar a vaga. Depois ative no novo com a mesma chave.</p></div>
+    <div class="cartao"><h3>Precisa de internet para ativar</h3><p>Conecte só na primeira vez. Depois disso o programa roda offline; a internet volta a ser usada para atualizar.</p></div>
+    <div class="cartao"><h3>O antivírus bloqueou</h3><p>Adicione o <b>DumTech Hub</b> às exceções do antivírus e abra o instalador de novo. Baixe só do nosso endereço oficial.</p></div>
+    <div class="cartao"><h3>Troquei de computador</h3><p>No antigo: <b>Configurações › Backup</b> › gere uma cópia no pen drive e use <b>Licença › Trocar chave</b>. No novo: instale, ative e restaure a cópia.</p></div>
+    <div class="cartao"><h3>Comprei outro módulo</h3><p>Ele aparece sozinho em alguns minutos. Com pressa? <b>Licença › Verificar licença</b>. Sem chave nova e sem reinstalar.</p></div>
+    <div class="cartao"><h3>Meu Hub não mostra “Atualizar”</h3><p>Versões antigas não se atualizam sozinhas: baixe o instalador de novo no link da página 1 e instale por cima. Seus dados continuam.</p></div>
+    <div class="cartao"><h3>Onde ficam os meus dados?</h3><p>No seu computador, não na nuvem. Por isso a cópia de segurança num pen drive é tão importante.</p></div>
+  </div>
+
+  <div style="height:7mm"></div>
+  <div class="grade2">
+    <div class="cartao">
+      <h3>Ainda com dúvida? Estamos aqui.</h3>
+      <p class="muted">Fale com a gente pelo <b>chat da sua compra no Mercado Livre</b> (Minhas compras › esta compra › mensagens). Respondemos rápido, com o passo a passo para o seu caso.</p>
+    </div>
+    <div class="cartao">
+      <span class="estrelas">★★★★★</span>
+      <h3>Gostou do DumTech Hub?</h3>
+      <p class="muted">A sua avaliação no Mercado Livre ajuda outros donos de negócio a nos encontrar — e leva menos de um minuto. Muito obrigado!</p>
+    </div>
+  </div>
+
+  <div style="height:7mm"></div>
+  <div class="fim">
+    <div>
+      <h3>Tudo pronto. Boas vendas!</h3>
+      <p>Baixar de novo a qualquer momento: <b style="color:#fff">dumtechsolution.com/baixar</b></p>
+    </div>
+    <div class="marca" style="color:#fff"><span class="selo" style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h6v6H4z M14 4h6v6h-6z M4 14h6v6H4z M14 14h6v6h-6z"/></svg></span>DumTech</div>
+  </div>
+
+  <div class="rodape"><span><b>DumTech Hub</b> · Guia versão 1.2.7 · setembro de 2026</span><span>8</span></div>
+</section>
+
+</body>
+</html>

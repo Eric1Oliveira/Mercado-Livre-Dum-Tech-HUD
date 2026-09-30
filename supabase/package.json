@@ -1,0 +1,12 @@
+{
+  "name": "dumtech-supabase",
+  "private": true,
+  "type": "module",
+  "description": "Testes das migrations num Postgres local (PGlite). As funcoes Edge tem os testes delas em functions/.",
+  "scripts": {
+    "test": "node tests/rodar.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.2.17"
+  }
+}

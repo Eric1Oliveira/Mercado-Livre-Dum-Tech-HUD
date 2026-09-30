@@ -1,0 +1,89 @@
+/* Pagina propria de um kit (/kit/<nome>/). Base: estilo.css + paginas.css. */
+
+.kp-topo {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 48px;
+  align-items: center;
+}
+.kp h1 { font-size: clamp(2.2rem, 5vw, 3.4rem); letter-spacing: -.03em; line-height: 1.05; margin: 6px 0 12px; }
+.kp .lede { font-size: 1.1rem; color: var(--tinta-media); max-width: 46ch; }
+
+.kp-preco { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 14px; margin-top: 26px; }
+.kp-preco strong { font-size: 2.4rem; font-weight: 800; letter-spacing: -.02em; }
+.kp-preco span { color: var(--tinta-fraca); font-size: .95rem; }
+.kp-economia { margin-top: 6px; color: var(--tinta-media); font-size: .95rem; }
+.kp-economia b { color: var(--sucesso); }
+.kp-acoes { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+.kp-nota { margin-top: 14px; font-size: .88rem; color: var(--tinta-fraca); }
+
+.kp .kp-modulos { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.kp-modulos li {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 16px 18px;
+  background: var(--cartao);
+  border: 1px solid var(--fio);
+  border-radius: var(--raio);
+  box-shadow: var(--sombra);
+}
+.kp-modulos strong { display: block; font-size: 1rem; }
+.kp-modulos span:not(.kp-icone) { display: block; color: var(--tinta-fraca); font-size: .9rem; margin-top: 2px; }
+
+.kp-icone {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  color: var(--cor);
+  background: color-mix(in srgb, var(--cor) 14%, transparent);
+}
+
+.kp-bloco { margin-top: 64px; }
+.kp-bloco h2 { font-size: 1.5rem; letter-spacing: -.02em; margin: 0; }
+.kp-sub { color: var(--tinta-fraca); margin: 6px 0 0; }
+
+.kp-pontes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-top: 20px; }
+.kp-pontes article { padding: 18px 20px; border-radius: var(--raio); background: var(--cartao); border: 1px solid var(--fio); }
+.kp-pontes h3 { font-size: 1rem; margin: 0 0 6px; }
+.kp-pontes p { margin: 0; color: var(--tinta-media); font-size: .92rem; }
+
+.kp .kp-sempre { list-style: none; padding: 0; margin: 16px 0 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px 24px; }
+.kp-sempre li { position: relative; padding-left: 26px; color: var(--tinta-media); }
+.kp-sempre li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: .45em;
+  width: 14px;
+  height: 8px;
+  border-left: 2px solid var(--violeta);
+  border-bottom: 2px solid var(--violeta);
+  transform: rotate(-45deg);
+}
+
+.kp-outros { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-top: 18px; }
+.kp .kp-outros a {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 16px;
+  border-radius: var(--raio);
+  border: 1px solid var(--fio);
+  background: var(--cartao);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color var(--transicao), transform var(--transicao);
+}
+.kp-outros a:hover { border-color: var(--violeta); transform: translateY(-1px); }
+.kp-outros span { color: var(--tinta-fraca); font-size: .88rem; }
+.kp-outros b { margin-top: 6px; }
+
+@media (max-width: 820px) {
+  .kp-topo { grid-template-columns: 1fr; gap: 28px; }
+  .kp-acoes .botao { flex: 1 1 auto; justify-content: center; }
+  .kp-bloco { margin-top: 44px; }
+}

@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel DumTech</title>
+<meta name="robots" content="noindex, nofollow">
+<!-- So scripts desta pasta, e conversa so com o Supabase da DumTech (ou com um
+     servidor neste computador, em desenvolvimento). A sessao do administrador
+     mora no navegador: um script injetado nao roda, e nao teria para onde mandar. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://kpiyhhmtteojqxhhmcyr.supabase.co wss://kpiyhhmtteojqxhhmcyr.supabase.co http://127.0.0.1:* ws://127.0.0.1:* http://localhost:* ws://localhost:*; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<link rel="modulepreload" href="js/painel.js">
+<link rel="modulepreload" href="js/api.js">
+<link rel="modulepreload" href="js/config.js">
+<link rel="modulepreload" href="js/ui.js">
+<link rel="modulepreload" href="js/formato.js">
+<link rel="modulepreload" href="js/modulos.js">
+<link rel="modulepreload" href="js/tempo-real.js">
+<link rel="preconnect" href="https://kpiyhhmtteojqxhhmcyr.supabase.co" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect width='24' height='24' rx='6' fill='%237353F6'/><path d='M6 6h4v4H6z M14 6h4v4h-4z M6 14h4v4H6z M14 14h4v4h-4z' fill='none' stroke='white' stroke-width='2'/></svg>">
+<link rel="stylesheet" href="css/estilo.css">
+</head>
+<body>
+
+<!-- ===================================================== entrar =========== -->
+<section class="entrada" id="entrada">
+  <div class="entrada-marca" aria-hidden="true">
+    <div class="marca">
+      <span class="selo pequeno">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 4h6v6H4z M14 4h6v6h-6z M4 14h6v6H4z M14 14h6v6h-6z"/>
+        </svg>
+      </span>
+      <span class="marca-nome">DumTech <span class="marca-sub">painel</span></span>
+    </div>
+    <div class="entrada-frase">
+      <p class="entrada-titulo">Sete módulos.<br>Cada chave, cada pedido,<br>cada computador.</p>
+      <div class="espectro espectro-largo"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+      <ul class="entrada-modulos">
+        <li>Estoque</li><li>Vendas</li><li>Financeiro</li><li>Orçamentos</li><li>Ordem de Serviço</li><li>Clientes</li><li>Agenda</li>
+      </ul>
+    </div>
+    <p class="entrada-pe">Acesso restrito a administradores · verificação em duas etapas</p>
+  </div>
+
+  <div class="entrada-lado">
+  <form class="entrada-cartao" id="form-entrar" novalidate>
+    <span class="selo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 4h6v6H4z M14 4h6v6h-6z M4 14h6v6H4z M14 14h6v6h-6z"/>
+      </svg>
+    </span>
+    <h1>Painel DumTech</h1>
+    <p class="explica">Clientes, licenças, pedidos e uso — num lugar só.</p>
+
+    <label class="campo">
+      <span>E-mail</span>
+      <input id="campo-email" type="email" autocomplete="username" placeholder="voce@dumtech.com.br" required>
+    </label>
+    <label class="campo">
+      <span>Senha</span>
+      <input id="campo-senha" type="password" autocomplete="current-password" placeholder="••••••••" required>
+    </label>
+
+    <button class="botao botao-primario" id="botao-entrar" type="submit">Entrar</button>
+    <p class="aviso" id="aviso-entrada" role="status"></p>
+    <p class="rodape-entrada">
+      Não há cadastro aqui. As contas de administrador são criadas no painel do
+      Supabase e liberadas na tabela <code>administradores</code>.
+    </p>
+  </form>
+
+  <!-- segundo fator: o banco só entrega dado depois deste código -->
+  <form class="entrada-cartao" id="form-codigo" hidden novalidate>
+    <span class="selo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6z M9 12l2 2 4-4"/>
+      </svg>
+    </span>
+    <h1 id="codigo-titulo">Código de verificação</h1>
+    <p class="explica" id="codigo-explica">Abra o aplicativo autenticador e digite o código.</p>
+
+    <div class="cadastro-2fa" id="cadastro-2fa" hidden>
+      <img id="qr-2fa" alt="QR Code para cadastrar o painel no aplicativo autenticador" width="176" height="176" hidden>
+      <p class="rodape-entrada aviso-qr" id="qr-sem-desenho" hidden>
+        Não foi possível desenhar o QR Code aqui. No aplicativo autenticador,
+        escolha <b>“inserir chave manualmente”</b> e digite a chave abaixo — funciona igual.
+      </p>
+      <p class="rodape-entrada">Não consegue ler? Digite esta chave no aplicativo:
+        <code id="segredo-2fa"></code></p>
+      <div class="acoes-2fa">
+        <button type="button" class="botao botao-fantasma" id="botao-copiar-segredo">Copiar chave</button>
+        <a class="botao botao-fantasma" id="qr-link" href="#" hidden>Abrir no aplicativo</a>
+      </div>
+    </div>
+
+    <label class="campo">
+      <span>Código de 6 números</span>
+      <input id="campo-codigo" class="campo-codigo" type="text" inputmode="numeric"
+             autocomplete="one-time-code" maxlength="6" placeholder="000000">
+    </label>
+
+    <button class="botao botao-primario" id="botao-codigo" type="submit">Confirmar</button>
+    <p class="aviso" id="aviso-codigo" role="status"></p>
+    <button type="button" class="botao botao-fantasma" id="botao-voltar">Entrar com outra conta</button>
+  </form>
+  </div>
+</section>
+
+<!-- ===================================================== painel =========== -->
+<div id="painel" class="casca" hidden>
+  <aside class="lateral">
+    <div class="lateral-topo">
+      <div class="marca">
+        <span class="selo pequeno">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 4h6v6H4z M14 4h6v6h-6z M4 14h6v6H4z M14 14h6v6h-6z"/>
+          </svg>
+        </span>
+        <span class="marca-nome">DumTech <span class="marca-sub">painel</span></span>
+      </div>
+    </div>
+    <!-- as sete cores dos modulos do Hub -->
+    <div class="espectro" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+
+    <nav id="navegacao" aria-label="Seções do painel">
+      <span class="nav-grupo">Vendas</span>
+      <button type="button" data-tela="resumo" title="Resumo" class="ativo">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>
+        <span class="nav-texto">Resumo</span>
+      </button>
+      <button type="button" data-tela="pedidos" title="Pedidos">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13h5l1.5 3h5L16 13h5 M5.5 5h13L21 13v6H3v-6z"/></svg>
+        <span class="nav-texto">Pedidos</span><span class="conta" id="selo-pedidos" hidden></span>
+      </button>
+      <button type="button" data-tela="clientes" title="Clientes">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z M2.5 20a6.5 6.5 0 0 1 13 0 M17 5.2a3.5 3.5 0 0 1 0 6.6 M18 14.4a6.5 6.5 0 0 1 3.5 5.6"/></svg>
+        <span class="nav-texto">Clientes</span>
+      </button>
+
+      <span class="nav-grupo">Loja</span>
+      <button type="button" data-tela="catalogo" title="Catálogo">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v6H4z M14 4h6v6h-6z M4 14h6v6H4z M14 14h6v6h-6z"/></svg>
+        <span class="nav-texto">Catálogo</span>
+      </button>
+      <button type="button" data-tela="kits" title="Kits">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8l9-4 9 4-9 4-9-4z M3 8v8l9 4 9-4V8 M12 12v8"/></svg>
+        <span class="nav-texto">Kits</span>
+      </button>
+      <button type="button" data-tela="cupons" title="Cupons">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2a2 2 0 0 0 0 6v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-6z M9 15l6-6 M9.5 9.5h.01 M14.5 14.5h.01"/></svg>
+        <span class="nav-texto">Cupons</span>
+      </button>
+      <button type="button" data-tela="anuncios" title="Anúncios">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4a1 1 0 0 0 1 1h2.5L13 19V5L7.5 9H5a1 1 0 0 0-1 1z M17 8.5a5 5 0 0 1 0 7"/></svg>
+        <span class="nav-texto">Anúncios</span>
+      </button>
+
+      <span class="nav-grupo">Operação</span>
+      <button type="button" data-tela="uso" title="Uso">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V11 M11 20V5 M17 20v-6 M3 20h18"/></svg>
+        <span class="nav-texto">Uso</span>
+      </button>
+      <button type="button" data-tela="seguranca" title="Segurança">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6z M9 12l2 2 4-4"/></svg>
+        <span class="nav-texto">Segurança</span>
+      </button>
+    </nav>
+
+    <span class="ao-vivo" id="ao-vivo" data-estado="fora" title="Conectando…">Ao vivo</span>
+    <div class="usuario">
+      <span class="usuario-avatar" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M4 21a8 8 0 0 1 16 0"/></svg>
+      </span>
+      <span id="usuario-email">—</span>
+      <button type="button" class="botao-sair" id="botao-sair" title="Sair do painel">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3 M10 17l-5-5 5-5 M5 12h11"/></svg>
+        <span>Sair</span>
+      </button>
+    </div>
+  </aside>
+
+  <main id="tela" aria-live="polite"></main>
+</div>
+
+<!-- ficha do cliente, por cima de tudo -->
+<aside class="gaveta" id="gaveta" hidden>
+  <div class="gaveta-fundo" data-fechar></div>
+  <div class="gaveta-folha" role="dialog" aria-modal="true" aria-labelledby="gaveta-titulo">
+    <header>
+      <div>
+        <p class="sobrenome" id="gaveta-acima">Cliente</p>
+        <h2 id="gaveta-titulo">—</h2>
+      </div>
+      <button type="button" class="botao botao-fantasma" data-fechar>Fechar</button>
+    </header>
+    <div id="gaveta-conteudo"></div>
+  </div>
+</aside>
+
+<div class="recado" id="recado" hidden role="status"></div>
+
+<script type="module" src="js/painel.js"></script>
+</body>
+</html>

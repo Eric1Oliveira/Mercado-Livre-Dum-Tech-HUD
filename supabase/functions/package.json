@@ -1,0 +1,9 @@
+{
+  "name": "dumtech-edge-functions",
+  "private": true,
+  "type": "module",
+  "description": "So para os testes em Node lerem os .ts como modulo ES. As funcoes rodam no Deno (Supabase Edge Functions) e nao tem dependencia nenhuma.",
+  "scripts": {
+    "test": "node --test \"tests/**/*.test.mjs\""
+  }
+}

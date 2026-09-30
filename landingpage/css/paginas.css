@@ -1,0 +1,102 @@
+/* Páginas de apoio da loja: baixar, guia, termos e privacidade.
+   Reaproveita as cores, a fonte e os botões de estilo.css; aqui só o que é de
+   página de leitura (coluna estreita, passos, avisos) e a versão impressa do guia. */
+
+.pagina { padding: 42px 0 72px; }
+.pagina .envolve { max-width: 760px; }
+.pagina h1 { font-size: clamp(1.9rem, 4.2vw, 2.5rem); line-height: 1.12; letter-spacing: -.025em; margin: 10px 0 14px; text-wrap: balance; }
+.pagina h2 { font-size: 1.28rem; letter-spacing: -.015em; margin: 36px 0 10px; text-wrap: balance; }
+.pagina h3 { font-size: 1.02rem; margin: 22px 0 6px; }
+.pagina p, .pagina li { color: var(--tinta-media); line-height: 1.65; }
+.pagina p + p { margin-top: 10px; }
+.pagina ul, .pagina ol { padding-left: 1.25em; display: grid; gap: 6px; margin: 8px 0 0; }
+.pagina .lede { font-size: 1.1rem; max-width: 60ch; }
+/* so link de texto: sem o :not(.botao), esta regra (mais especifica) pintava o
+   texto do botao "Baixar o instalador" da mesma cor do botao - roxo sobre roxo */
+.pagina a:not(.botao) { color: var(--violeta-forte); text-underline-offset: 3px; }
+.pagina code, .pagina .endereco {
+  font-family: "Cascadia Code", Consolas, monospace; font-size: .92em;
+  background: var(--violeta-claro); color: var(--violeta-forte); padding: 1px 7px; border-radius: 6px;
+}
+
+.baixar-caixa {
+  margin-top: 24px; background: var(--cartao); border: 1px solid var(--fio); border-radius: var(--raio);
+  padding: 22px; display: grid; gap: 14px; box-shadow: var(--sombra);
+}
+.baixar-caixa .botao { justify-self: start; font-size: 1.02rem; padding: 14px 22px; }
+.baixar-caixa .detalhes { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: .88rem; color: var(--tinta-fraca); }
+
+.etapas { list-style: none; padding: 0 !important; counter-reset: etapa; display: grid; gap: 12px !important; margin-top: 18px !important; }
+.etapas > li {
+  counter-increment: etapa; position: relative; background: var(--cartao); border: 1px solid var(--fio);
+  border-radius: var(--raio-pequeno); padding: 16px 18px 16px 62px;
+}
+.etapas > li::before {
+  content: counter(etapa); position: absolute; left: 18px; top: 15px; width: 30px; height: 30px;
+  border-radius: 999px; display: grid; place-items: center; font-weight: 800; font-size: .9rem;
+  background: var(--violeta-claro); color: var(--violeta-forte);
+}
+.etapas strong { color: var(--tinta); display: block; margin-bottom: 2px; }
+
+.aviso-caixa {
+  margin-top: 14px; border-radius: var(--raio-pequeno); padding: 14px 16px;
+  background: #fff7e6; border: 1px solid #f3dfb3; color: #6b4a0b;
+}
+.aviso-caixa strong { color: #4d3505; }
+.aviso-caixa p { color: #6b4a0b; }
+
+.voltar { display: inline-flex; gap: 6px; align-items: center; font-size: .9rem; color: var(--tinta-fraca) !important; text-decoration: none; }
+.versao-doc { margin-top: 28px; font-size: .84rem; color: var(--tinta-fraca); }
+
+/* ------------------------------------------------------ pagina do pedido -- */
+/* so a secao do estado atual aparece: sem o :not([hidden]), o display:grid
+   venceria o hidden e todos os estados apareceriam juntos */
+.pedido .estado:not([hidden]) { display: grid; justify-items: start; }
+.pedido .estado h1 { margin-top: 14px; }
+.pedido .indicador {
+  width: 52px; height: 52px; border-radius: 999px; display: grid; place-items: center; margin-top: 8px;
+  background: var(--violeta-claro); color: var(--violeta-forte);
+}
+.pedido .indicador.ok { background: #e6f6ee; color: var(--sucesso, #16a34a); }
+.pedido .indicador svg { width: 26px; height: 26px; }
+.pedido .giro {
+  width: 24px; height: 24px; border-radius: 999px;
+  border: 3px solid color-mix(in srgb, var(--violeta) 25%, transparent); border-top-color: var(--violeta);
+  animation: girar .9s linear infinite;
+}
+@keyframes girar { to { transform: rotate(360deg); } }
+.acoes-pedido { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+
+.chave-caixa {
+  justify-self: stretch; margin-top: 22px; padding: 22px; border-radius: var(--raio);
+  background: var(--cartao); border: 1px solid var(--fio); box-shadow: var(--sombra);
+  display: grid; gap: 12px;
+}
+.chave-rotulo { font-size: .76rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--tinta-fraca); }
+.pagina .chave-valor {
+  /* a chave inteira numa linha so, ate em celular de 360 px */
+  font-size: clamp(1.02rem, 4.6vw, 2rem); font-weight: 700; letter-spacing: .05em; padding: 14px 10px;
+  border-radius: var(--raio-pequeno); text-align: center; white-space: nowrap; overflow-x: auto; user-select: all;
+}
+.chave-acoes { display: flex; flex-wrap: wrap; gap: 10px; }
+.chave-nota { font-size: .88rem; }
+
+.resumo-pedido { margin-top: 34px; padding-top: 6px; border-top: 1px solid var(--fio); }
+.resumo-pedido h2 { margin-top: 18px; }
+.resumo-linha { padding: 8px 0; border-bottom: 1px dashed var(--fio); color: var(--tinta-media); }
+.resumo-total { display: flex; justify-content: space-between; padding: 12px 0 4px; font-size: 1.05rem; }
+.resumo-meta { font-size: .88rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pedido .giro { animation-duration: 2.4s !important; }
+}
+
+/* o guia vira PDF (anexo da venda no Mercado Livre): sem topo, sem rodapé, sem sombras */
+@media print {
+  @page { size: A4; margin: 16mm 15mm; }
+  .topo, .rodape, .nao-imprimir { display: none !important; }
+  body { background: #fff; }
+  .pagina { padding: 0; }
+  .etapas > li, .baixar-caixa { box-shadow: none; break-inside: avoid; }
+  .pagina h2 { break-after: avoid; }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "dumtech-painel",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Painel administrativo da DumTech: clientes, licencas, pedidos, anuncios e uso.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"tests/**/*.test.mjs\"",
+    "servir": "node ../landingpage/servidor.mjs 5175"
+  }
+}

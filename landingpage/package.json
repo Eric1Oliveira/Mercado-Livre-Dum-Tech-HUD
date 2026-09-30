@@ -1,0 +1,11 @@
+{
+  "name": "dumtech-landingpage",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Landing page da DumTech: vitrine dos modulos, montador de kit e reconhecimento do cliente pelo token do Hub.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"tests/**/*.test.mjs\"",
+    "servir": "node servidor.mjs"
+  }
+}
