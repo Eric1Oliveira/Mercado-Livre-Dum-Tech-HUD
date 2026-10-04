@@ -112,18 +112,19 @@ class SupabaseClient:
             raise self._erro_http(erro) from erro
         except urllib.error.URLError as erro:  # sem internet, DNS, timeout...
             raise SemConexao(
-                "Nao foi possivel falar com o servidor de licencas. "
-                "Verifique a conexao com a internet."
+                "Sem conexao com a internet. Verifique sua rede e tente de novo em instantes."
             ) from erro
         except TimeoutError as erro:
-            raise SemConexao("O servidor de licencas demorou para responder.") from erro
+            raise SemConexao("A conexao com o servidor demorou. Tente de novo em alguns instantes.") from erro
 
         if not bruto.strip():
             return None
         try:
             return json.loads(bruto)
         except ValueError as erro:
-            raise ServicoIndisponivel("Resposta invalida do servidor de licencas.") from erro
+            raise ServicoIndisponivel(
+                "O servidor de licencas retornou uma resposta inesperada. Tente de novo em alguns minutos."
+            ) from erro
 
     # ------------------------------------------------------------------ interno
     def _erro_http(self, erro: urllib.error.HTTPError) -> SupabaseError:
@@ -144,5 +145,7 @@ class SupabaseClient:
                 "Este programa nao tem permissao para consultar as licencas."
             )
         if erro.code >= 500:
-            return SemConexao("O servidor de licencas esta fora do ar. Tente mais tarde.")
-        return ServicoIndisponivel(detalhe or f"Erro {erro.code} no servidor de licencas.")
+            return ServicoIndisponivel(
+                "O servidor de licencas esta fora do ar. Tente de novo em alguns minutos."
+            )
+        return ServicoIndisponivel(detalhe or f"Erro {erro.code} no servidor de licencas. Tente de novo.")
