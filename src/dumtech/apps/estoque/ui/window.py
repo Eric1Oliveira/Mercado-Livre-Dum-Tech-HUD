@@ -21,12 +21,12 @@ class EstoqueWindow(AppWindow):
 
     def build_views(self) -> None:
         self.dashboard_view = self.add_view("Painel", "dashboard", DashboardView(self.repository))
-        self.produtos_view = self.add_view("Produtos", "box", ProdutosView(self.repository))
+        self.produtos_view = self.add_view("Produtos", "box", ProdutosView(self.repository, prefs=self.prefs))
         self.entradas_view = self.add_view(
             "Entradas", "in",
             # a ponte do Financeiro chega aqui para a nota de compra virar
             # conta a pagar sem ninguem digitar de novo
-            EntradasView(self.repository, contas=self.context.contas),
+            EntradasView(self.repository, contas=self.context.contas, prefs=self.prefs),
         )
         self.movimentacoes_view = self.add_view(
             "Movimentações", "swap", MovimentacoesView(self.repository)

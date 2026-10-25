@@ -38,9 +38,12 @@ class EntradasView(QWidget):
     data_changed = Signal()
 
     def __init__(self, repository: EstoqueRepository, parent: QWidget | None = None,
-                 contas=None) -> None:
+                 contas=None, prefs=None) -> None:
         super().__init__(parent)
         self.repository = repository
+        self.prefs = prefs
+        #: (produto_id, quantidade) da ultima nota confirmada - vira etiqueta
+        self._ultima_nota: list[tuple[int, float]] = []
         #: ponte com o DumTech Financeiro; None quando a licenca nao o libera
         self.contas = contas
         self._linhas: list[tuple[Produto, ItemEntrada]] = []
@@ -155,6 +158,13 @@ class EntradasView(QWidget):
 
         self.total = label("", "section")
         rodape.addWidget(self.total)
+
+        # mercadoria que acabou de chegar e a que precisa de etiqueta
+        self.botao_etiquetas = Button("Etiquetas desta nota", "tag")
+        self.botao_etiquetas.setToolTip("Uma etiqueta por unidade que entrou")
+        self.botao_etiquetas.clicked.connect(self._etiquetas_da_nota)
+        self.botao_etiquetas.setVisible(False)
+        rodape.addWidget(self.botao_etiquetas)
 
         self.botao_remover = Button("Remover linha", "trash")
         self.botao_remover.clicked.connect(self._remover)
@@ -316,6 +326,8 @@ class EntradasView(QWidget):
         total = sum(m.total for m in registros)
         plural = "produto" if len(registros) == 1 else "produtos"
         recado_conta = self._lancar_no_financeiro(total)
+        self._ultima_nota = [(m.produto_id, m.quantidade) for m in registros]
+        self.botao_etiquetas.setVisible(True)
         self._linhas.clear()
         self.documento.clear()
         self.observacao.clear()
@@ -327,6 +339,16 @@ class EntradasView(QWidget):
             "success",
         )
         self.data_changed.emit()
+
+    def _etiquetas_da_nota(self) -> None:
+        from .etiquetas_dialog import EtiquetasDialog
+
+        itens = []
+        for produto_id, quantidade in self._ultima_nota:
+            produto = self.repository.obter(produto_id)
+            if produto is not None:
+                itens.append((produto, max(1, round(quantidade))))
+        EtiquetasDialog(self.repository, itens, self, prefs=self.prefs).exec()
 
     def _lancar_no_financeiro(self, total: float) -> str:
         """A nota de compra vira conta a pagar. Devolve o que dizer na tela.

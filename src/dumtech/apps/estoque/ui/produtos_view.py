@@ -51,8 +51,11 @@ class ProdutosView(CrudView):
     ]
     larguras = {0: 110, 3: 100, 4: 110, 5: 105, 6: 105, 7: 85, 8: 120}
 
-    def __init__(self, repository: EstoqueRepository, parent: QWidget | None = None) -> None:
+    def __init__(self, repository: EstoqueRepository, parent: QWidget | None = None,
+                 prefs=None) -> None:
         self.repository = repository
+        #: onde as etiquetas lembram o papel escolhido
+        self.prefs = prefs
         #: produto_id -> (versao, desenho): so redesenha a foto que mudou
         self._fotos: dict[int, tuple[str, QPixmap | None]] = {}
         #: quadro vazio; None quando a loja nao tem foto nenhuma
@@ -94,6 +97,11 @@ class ProdutosView(CrudView):
         self.botao_ativar.clicked.connect(self._alternar_ativo)
         layout.addWidget(self.botao_ativar)
 
+        self.botao_etiquetas = Button("Etiquetas", "tag")
+        self.botao_etiquetas.setToolTip("Imprimir etiquetas com código de barras")
+        self.botao_etiquetas.setMenu(self._menu_etiquetas())
+        layout.addWidget(self.botao_etiquetas)
+
         self.botao_planilha = Button("Planilha", "file")
         self.botao_planilha.setToolTip("Importar ou exportar em CSV")
         self.botao_planilha.setMenu(self._menu_planilha())
@@ -113,6 +121,47 @@ class ProdutosView(CrudView):
             lambda: planilha.exportar(self, self.repository, movimentacoes=True)
         )
         return menu
+
+    def _menu_etiquetas(self) -> QMenu:
+        menu = menu_arredondado(self)
+        menu.addAction("Imprimir etiquetas...").triggered.connect(self.imprimir_etiquetas)
+        menu.addSeparator()
+        menu.addAction("Gerar código de barras para quem não tem").triggered.connect(
+            self._gerar_codigos
+        )
+        return menu
+
+    def imprimir_etiquetas(self) -> None:
+        """Abre as etiquetas ja com o produto selecionado na lista."""
+        from .etiquetas_dialog import EtiquetasDialog
+
+        produto = self.registro_selecionado()
+        itens = [(produto, 1)] if produto is not None and produto.ativo else []
+        EtiquetasDialog(self.repository, itens, self, prefs=self.prefs).exec()
+        # produto sem codigo ganha um ao entrar na lista: a coluna precisa mostrar
+        self.refresh()
+
+    def _gerar_codigos(self) -> None:
+        from ....ui.widgets.confirmar import confirmar
+
+        faltando = len(self.repository.sem_codigo_barras())
+        if not faltando:
+            self.mostrar_aviso("Todos os produtos ativos já têm código de barras.", "success")
+            return
+        if not confirmar(
+            self, "Gerar códigos de barras",
+            f"{fmt.contagem(faltando, 'produto')} sem código de barras vão ganhar um "
+            "código interno (começa com 2), pronto para etiqueta e leitor.",
+            rotulo_ok="Gerar códigos", perigoso=False,
+        ):
+            return
+        gerados = self.repository.gerar_codigos_que_faltam()
+        self.refresh()
+        self.mostrar_aviso(
+            f"{fmt.contagem(gerados, 'código gerado', 'códigos gerados')}. Use Etiquetas > "
+            "Imprimir para colar nos produtos.", "success",
+        )
+        self.data_changed.emit()
 
     def _importar(self) -> None:
         from . import planilha_dialog as planilha

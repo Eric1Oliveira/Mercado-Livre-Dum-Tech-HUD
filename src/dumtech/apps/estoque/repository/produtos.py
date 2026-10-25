@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 
+from .. import codigo_barras
 from ..models import UNIDADES, EstoqueError, Produto
 from .comum import agora, dinheiro, quantidade
 
@@ -166,6 +167,62 @@ class ProdutosMixin:
             )
         produto.atualizado_em = momento
         return produto
+
+    # ----------------------------------------------------------- codigo interno
+    def proximo_codigo_barras(self) -> str:
+        """O proximo codigo interno livre (EAN-13 com prefixo 2).
+
+        A sequencia continua do maior codigo interno ja gravado: apagar um
+        produto nao faz o numero dele voltar para outro.
+        """
+        linhas = self.db.query(
+            "SELECT codigo_barras FROM produtos WHERE codigo_barras LIKE ? "
+            "AND LENGTH(codigo_barras) = 13",
+            (f"{codigo_barras.PREFIXO_INTERNO}%",),
+        )
+        sequencias = (codigo_barras.sequencia_interna(row["codigo_barras"]) for row in linhas)
+        maior = max((s for s in sequencias if s is not None), default=0)
+        return codigo_barras.interno(maior + 1)
+
+    def atribuir_codigo_barras(self, produto_id: int) -> str:
+        """Da um codigo interno ao produto que nao tem. Devolve o codigo dele."""
+        produto = self.obter(produto_id)
+        if produto is None:
+            raise EstoqueError("Produto não encontrado.")
+        if produto.codigo_barras.strip():
+            return produto.codigo_barras.strip()
+        codigo = self.proximo_codigo_barras()
+        self.db.execute(
+            "UPDATE produtos SET codigo_barras = ?, atualizado_em = ? WHERE id = ?",
+            (codigo, agora(), produto_id),
+        )
+        return codigo
+
+    def sem_codigo_barras(self) -> list[Produto]:
+        """Produtos ativos que ainda nao tem codigo de barras."""
+        return [
+            Produto.from_row(row)
+            for row in self.db.query(
+                "SELECT * FROM produtos WHERE ativo = 1 AND TRIM(codigo_barras) = '' "
+                "ORDER BY nome COLLATE NOCASE"
+            )
+        ]
+
+    def gerar_codigos_que_faltam(self) -> int:
+        """Codigo interno para todo produto ativo sem codigo. Devolve quantos."""
+        faltando = self.sem_codigo_barras()
+        if not faltando:
+            return 0
+        proxima = codigo_barras.sequencia_interna(self.proximo_codigo_barras())
+        momento = agora()
+        # tudo ou nada: metade dos produtos com codigo confundiria a conferencia
+        with self.db.transaction() as conn:
+            for passo, produto in enumerate(faltando):
+                conn.execute(
+                    "UPDATE produtos SET codigo_barras = ?, atualizado_em = ? WHERE id = ?",
+                    (codigo_barras.interno(proxima + passo), momento, produto.id),
+                )
+        return len(faltando)
 
     def inativar(self, produto_id: int) -> None:
         """Some da lista sem apagar o historico - o caminho normal."""

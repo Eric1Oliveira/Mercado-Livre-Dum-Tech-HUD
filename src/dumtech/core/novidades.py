@@ -40,6 +40,16 @@ class Novidade:
 #: versao -> o que mudou. So entra o que o cliente PERCEBE: correcao interna
 #: nao vira aviso. Escreva como quem explica no balcao, sem termo tecnico.
 VERSOES: dict[str, tuple[Novidade, ...]] = {
+    "1.4.5": (
+        Novidade(
+            "estoque", "Estoque: etiquetas com código de barras",
+            "Produto sem código? Clique em Gerar no cadastro e ele ganha um código "
+            "que o leitor lê. Em Produtos > Etiquetas, imprima em folha A4 adesiva "
+            "(Pimaco) ou na impressora de etiqueta, com nome e preço - ou salve em "
+            "PDF. Depois de lançar uma nota em Entradas, o botão \"Etiquetas desta "
+            "nota\" já traz a quantidade que chegou.",
+        ),
+    ),
     "1.4.4": (
         Novidade(
             "", "Início: o que pede atenção agora salta aos olhos",

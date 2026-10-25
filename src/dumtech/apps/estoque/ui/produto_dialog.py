@@ -41,12 +41,12 @@ class ProdutoDialog(FormDialog):
             "Editar produto" if self.editando else "Novo produto",
             "Preencha os dados do produto do seu estoque",
             parent,
-            largura=620,
+            largura=720,
         )
 
         self.codigo = form.texto(self.produto.codigo, "Ex.: MOU-001")
-        self.codigo_barras = form.texto(self.produto.codigo_barras, "Bipe ou digite o EAN")
-        self.add_row("Código", form.linha(self.codigo, "Código de barras", self.codigo_barras))
+        self.codigo_barras = form.texto(self.produto.codigo_barras, "Bipe ou digite")
+        self.add_row("Código", form.linha(self.codigo, "Código de barras", self._barras_e_gerar()))
 
         self.nome = form.texto(self.produto.nome, "Ex.: Mouse USB sem fio")
         self.add_row("Nome", self.nome)
@@ -113,6 +113,30 @@ class ProdutoDialog(FormDialog):
         self.codigo.setFocus()
 
     # ------------------------------------------------------------------ campos
+    def _barras_e_gerar(self) -> QWidget:
+        """O campo do EAN com o botao que inventa um codigo interno para ele."""
+        caixa = QWidget()
+        linha = QHBoxLayout(caixa)
+        linha.setContentsMargins(0, 0, 0, 0)
+        linha.setSpacing(Space.xs)
+        linha.addWidget(self.codigo_barras, 1)
+        self.botao_gerar = Button("Gerar", "tag", "ghost")
+        self.botao_gerar.setToolTip(
+            "Produto sem código de barras? Gera um código interno (começa com 2) "
+            "que o leitor lê e que nunca bate com o de fábrica."
+        )
+        self.botao_gerar.clicked.connect(self._gerar_codigo)
+        linha.addWidget(self.botao_gerar)
+        self.codigo_barras.textChanged.connect(
+            lambda texto: self.botao_gerar.setEnabled(not texto.strip())
+        )
+        self.botao_gerar.setEnabled(not self.codigo_barras.text().strip())
+        return caixa
+
+    def _gerar_codigo(self) -> None:
+        self.codigo_barras.setText(self.repository.proximo_codigo_barras())
+        self.nome.setFocus()
+
     def _descricao_e_foto(self) -> QWidget:
         caixa = QWidget()
         linha = QHBoxLayout(caixa)
