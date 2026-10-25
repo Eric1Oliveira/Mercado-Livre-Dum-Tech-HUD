@@ -27,7 +27,7 @@ class FinanceiroWindow(AppWindow):
             "Painel", "dashboard", DashboardView(self.repository)
         )
         self.lancamentos_view = self.add_view(
-            "Lancamentos", "money", LancamentosView(self.repository, self.clientes,
+            "Lançamentos", "money", LancamentosView(self.repository, self.clientes,
                             mensageiro=self.mensagens,
                             contatos=self.context.contacts,
                             empresa=self.empresa)

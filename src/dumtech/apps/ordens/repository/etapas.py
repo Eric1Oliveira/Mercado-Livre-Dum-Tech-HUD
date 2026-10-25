@@ -58,9 +58,9 @@ class EtapasMixin:
         """Muda a etapa e deixa registro. Nao aplica as regras de cada passo."""
         ordem = self.obter(ordem_id)
         if ordem is None:
-            raise OrdemError("Ordem nao encontrada.")
+            raise OrdemError("Ordem não encontrada.")
         if status not in STATUS_LABEL:
-            raise OrdemError("Etapa invalida.")
+            raise OrdemError("Etapa inválida.")
 
         hoje = date.today().isoformat()
         if status == CONCLUIDA:
@@ -84,16 +84,16 @@ class EtapasMixin:
         """Leva a ordem ao proximo passo da esteira."""
         ordem = self.obter(ordem_id)
         if ordem is None:
-            raise OrdemError("Ordem nao encontrada.")
+            raise OrdemError("Ordem não encontrada.")
 
         proximo = PROXIMO_PASSO.get(ordem.status)
         if proximo is None:
-            raise OrdemError(f"A ordem {ordem.numero} ja foi finalizada.")
+            raise OrdemError(f"A ordem {ordem.numero} já foi finalizada.")
 
         # sair de "aguardando aprovacao" e uma decisao do cliente, nao do balcao
         if ordem.status == AGUARDANDO:
             raise OrdemError(
-                "Registre quem aprovou o orcamento para comecar o servico."
+                "Registre quem aprovou o orçamento para começar o serviço."
             )
         if proximo == ENTREGUE:
             return self.entregar(ordem_id, observacao=observacao)
@@ -103,19 +103,19 @@ class EtapasMixin:
         """O cliente autorizou o orcamento: a ordem vai para execucao."""
         quem = quem.strip()
         if not quem:
-            raise OrdemError("Informe quem aprovou o orcamento.")
+            raise OrdemError("Informe quem aprovou o orçamento.")
 
         ordem = self.obter(ordem_id)
         if ordem is None:
-            raise OrdemError("Ordem nao encontrada.")
+            raise OrdemError("Ordem não encontrada.")
         if ordem.status in (ENTREGUE, CANCELADA):
-            raise OrdemError(f"A ordem {ordem.numero} ja foi finalizada.")
+            raise OrdemError(f"A ordem {ordem.numero} já foi finalizada.")
 
         self.db.execute(
             "UPDATE ordens SET aprovado_em = ?, aprovado_por = ? WHERE id = ?",
             (date.today().isoformat(), quem, ordem_id),
         )
-        recado = f"Orcamento de {fmt.moeda(ordem.total)} aprovado por {quem}"
+        recado = f"Orçamento de {fmt.moeda(ordem.total)} aprovado por {quem}"
         if observacao.strip():
             recado = f"{recado}. {observacao.strip()}"
         return self.definir_status(ordem_id, ANDAMENTO, recado)
@@ -124,11 +124,11 @@ class EtapasMixin:
         """Entrega o servico. E daqui que a garantia comeca a contar."""
         ordem = self.obter(ordem_id)
         if ordem is None:
-            raise OrdemError("Ordem nao encontrada.")
+            raise OrdemError("Ordem não encontrada.")
         if ordem.status != CONCLUIDA:
             raise OrdemError(
-                f"A ordem {ordem.numero} nao esta concluida. "
-                "Nao se entrega o que ainda nao ficou pronto."
+                f"A ordem {ordem.numero} não está concluída. "
+                "Não se entrega o que ainda não ficou pronto."
             )
 
         hoje = date.today().isoformat()
@@ -178,7 +178,7 @@ class EtapasMixin:
                 )
                 baixou = True
             except Exception as erro:  # noqa: BLE001 - o estoque nao derruba a entrega
-                avisos.append(f"{item.descricao}: nao foi possivel dar baixa ({erro})")
+                avisos.append(f"{item.descricao}: não foi possível dar baixa ({erro})")
         if baixou:
             self.db.execute(
                 "UPDATE ordens SET baixa_estoque = ? WHERE id = ?",
@@ -192,17 +192,17 @@ class EtapasMixin:
             raise OrdemError("Informe o motivo do cancelamento.")
         ordem = self.obter(ordem_id)
         if ordem is None:
-            raise OrdemError("Ordem nao encontrada.")
+            raise OrdemError("Ordem não encontrada.")
         if ordem.status == CANCELADA:
-            raise OrdemError(f"A ordem {ordem.numero} ja esta cancelada.")
+            raise OrdemError(f"A ordem {ordem.numero} já está cancelada.")
         return self.definir_status(ordem_id, CANCELADA, f"Cancelada: {motivo}")
 
     def reabrir(self, ordem_id: int, motivo: str = "") -> Ordem:
         """Cliente voltou: a ordem volta para o quadro, sem perder o passado."""
         ordem = self.obter(ordem_id)
         if ordem is None:
-            raise OrdemError("Ordem nao encontrada.")
+            raise OrdemError("Ordem não encontrada.")
         if ordem.aberta:
-            raise OrdemError(f"A ordem {ordem.numero} ja esta em andamento.")
+            raise OrdemError(f"A ordem {ordem.numero} já está em andamento.")
         recado = f"Reaberta: {motivo.strip()}" if motivo.strip() else "Reaberta"
         return self.definir_status(ordem_id, ANDAMENTO, recado)

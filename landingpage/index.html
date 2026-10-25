@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no">
 <!-- So scripts desta pasta; a pagina so conversa com o Supabase da DumTech (e com
      um servidor neste computador, em desenvolvimento). Um script injetado nao
      roda, e mesmo que rodasse nao teria para onde mandar dado. -->
@@ -24,24 +24,31 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/estilo.css">
+<!-- sem zoom no celular: o iPhone ignora o meta, o script resolve -->
+<script src="js/sem-zoom.js"></script>
 </head>
 <body>
 
 <header class="topo" id="topo">
   <div class="envolve">
-    <a class="marca" href="#topo">
+    <a class="marca" href="#topo" aria-label="DumTech Hub">
       <span class="selo">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
           <path d="M4 4h6v6H4z M14 4h6v6h-6z M4 14h6v6H4z M14 14h6v6h-6z"/>
         </svg>
       </span>
-      DumTech Hub
+      <span class="marca-nome">DumTech Hub</span>
     </a>
     <nav>
       <a href="#montador">Montar kit</a>
+      <a href="passo-a-passo/" class="nav-passo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l5.5-3.5z"/></svg>Passo a passo</a>
       <a href="#integracoes">Integrações</a>
       <a href="#como-funciona">Como funciona</a>
+      <a href="#contato">Contato</a>
     </nav>
+    <a class="botao botao-fantasma botao-topo-passo" href="passo-a-passo/" title="Vídeos de como fazer cada coisa no DumTech Hub" aria-label="Passo a passo: vídeos">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l5.5-3.5z"/></svg>
+    </a>
     <a class="botao botao-fantasma botao-topo-baixar" href="baixar/" title="Baixar o DumTech Hub para Windows">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11 M7 10l5 5 5-5 M5 20h14"/></svg>
       <span>Baixar</span>
@@ -94,6 +101,10 @@
           <a class="botao botao-claro" href="#integracoes">Ver integrações</a>
         </div>
         <p class="acoes-nota" data-entra="4">Para Windows 10 e 11 · instale agora e ative os módulos quando tiver a chave</p>
+        <p class="hero-contato" data-entra="4">
+          Quer conversar antes?
+          <a href="https://wa.me/5511978042160?text=Ol%C3%A1!%20Vi%20a%20p%C3%A1gina%20da%20DumTech%20e%20quero%20tirar%20uma%20d%C3%BAvida%20sobre%20o%20sistema." rel="noopener" target="_blank">Chame a DumTech no WhatsApp</a>
+        </p>
 
         <div class="marcas" data-entra="5">
           <span>Funciona offline</span>
@@ -124,6 +135,9 @@
       <div class="secao-cabeca">
         <p class="sobrenome">Monte seu kit</p>
         <h2>Escolha os módulos e veja o que passa a acontecer sozinho</h2>
+        <p class="preco-esclarecimento">
+          Cada módulo custa R$ 49,90. Compre apenas o que precisa, ou escolha um kit com desconto.
+        </p>
         <p>
           Cada módulo funciona por conta própria. Juntos, eles trocam informação:
           o painel ao lado acende as ligações que o seu kit ativa — e mostra,
@@ -254,6 +268,62 @@
     </div>
   </section>
 
+  <!-- -------------------------------------------------------- contato ---- -->
+  <!-- Antes do fechamento: quem ainda tem duvida encontra uma pessoa aqui, em
+       vez de sair da pagina. O link abre o WhatsApp com a mensagem ja escrita -
+       o cartao ao lado mostra exatamente o que vai ser enviado. -->
+  <section class="secao" id="contato">
+    <div class="envolve">
+      <div class="contato">
+        <div class="contato-texto">
+          <p class="sobrenome">Fale com a gente</p>
+          <h2>Prefere conversar antes de escolher?</h2>
+          <p class="contato-chamada">
+            Chame a DumTech no WhatsApp. A gente tira as suas dúvidas e ajuda
+            a montar o kit certo para a sua empresa.
+          </p>
+          <ul class="contato-perguntas">
+            <li>Qual kit serve para o meu negócio?</li>
+            <li>Funciona no computador que eu já tenho?</li>
+            <li>Vocês me ajudam a instalar?</li>
+          </ul>
+          <div class="contato-acoes">
+            <a class="botao botao-branco" href="https://wa.me/5511978042160?text=Ol%C3%A1!%20Vi%20a%20p%C3%A1gina%20da%20DumTech%20e%20quero%20tirar%20uma%20d%C3%BAvida%20sobre%20o%20sistema." rel="noopener" target="_blank">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 11.6a8.6 8.6 0 0 1-12.7 7.5L3.5 20.5l1.4-4.1A8.6 8.6 0 1 1 20.5 11.6z"/><path d="M9 8.4c.3-.5.7-.5 1-.4l.9 2-.7.9a6 6 0 0 0 2.9 2.9l.9-.7 2 .9c.1.3.1.7-.4 1-1.3.9-3.3.3-5-1.4S8.1 9.7 9 8.4z" fill="currentColor" stroke="none"/></svg>
+              Chamar no WhatsApp
+            </a>
+            <a class="botao botao-claro" href="tel:+5511978042160">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h3.5l1.6 4-2.1 1.4a10.5 10.5 0 0 0 6.6 6.6L16 13.9l4 1.6V19a1.5 1.5 0 0 1-1.6 1.5A15.5 15.5 0 0 1 3.5 5.6 1.5 1.5 0 0 1 5 4z"/></svg>
+              (11) 97804-2160
+            </a>
+          </div>
+        </div>
+
+        <!-- o cartao inteiro tambem leva ao WhatsApp, mas o botao e o caminho
+             de quem usa teclado: aqui fica fora do tab e do leitor de tela -->
+        <a class="contato-conversa" href="https://wa.me/5511978042160?text=Ol%C3%A1!%20Vi%20a%20p%C3%A1gina%20da%20DumTech%20e%20quero%20tirar%20uma%20d%C3%BAvida%20sobre%20o%20sistema."
+           rel="noopener" target="_blank" tabindex="-1" aria-hidden="true">
+          <span class="conversa-topo">
+            <span class="selo">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h6v6H4z M14 4h6v6h-6z M4 14h6v6H4z M14 14h6v6h-6z"/></svg>
+            </span>
+            <span class="conversa-quem">
+              <strong>DumTech</strong>
+              <small>WhatsApp · (11) 97804-2160</small>
+            </span>
+          </span>
+          <span class="conversa-corpo">
+            <span class="balao">
+              Olá! Vi a página da DumTech e quero tirar uma dúvida sobre o sistema.
+              <small>agora</small>
+            </span>
+          </span>
+          <span class="conversa-pe">A mensagem já vai escrita. É só enviar.</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
   <!-- --------------------------------------------------------- fechar ---- -->
   <section class="secao" id="fechar">
     <div class="envolve">
@@ -361,6 +431,14 @@
     </button>
   </div>
 </aside>
+
+<!-- contato sempre a um toque, em qualquer ponto da rolagem. Sobe sozinho
+     quando a barra de valor aparece, para nao cobrir o "Fechar pedido". -->
+<a class="contato-flutuante" href="https://wa.me/5511978042160?text=Ol%C3%A1!%20Vi%20a%20p%C3%A1gina%20da%20DumTech%20e%20quero%20tirar%20uma%20d%C3%BAvida%20sobre%20o%20sistema."
+   rel="noopener" target="_blank" aria-label="Falar com a DumTech no WhatsApp">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 11.6a8.6 8.6 0 0 1-12.7 7.5L3.5 20.5l1.4-4.1A8.6 8.6 0 1 1 20.5 11.6z"/><path d="M9 8.4c.3-.5.7-.5 1-.4l.9 2-.7.9a6 6 0 0 0 2.9 2.9l.9-.7 2 .9c.1.3.1.7-.4 1-1.3.9-3.3.3-5-1.4S8.1 9.7 9 8.4z" fill="currentColor" stroke="none"/></svg>
+  <span>Fale conosco</span>
+</a>
 
 <script type="module" src="js/app.js"></script>
 </body>

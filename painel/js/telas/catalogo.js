@@ -9,6 +9,7 @@ import { contagem, data, dinheiro, numero } from "../formato.js";
 import { abrirGaveta, fecharGaveta, recarregar } from "../painel.js";
 import { modulo } from "../modulos.js";
 import { montarAnuncio, situacaoAnuncio } from "../anuncios.js";
+import { traduzirExclusao } from "../exclusao.js";
 import {
   agir, cartao, confirmar, el, icone, limpar, pilula, pilulaModulo, recado, tabela,
 } from "../ui.js";
@@ -46,15 +47,16 @@ export async function catalogo(alvo) {
       numero(porCodigo.get(p.codigo)?.aberturas_30d || 0),
       p.ativo ? pilula("Sim", "ok") : pilula("Fora de linha", "neutro"),
     ],
-    { aoClicar: (p) => editarProduto(p) }
+    { aoClicar: (p) => editarProduto(p, porCodigo.get(p.codigo)) }
   )));
 
   alvo.append(el("p", { classe: "rodape-entrada",
     texto: "Kits (pacotes com desconto) ficam na tela Kits, no menu ao lado." }));
 }
 
-function editarProduto(produto) {
+function editarProduto(produto, uso = null) {
   const novo = !produto;
+  const clientes = Number(uso?.clientes || 0);
   const campos = {
     codigo: campo("Código", produto?.codigo || "", { placeholder: "CRM", disabled: !novo }),
     nome: campo("Nome", produto?.nome || "", { placeholder: "DumTech CRM" }),
@@ -93,6 +95,10 @@ function editarProduto(produto) {
               }, { feito: "Catálogo atualizado. O site já mostra o novo valor." });
             },
           }),
+          novo ? null : el("button", {
+            classe: "botao botao-perigo", texto: "Excluir",
+            onclick: (e) => excluirProduto(e.target, produto, clientes),
+          }),
           el("button", { classe: "botao botao-fantasma", texto: "Cancelar", onclick: fecharGaveta }),
         ]),
       ]),
@@ -105,6 +111,42 @@ function editarProduto(produto) {
     ]),
   });
   return destino;
+}
+
+/**
+ * Excluir um módulo do catálogo. Quem já tem o módulo continua precisando
+ * dele: o banco não deixa excluir enquanto ele estiver em alguma licença (nem
+ * em kit, teste ou anúncio) - e a tela diz onde ele está e oferece tirar de linha.
+ */
+function excluirProduto(botao, produto, clientes) {
+  const tirarDeLinha = () => agir(botao, async () => {
+    await atualizar("produtos", { id: `eq.${produto.id}` }, { ativo: false });
+    fecharGaveta();
+    await recarregar();
+  }, { feito: "Módulo fora de linha: some da loja, e quem tem continua usando." });
+
+  if (clientes > 0) {
+    if (!produto.ativo) {
+      recado(`${contagem(clientes, "cliente tem", "clientes têm")} ${produto.nome}: para excluir, ` +
+             "tire o módulo das licenças antes (na ficha de cada um).", "erro");
+      return;
+    }
+    if (confirmar(`${contagem(clientes, "cliente tem", "clientes têm")} ${produto.nome} e continuam precisando dele, ` +
+                  "então ele não pode ser excluído.\n\nTirar de linha? Ele some da loja e de venda nova; " +
+                  "quem tem continua usando.")) tirarDeLinha();
+    return;
+  }
+  if (!confirmar(`Excluir o módulo ${produto.nome} (${produto.codigo}) do catálogo?\n\n` +
+                 "Nenhum cliente tem este módulo. Ele some do painel e da loja.")) return;
+  agir(botao, async () => {
+    try {
+      await apagar("produtos", { id: `eq.${produto.id}` }, { conferir: true });
+    } catch (erro) {
+      throw traduzirExclusao(erro, `O módulo ${produto.nome}`);
+    }
+    fecharGaveta();
+    await recarregar();
+  }, { feito: `Módulo ${produto.nome} excluído.`, erro: "" });
 }
 
 // =============================================================== anúncios ====

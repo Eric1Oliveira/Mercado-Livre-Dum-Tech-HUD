@@ -1,0 +1,33 @@
+{
+ "duracao": 30.3,
+ "passos": [
+  {
+   "t": 2.8,
+   "texto": "Abra Vendas: ele começa no Balcão"
+  },
+  {
+   "t": 4.8,
+   "texto": "Bipe o código de barras do produto"
+  },
+  {
+   "t": 9.6,
+   "texto": "Ou digite o nome e escolha na lista"
+  },
+  {
+   "t": 15.4,
+   "texto": "O cliente é opcional"
+  },
+  {
+   "t": 18.5,
+   "texto": "Clique em Receber (ou aperte F12)"
+  },
+  {
+   "t": 20.6,
+   "texto": "Digite quanto o cliente deu: o troco aparece na hora"
+  },
+  {
+   "t": 24.6,
+   "texto": "Confirme o recebimento"
+  }
+ ]
+}

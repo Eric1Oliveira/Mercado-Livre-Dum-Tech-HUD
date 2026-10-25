@@ -92,7 +92,7 @@ class ContasMixin:
 
     def atualizar_conta(self, conta: Conta) -> Conta:
         if conta.id is None:
-            raise FinanceiroError("Conta sem identificacao.")
+            raise FinanceiroError("Conta sem identificação.")
         self._validar_conta(conta)
         try:
             self.db.execute(
@@ -124,8 +124,8 @@ class ContasMixin:
         """Conta com movimento nao some: vira inativa, como o produto no Estoque."""
         if self._tem_movimento(conta_id):
             raise FinanceiroError(
-                "Esta conta ja tem movimento. Use 'Inativar' para tira-la da lista "
-                "sem perder o historico."
+                "Esta conta já tem movimento. Use 'Inativar' para tirá-la da lista "
+                "sem perder o histórico."
             )
         self.db.execute("DELETE FROM contas WHERE id = ?", (conta_id,))
 
@@ -140,7 +140,7 @@ class ContasMixin:
     ) -> Transferencia:
         valor = dinheiro(valor)
         if valor <= 0:
-            raise FinanceiroError("O valor da transferencia precisa ser maior que zero.")
+            raise FinanceiroError("O valor da transferência precisa ser maior que zero.")
         if origem_id == destino_id:
             raise FinanceiroError("Escolha duas contas diferentes.")
 
@@ -151,7 +151,7 @@ class ContasMixin:
 
         data = data or hoje_iso()
         if ler_data(data) is None:
-            raise FinanceiroError("Data da transferencia invalida.")
+            raise FinanceiroError("Data da transferência inválida.")
 
         momento = agora()
         cursor = self.db.execute(
@@ -201,10 +201,10 @@ class ContasMixin:
         if not conta.nome.strip():
             raise FinanceiroError("Informe o nome da conta.")
         if conta.tipo not in CONTA_LABEL:
-            raise FinanceiroError("Escolha o tipo da conta (caixa, banco ou cartao).")
+            raise FinanceiroError("Escolha o tipo da conta (caixa, banco ou cartão).")
 
     @staticmethod
     def _erro_de_nome(conta: Conta, erro: Exception) -> Exception:
         if "UNIQUE" in str(erro):
-            return FinanceiroError(f"Ja existe uma conta chamada '{conta.nome.strip()}'.")
+            return FinanceiroError(f"Já existe uma conta chamada '{conta.nome.strip()}'.")
         return erro

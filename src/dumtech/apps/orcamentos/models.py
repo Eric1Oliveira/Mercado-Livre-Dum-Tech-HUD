@@ -41,7 +41,7 @@ MOTIVO_SEM_RESPOSTA = "sem_resposta"
 
 MOTIVOS_LABEL = {
     MOTIVO_PRECO: "Achou caro",
-    MOTIVO_PRAZO: "Prazo nao serviu",
+    MOTIVO_PRAZO: "Prazo não serviu",
     MOTIVO_CONCORRENTE: "Comprou de outro",
     MOTIVO_DESISTIU: "Desistiu da compra",
     MOTIVO_SEM_RESPOSTA: "Nunca respondeu",
@@ -55,7 +55,7 @@ CONDICOES = (
     "3x sem juros",
     "30 dias",
     "30/60 dias",
-    "Cartao em ate 12x",
+    "Cartão em até 12x",
 )
 
 #: quantos dias uma proposta costuma valer

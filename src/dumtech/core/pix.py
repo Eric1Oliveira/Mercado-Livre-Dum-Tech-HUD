@@ -104,8 +104,8 @@ def normalizar(chave: str) -> str:
     if tipo == ALEATORIA:
         return texto.lower()
     raise PixError(
-        "Essa chave Pix nao parece valida. Use CPF, CNPJ, telefone, e-mail ou "
-        "a chave aleatoria que o banco gerou."
+        "Essa chave Pix não parece válida. Use CPF, CNPJ, telefone, e-mail ou "
+        "a chave aleatória que o banco gerou."
     )
 
 
@@ -120,7 +120,7 @@ def payload(cobranca: CobrancaPix) -> str:
     """O texto do "copia e cola" - e o mesmo que vai dentro do QR."""
     chave = normalizar(cobranca.chave)
     if float(cobranca.valor or 0) < 0:
-        raise PixError("O valor da cobranca nao pode ser negativo.")
+        raise PixError("O valor da cobrança não pode ser negativo.")
 
     conta = _campo("00", GUI) + _campo("01", chave)
     partes = [
@@ -155,11 +155,11 @@ def campos(texto: str) -> dict[str, str]:
         try:
             tamanho = int(texto[posicao + 2:posicao + 4])
         except ValueError as erro:
-            raise PixError(f"Campo {cid} com tamanho ilegivel.") from erro
+            raise PixError(f"Campo {cid} com tamanho ilegível.") from erro
         inicio = posicao + 4
         fim = inicio + tamanho
         if fim > len(texto):
-            raise PixError(f"Campo {cid} diz ter {tamanho} e nao cabe na cadeia.")
+            raise PixError(f"Campo {cid} diz ter {tamanho} e não cabe na cadeia.")
         lidos[cid] = texto[inicio:fim]
         posicao = fim
     return lidos

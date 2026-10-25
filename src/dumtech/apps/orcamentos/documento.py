@@ -37,7 +37,7 @@ def proposta_a4(orcamento: Orcamento, empresa=None, paths=None) -> str:
     if orcamento.vale_ate:
         validade = fmt.data(orcamento.vale_ate)
     elif orcamento.validade_dias:
-        validade = f"{fmt.dias(orcamento.validade_dias)} apos o envio"
+        validade = f"{fmt.dias(orcamento.validade_dias)} após o envio"
     else:
         validade = ""
 
@@ -46,12 +46,12 @@ def proposta_a4(orcamento: Orcamento, empresa=None, paths=None) -> str:
         doc.titulo("Proposta comercial", orcamento.numero, fmt.data(orcamento.data)),
         doc.campos([
             ("Cliente", orcamento.cliente),
-            ("Proposta valida ate", validade),
-            ("Condicao de pagamento", orcamento.condicao_pagamento),
+            ("Proposta válida até", validade),
+            ("Condição de pagamento", orcamento.condicao_pagamento),
             ("Prazo de entrega", orcamento.prazo_entrega),
         ]),
         doc.tabela(
-            ["Descricao", "Qtd.", "Valor unit.", "Desconto", "Total"],
+            ["Descrição", "Qtd.", "Valor unit.", "Desconto", "Total"],
             itens,
             alinhamentos=[doc.ESQUERDA, doc.DIREITA, doc.DIREITA, doc.DIREITA,
                           doc.DIREITA],
@@ -59,7 +59,7 @@ def proposta_a4(orcamento: Orcamento, empresa=None, paths=None) -> str:
         ),
         doc.totais(resumo, ("Total da proposta", fmt.moeda(orcamento.total))),
         _selo(orcamento),
-        doc.secao("Observacoes", orcamento.observacoes),
+        doc.secao("Observações", orcamento.observacoes),
         doc.rodape(empresa, "Documento sem valor fiscal"),
     ])
 
@@ -68,5 +68,5 @@ def _selo(orcamento: Orcamento) -> str:
     if orcamento.status == APROVADO:
         return doc.destaque("Proposta aprovada pelo cliente")
     if orcamento.status == RECUSADO:
-        return doc.destaque("Proposta nao aprovada")
+        return doc.destaque("Proposta não aprovada")
     return ""

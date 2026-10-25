@@ -27,9 +27,15 @@ from ..repository import FinanceiroRepository, dividir
 UNICO = ""
 
 REPETICAO_OPCOES = [
-    ("Lancamento unico", UNICO),
-    ("Parcelado (dividir o valor)", PARCELAMENTO),
-    ("Repetido (mesmo valor varias vezes)", RECORRENCIA),
+    ("Lançamento único", UNICO),
+    ("Parcelado (divide o valor total)", PARCELAMENTO),
+    ("Recorrente (mesmo valor a cada período)", RECORRENCIA),
+]
+
+#: despesa fixa e o que se paga todo mes, use ou nao; variavel acompanha o movimento
+NATUREZA_OPCOES = [
+    ("Variável (compras, comissões, frete)", False),
+    ("Fixa (aluguel, internet, salários)", True),
 ]
 
 
@@ -46,17 +52,21 @@ class LancamentoDialog(FormDialog):
         self.editando = lancamento is not None
         self.criados: list[Lancamento] = []
         super().__init__(
-            "Editar lancamento" if self.editando else "Novo lancamento",
+            "Editar lançamento" if self.editando else "Novo lançamento",
             "Contas a receber e contas a pagar",
             parent,
             largura=620,
         )
 
         self.tipo = form.escolha(
-            [("Receita (entrada de dinheiro)", RECEITA), ("Despesa (saida)", DESPESA)],
+            [("Receita (entrada de dinheiro)", RECEITA), ("Despesa (saída)", DESPESA)],
             self.lancamento.tipo,
         )
+        self.tipo.currentIndexChanged.connect(self._tipo_mudou)
         self.add_row("Tipo", self.tipo)
+
+        self.natureza = form.escolha(NATUREZA_OPCOES, self.lancamento.fixa)
+        self.add_row("Despesa", self.natureza)
 
         # o que ja foi lancado antes volta como sugestao: "Aluguel", "Energia"
         # e "Fornecedor X" sao digitados todo mes
@@ -64,7 +74,7 @@ class LancamentoDialog(FormDialog):
             self.lancamento.descricao, "Ex.: Venda do pedido 1042",
             self.repository.descricoes(),
         )
-        self.add_row("Descricao", self.descricao)
+        self.add_row("Descrição", self.descricao)
 
         self.valor = form.dinheiro(self.lancamento.valor)
         self.valor.valueChanged.connect(self._atualizar_nota)
@@ -98,19 +108,19 @@ class LancamentoDialog(FormDialog):
             for chave, rotulo in FREQUENCIAS:
                 self.frequencia.addItem(rotulo, chave)
             self.add_row(
-                "Repeticao",
+                "Recorrência",
                 form.linha(self.repeticao, self.quantidade, self.frequencia),
             )
             # editar nao mexe na situacao: depois que o lancamento existe, quem
             # move dinheiro e a baixa - senao o saldo da conta e o historico
             # ficariam contando historias diferentes
             self.pago = form.escolha(
-                [("Em aberto", False), ("Ja foi pago/recebido", True)], False
+                [("Em aberto", False), ("Já foi pago/recebido", True)], False
             )
-            self.add_row("Situacao", self.pago)
+            self.add_row("Situação", self.pago)
 
-        self.observacoes = form.area(self.lancamento.observacoes, "Anotacoes (opcional)", 60)
-        self.add_row("Observacoes", self.observacoes)
+        self.observacoes = form.area(self.lancamento.observacoes, "Anotações (opcional)", 60)
+        self.add_row("Observações", self.observacoes)
 
         self.add_note("")
         self._nota = self.extras.itemAt(0).widget()
@@ -118,12 +128,17 @@ class LancamentoDialog(FormDialog):
             self._modo_mudou()
         else:
             self._nota.setVisible(False)
+        self._tipo_mudou()
         self.descricao.setFocus()
 
     def _contas(self) -> list[tuple[str, int]]:
         contas = [(f"{c.nome}  ({c.tipo_label})", c.id)
                   for c in self.repository.listar_contas()]
         return [("Sem conta definida", 0)] + contas
+
+    def _tipo_mudou(self) -> None:
+        # receita nao e fixa nem variavel: a linha so aparece para despesa
+        self.form.setRowVisible(self.natureza, self.tipo.currentData() == DESPESA)
 
     # -------------------------------------------------------------------- modo
     @property
@@ -137,6 +152,9 @@ class LancamentoDialog(FormDialog):
         self.pago.setEnabled(not em_serie)
         if em_serie:
             self.pago.setCurrentIndex(0)
+        # o que se repete todo periodo quase sempre e despesa fixa
+        if self.modo == RECORRENCIA:
+            self.natureza.setCurrentIndex(self.natureza.findData(True))
         self._nota.setVisible(em_serie)
         self._atualizar_nota()
 
@@ -169,6 +187,8 @@ class LancamentoDialog(FormDialog):
         self.lancamento.conta_id = self.conta.currentData() or 0
         self.lancamento.forma_pagamento = self.forma.currentText()
         self.lancamento.observacoes = self.observacoes.toPlainText()
+        self.lancamento.fixa = (self.lancamento.tipo == DESPESA
+                                and bool(self.natureza.currentData()))
 
         if self.modo != UNICO:
             # a serie nasce em aberto: cada parcela e baixada quando for paga

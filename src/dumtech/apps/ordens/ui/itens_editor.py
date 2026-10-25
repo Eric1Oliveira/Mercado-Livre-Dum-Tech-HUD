@@ -39,7 +39,7 @@ class ItensEditor(QWidget):
         entrada.setSpacing(Space.sm)
         self.tipo = form.escolha(TIPO_ITEM_OPCOES, SERVICO)
         entrada.addWidget(self.tipo, 1)
-        self.descricao = form.texto(dica="Material aplicado ou servico feito")
+        self.descricao = form.texto(dica="Material aplicado ou serviço feito")
         self.descricao.returnPressed.connect(self.adicionar)
         entrada.addWidget(self.descricao, 3)
         self.quantidade = form.quantidade(1, casas=0)
@@ -55,7 +55,7 @@ class ItensEditor(QWidget):
         self.busca = BuscaCatalogo(self.descricao, catalogo)
         self.busca.escolhido.connect(self._usar_produto)
 
-        self.tabela = DataTable(["Tipo", "Descricao", "Qtd.", "Valor unit.", "Total"])
+        self.tabela = DataTable(["Tipo", "Descrição", "Qtd.", "Valor unit.", "Total"])
         # baixa de proposito: a lista costuma ter duas ou tres linhas, e cada
         # pixel gasto aqui empurra os blocos de detalhe para fora da tela
         self.tabela.setMinimumHeight(104)
@@ -63,7 +63,7 @@ class ItensEditor(QWidget):
         raiz.addWidget(self.tabela)
 
         rodape = QHBoxLayout()
-        self.resumo = label("Nenhum item lancado", "muted")
+        self.resumo = label("Nenhum item lançado", "muted")
         rodape.addWidget(self.resumo, 1)
         remover = Button("Remover item", "trash", "danger")
         remover.clicked.connect(self.remover)
@@ -152,9 +152,9 @@ class ItensEditor(QWidget):
             pecas = sum(i.total for i in self._itens if i.tipo == PECA)
             servicos = sum(i.total for i in self._itens if i.tipo == SERVICO)
             self.resumo.setText(
-                f"Materiais: {fmt.moeda(pecas)}     Servicos: {fmt.moeda(servicos)}"
+                f"Materiais: {fmt.moeda(pecas)}     Serviços: {fmt.moeda(servicos)}"
                 f"     Total: {fmt.moeda(self.total)}"
             )
         else:
-            self.resumo.setText("Nenhum item lancado")
+            self.resumo.setText("Nenhum item lançado")
         self.changed.emit()

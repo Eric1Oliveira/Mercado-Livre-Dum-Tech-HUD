@@ -72,7 +72,7 @@ class AcessoriosPicker(QWidget):
             linha.strip() for linha in texto.splitlines()
             if linha.strip() and linha.strip().lower() not in conhecidos
         ]
-        self.outros = form.texto(", ".join(extras), "Outros (separe por virgula)")
+        self.outros = form.texto(", ".join(extras), "Outros (separe por vírgula)")
         raiz.addWidget(self.outros)
 
     def texto(self) -> str:
@@ -101,8 +101,8 @@ class OrdemDialog(FormDialog):
         self.ordem = ordem or Ordem(numero=repository.proximo_numero())
         self.editando = ordem is not None
         super().__init__(
-            f"Ordem {self.ordem.numero}" if self.editando else "Nova ordem de servico",
-            "O basico para abrir. O resto so se o seu servico precisar.",
+            f"Ordem {self.ordem.numero}" if self.editando else "Nova ordem de serviço",
+            "O básico para abrir. O resto só se o seu serviço precisar.",
             parent,
             largura=760,
             rolagem=True,
@@ -143,7 +143,7 @@ class OrdemDialog(FormDialog):
     # -------------------------------------------------------------- o servico
     def _o_servico(self) -> None:
         self.form.addRow(separator())
-        self.form.addRow(label("Pecas e servicos", "section"))
+        self.form.addRow(label("Peças e serviços", "section"))
 
         self.itens = ItensEditor(catalogo=self._catalogo)
         self.itens.set_items(self.ordem.itens)
@@ -194,9 +194,9 @@ class OrdemDialog(FormDialog):
         self.status.setEnabled(not self.editando)
         tem_execucao = bool(o.tecnico.strip() or o.diagnostico.strip())
         self.bloco_execucao = Secao(
-            "Execucao", "responsavel, garantia, o que foi feito", aberta=tem_execucao
+            "Execução", "responsável, garantia, o que foi feito", aberta=tem_execucao
         )
-        self.bloco_execucao.add_row("Responsavel", self.tecnico)
+        self.bloco_execucao.add_row("Responsável", self.tecnico)
         self.bloco_execucao.add_row("O que foi feito", self.diagnostico)
         self.bloco_execucao.add_row(
             "Garantia (dias)", form.linha(self.garantia, "Etapa", self.status)
@@ -207,15 +207,15 @@ class OrdemDialog(FormDialog):
         # --- controle interno
         self.numero = form.texto(o.numero, "Ex.: OS-2026-0001")
         self.aberta_em = form.data(o.aberta_em)
-        self.observacoes = form.area(o.observacoes, "So voce ve isto", 60)
+        self.observacoes = form.area(o.observacoes, "Só você vê isto", 60)
         tem_controle = bool(o.observacoes.strip())
         self.bloco_controle = Secao(
-            "Numero e anotacoes internas", "numero, data de entrada, anotacoes",
+            "Número e anotações internas", "número, data de entrada, anotações",
             aberta=tem_controle,
         )
-        self.bloco_controle.add_row("Numero", form.linha(self.numero, "Entrada",
+        self.bloco_controle.add_row("Número", form.linha(self.numero, "Entrada",
                                                          self.aberta_em))
-        self.bloco_controle.add_row("Anotacoes internas", self.observacoes)
+        self.bloco_controle.add_row("Anotações internas", self.observacoes)
         self.bloco_controle.marcar_preenchida(tem_controle)
         self.extras.addWidget(self.bloco_controle)
 
@@ -246,7 +246,7 @@ class OrdemDialog(FormDialog):
             )
         else:
             self._nota.setText(
-                "Sem itens lancados: o total da ordem e o valor digitado acima."
+                "Sem itens lançados: o total da ordem é o valor digitado acima."
             )
 
     # ------------------------------------------------------------------ gravar

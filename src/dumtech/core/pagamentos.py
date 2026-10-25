@@ -67,8 +67,8 @@ PIX = "Pix"
 FORMAS = (DINHEIRO, PIX, "Cartao de debito", "Cartao de credito", "Boleto", "Prazo")
 
 SEM_INTERNET = (
-    "Voce esta sem internet. Conecte o computador para mexer em Pagamentos - "
-    "o balcao continua vendendo normalmente."
+    "Você está sem internet. Conecte o computador para mexer em Pagamentos - "
+    "o balcão continua vendendo normalmente."
 )
 
 
@@ -173,12 +173,12 @@ class PagamentosService:
     def entrar(self, codigo: str) -> dict:
         texto = (codigo or "").strip()
         if not re.fullmatch(r"\d{6}", texto):
-            raise PagamentosError("Digite os 6 numeros que chegaram no e-mail.", "formato")
+            raise PagamentosError("Digite os 6 números que chegaram no e-mail.", "formato")
         return self._chamar("entrar", {**self._identidade(), "codigo": texto})
 
     def salvar_pix(self, nova: str) -> dict:
         if self.acesso is None:
-            raise PagamentosError("O acesso a Pagamentos venceu. Entre de novo com um codigo.",
+            raise PagamentosError("O acesso a Pagamentos venceu. Entre de novo com um código.",
                                   "sessao_vencida")
         texto = (nova or "").strip()
         chave = normalizar_pix(texto) if texto else ""  # levanta PixError se nao for chave
@@ -219,7 +219,7 @@ class PagamentosService:
         """
         if _abrir(pacote) is None:
             if obrigatorio:
-                raise PagamentosError("A resposta do servidor nao confere. Nada foi alterado.",
+                raise PagamentosError("A resposta do servidor não confere. Nada foi alterado.",
                                       "assinatura")
             logger.warning("Chave Pix com assinatura invalida recebida: ignorada")
             return False
@@ -230,11 +230,11 @@ class PagamentosService:
 
     def salvar_formas(self, ocultas) -> tuple[str, ...]:
         if self.acesso is None:
-            raise PagamentosError("O acesso a Pagamentos venceu. Entre de novo com um codigo.",
+            raise PagamentosError("O acesso a Pagamentos venceu. Entre de novo com um código.",
                                   "sessao_vencida")
         lista = [forma for forma in FORMAS if forma in set(ocultas or ())]
         if len(lista) == len(FORMAS):
-            raise PagamentosError("Deixe pelo menos uma forma de pagamento aparecendo no balcao.",
+            raise PagamentosError("Deixe pelo menos uma forma de pagamento aparecendo no balcão.",
                                   "formas")
         self.settings.set(SECAO, "formas_ocultas", lista)
         self.settings.save()
@@ -245,7 +245,7 @@ class PagamentosService:
         licenca = self._licenca()
         if not self.pode_usar:
             raise PagamentosError(
-                "Ative a licenca deste computador para usar a area de Pagamentos.", "sem_licenca")
+                "Ative a licença deste computador para usar a área de Pagamentos.", "sem_licenca")
         return {"chave": licenca.key, "maquina": licenca.machine,
                 "computador": assinatura.computador_id()}
 
@@ -256,12 +256,12 @@ class PagamentosService:
             raise PagamentosError(SEM_INTERNET, "sem_internet") from erro
         except (FuncaoIndisponivel, SupabaseError) as erro:
             raise PagamentosError(
-                "A protecao de pagamentos esta indisponivel agora. Tente de novo em instantes.",
+                "A proteção de pagamentos está indisponível agora. Tente de novo em instantes.",
                 "indisponivel") from erro
         if not isinstance(resposta, dict):
             raise PagamentosError("Resposta inesperada do servidor.", "servidor")
         if not resposta.get("ok"):
             raise PagamentosError(
-                str(resposta.get("mensagem") or "Nao foi possivel concluir agora."),
+                str(resposta.get("mensagem") or "Não foi possível concluir agora."),
                 str(resposta.get("erro") or "erro"))
         return resposta

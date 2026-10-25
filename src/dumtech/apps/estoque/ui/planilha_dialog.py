@@ -36,7 +36,7 @@ def _ler_arquivo(caminho: Path) -> str:
         except UnicodeDecodeError:
             continue
     raise EstoqueError(
-        "Nao foi possivel ler o arquivo. Salve a planilha como CSV UTF-8 e tente de novo."
+        "Não foi possível ler o arquivo. Salve a planilha como CSV UTF-8 e tente de novo."
     )
 
 
@@ -70,7 +70,7 @@ def importar(parent: QWidget, repository: EstoqueRepository) -> bool:
         texto = _ler_arquivo(Path(caminho))
         previa = repository.prever_importacao(texto)
     except EstoqueError as erro:
-        QMessageBox.warning(parent, "Nao foi possivel ler a planilha", str(erro))
+        QMessageBox.warning(parent, "Não foi possível ler a planilha", str(erro))
         return False
 
     dialogo = PreviaDialog(previa, Path(caminho).name, parent)
@@ -80,12 +80,12 @@ def importar(parent: QWidget, repository: EstoqueRepository) -> bool:
     try:
         criados, atualizados = repository.importar(texto)
     except EstoqueError as erro:
-        QMessageBox.warning(parent, "Nao foi possivel importar", str(erro))
+        QMessageBox.warning(parent, "Não foi possível importar", str(erro))
         return False
 
     QMessageBox.information(
         parent,
-        "Importacao concluida",
+        "Importação concluída",
         f"{criados} produto(s) criado(s) e {atualizados} atualizado(s).",
     )
     return True
@@ -98,7 +98,7 @@ class PreviaDialog(QDialog):
         self, previa: PreviaImportacao, arquivo: str, parent: QWidget | None = None
     ) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Conferir importacao")
+        self.setWindowTitle("Conferir importação")
         self.setModal(True)
         self.setMinimumSize(680, 460)
 
@@ -106,26 +106,26 @@ class PreviaDialog(QDialog):
         raiz.setContentsMargins(26, 24, 26, 22)
         raiz.setSpacing(Space.md)
 
-        raiz.addWidget(label("Conferir importacao", "section"))
+        raiz.addWidget(label("Conferir importação", "section"))
         raiz.addWidget(label(arquivo, "muted"))
         raiz.addWidget(separator())
 
         resumo = (
-            f"{len(previa.criar)} produto(s) serao criados   ·   "
-            f"{len(previa.atualizar)} serao atualizados"
+            f"{len(previa.criar)} produto(s) serão criados   ·   "
+            f"{len(previa.atualizar)} serão atualizados"
         )
         raiz.addWidget(label(resumo, "strong"))
         raiz.addWidget(
             label(
-                "Em produtos que ja existem, a quantidade da planilha e ignorada: "
-                "quem manda no saldo e o historico de movimentacoes.",
+                "Em produtos que já existem, a quantidade da planilha é ignorada: "
+                "quem manda no saldo é o histórico de movimentações.",
                 "dim",
             )
         )
 
         if previa.recusados:
             raiz.addWidget(
-                label(f"{len(previa.recusados)} linha(s) serao ignoradas:", "muted")
+                label(f"{len(previa.recusados)} linha(s) serão ignoradas:", "muted")
             )
             tabela = DataTable(["Linha", "Motivo"])
             tabela.fill(

@@ -28,7 +28,8 @@
 
 * { box-sizing: border-box; }
 
-html { scroll-behavior: smooth; }
+/* sem o toque duplo que aproxima (o resto do "sem zoom": meta + js/sem-zoom.js) */
+html { scroll-behavior: smooth; touch-action: manipulation; }
 
 body {
   margin: 0;
@@ -38,6 +39,10 @@ body {
   font-size: 16px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
+  /* nada pode alargar a pagina no celular (solta o zoom e o topo "foge");
+     `clip` nao cria rolagem propria, entao o topo sticky continua valendo */
+  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 h1, h2, h3 { margin: 0; line-height: 1.12; letter-spacing: -.022em; font-weight: 800; }
@@ -90,6 +95,13 @@ a { color: inherit; }
   padding: 6px 0; border-bottom: 2px solid transparent; transition: color var(--transicao);
 }
 .topo nav a:hover { color: var(--tinta); }
+/* "Passo a passo": o item do menu com o icone de play (videos de como usar) */
+.topo nav .nav-passo { display: inline-flex; align-items: center; gap: 6px; color: var(--violeta-forte); }
+.topo nav .nav-passo svg { width: 17px; height: 17px; }
+.topo nav .nav-passo:hover { color: var(--violeta); }
+/* no celular o menu some: o Passo a passo fica como botao so com o icone */
+.topo .botao-topo-passo { display: none; padding: 9px; color: var(--violeta-forte); }
+.topo .botao-topo-passo svg { width: 19px; height: 19px; }
 
 /* ----------------------------------------------------------------- botões -- */
 .botao {
@@ -115,6 +127,8 @@ a { color: inherit; }
 /* download sempre a vista: no topo (inclusive no celular), no hero e em "Como funciona" */
 .topo .botao-topo-baixar { padding: 9px 14px; }
 .hero .acoes-nota { margin-top: 12px; font-size: .86rem; color: rgba(255, 255, 255, .78); }
+.hero .hero-contato { margin-top: 6px; font-size: .9rem; color: rgba(255, 255, 255, .86); }
+.hero .hero-contato a { color: #fff; font-weight: 700; text-underline-offset: 3px; }
 .faixa-baixar {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 24px;
   margin-top: 18px; padding: 20px 22px; border-radius: var(--raio);
@@ -483,6 +497,81 @@ ul.inclui { padding: 0; margin: 16px 0 0; }
 .kit-espelho { background: var(--fundo); border: 1px solid var(--fio); border-radius: var(--raio); padding: 18px; }
 .kit-espelho .total { border-top-color: var(--fio-forte); }
 
+/* ------------------------------------------------------------ contato ----- */
+/* O mesmo violeta do hero: e a segunda vez que a pagina "fala alto". O cartao
+   da conversa e branco solido, como o "Qual é o seu negócio?" - mostra a
+   mensagem que vai ser enviada, para o clique nao ser um salto no escuro. */
+#contato { padding-bottom: 0; scroll-margin-top: 24px; }
+.contato {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
+  gap: clamp(28px, 4vw, 56px); align-items: center;
+  background: var(--violeta); color: #fff;
+  border-radius: 22px; padding: clamp(26px, 4.5vw, 48px);
+}
+.contato .sobrenome { color: rgba(255, 255, 255, .82); }
+.contato h2 { margin-top: 8px; max-width: 20ch; }
+.contato-chamada { margin-top: 14px; max-width: 52ch; font-size: 1.05rem; color: rgba(255, 255, 255, .9); }
+.contato-perguntas { list-style: none; padding: 0; margin: 20px 0 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.contato-perguntas li {
+  padding: 7px 13px; border-radius: 999px; font-size: .86rem; font-weight: 600;
+  background: rgba(255, 255, 255, .14); border: 1px solid rgba(255, 255, 255, .2);
+}
+.contato-acoes { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+.contato-acoes .botao-claro { font-variant-numeric: tabular-nums; }
+
+.contato-conversa {
+  display: block; text-decoration: none; color: var(--tinta);
+  background: var(--cartao); border-radius: calc(var(--raio) + 4px); overflow: hidden;
+  box-shadow: 0 18px 50px rgba(30, 14, 110, .28);
+  transition: transform var(--transicao);
+}
+.contato-conversa:hover { transform: translateY(-2px); }
+.conversa-topo { display: flex; align-items: center; gap: 11px; padding: 14px 16px; border-bottom: 1px solid var(--fio); }
+.conversa-topo .selo {
+  width: 36px; height: 36px; border-radius: 11px; flex: none;
+  background: var(--violeta); color: #fff; display: grid; place-items: center;
+}
+.conversa-topo .selo svg { width: 19px; height: 19px; }
+.conversa-quem { display: grid; }
+.conversa-quem strong { font-size: .95rem; }
+.conversa-quem small { font-size: .8rem; color: var(--tinta-fraca); font-variant-numeric: tabular-nums; }
+.conversa-corpo { display: flex; justify-content: flex-end; padding: 22px 16px 26px; background: var(--fundo); }
+.balao {
+  max-width: 88%; padding: 10px 12px 6px; border-radius: 14px 14px 4px 14px;
+  background: #dcf8c6; font-size: .92rem; line-height: 1.45;
+  box-shadow: 0 1px 1px rgba(23, 23, 31, .08);
+}
+.balao small { display: block; text-align: right; margin-top: 2px; font-size: .72rem; color: var(--tinta-fraca); }
+.conversa-pe { display: block; padding: 12px 16px; font-size: .84rem; font-weight: 600; color: var(--tinta-media); border-top: 1px solid var(--fio); }
+
+/* Verde do WhatsApp escurecido ate 5:1 com o branco: e o sinal que todo
+   mundo reconhece, sem perder leitura. */
+.contato-flutuante {
+  position: fixed; right: 20px; bottom: calc(20px + env(safe-area-inset-bottom)); z-index: 35;
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 12px 18px 12px 14px; border-radius: 999px;
+  background: #13803f; color: #fff; text-decoration: none;
+  font-weight: 700; font-size: .93rem;
+  box-shadow: 0 8px 24px rgba(19, 128, 63, .34);
+  transition: transform var(--transicao), bottom var(--transicao), box-shadow var(--transicao);
+}
+.contato-flutuante:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(19, 128, 63, .4); }
+.contato-flutuante svg { width: 22px; height: 22px; flex: none; }
+/* a barra de valor e o caminho do pagamento: o botao sobe e nao cobre nada */
+body:has(.barra-valor[data-visivel="sim"]) .contato-flutuante { bottom: calc(88px + env(safe-area-inset-bottom)); }
+
+@media (max-width: 860px) {
+  .contato { grid-template-columns: 1fr; }
+  .contato-conversa { max-width: 420px; }
+}
+@media (max-width: 720px) {
+  /* no celular, so o icone: o rotulo cobriria o conteudo */
+  .contato-flutuante { right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); padding: 14px; }
+  .contato-flutuante span { display: none; }
+  body:has(.barra-valor[data-visivel="sim"]) .contato-flutuante { bottom: calc(132px + env(safe-area-inset-bottom)); }
+  .contato-acoes .botao { flex: 1 1 100%; justify-content: center; }
+}
+
 /* ------------------------------------------------------------- rodapé ----- */
 .rodape { border-top: 1px solid var(--fio); padding: 30px 0 44px; color: var(--tinta-fraca); font-size: .89rem; }
 .rodape .envolve { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; }
@@ -580,7 +669,8 @@ ul.inclui { padding: 0; margin: 16px 0 0; }
   .topo nav { display: none; }
   .topo .envolve { gap: 10px; }
   /* sem o menu, o "Baixar" do topo e o caminho do celular para o download */
-  .topo .botao-topo-baixar { margin-left: auto; }
+  .topo .botao-topo-baixar { margin-left: 0; }
+  .topo .botao-topo-passo { display: inline-flex; margin-left: auto; }
   .topo .marca, .topo .botao { white-space: nowrap; }
   .topo .botao { font-size: .88rem; padding: 9px 12px; gap: 6px; }
   /* no celular o cartão vira uma coluna: avatar e nome em cima, ações embaixo */
@@ -594,13 +684,19 @@ ul.inclui { padding: 0; margin: 16px 0 0; }
   .hero { padding-bottom: 100px; }
   .hero .onda { height: 84px; }
 }
-/* celular estreito: "Montar kit" curto para o topo caber numa linha */
+/* celular estreito: "Montar kit" curto e o "Baixar" so com o icone, para o
+   topo caber numa linha - antes ele passava 7 px da tela e soltava o zoom */
 @media (max-width: 440px) {
   .topo .so-largo { display: none; }
+  .topo .botao-topo-baixar span { display: none; }
   .topo .envolve { gap: 8px; }
   .topo .botao { font-size: .84rem; padding: 8px 10px; }
   .topo .marca { gap: 8px; font-size: .95rem; }
   .topo .marca .selo { width: 30px; height: 30px; border-radius: 10px; }
+}
+/* os celulares de 360 px (os mais comuns no Brasil): o nome sai, o selo fica */
+@media (max-width: 380px) {
+  .topo .marca-nome { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

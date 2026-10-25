@@ -3,7 +3,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  codigoDoEndereco, destaqueDaTela, estaAntigo, haQuanto, linkDaLoja, montarTela, nomeDoAparelho,
+  aberturaDaTela, alertasDaTela, cartoesVisiveis, codigoDoEndereco, compacto, destaqueDaTela, escala,
+  estaAntigo, formatar, haQuanto, hojePorExtenso, linkDaLoja, linkWhatsApp, montarTela, nomeDoAparelho,
+  rotulosVisiveis, textoDaVariacao,
 } from "../js/celular.js";
 
 const CODIGO = "ab".repeat(32);
@@ -102,4 +104,96 @@ test("o numero do dia e o primeiro cartao do modulo de maior peso", () => {
   assert.equal(destaqueDaTela(unico), null);
   assert.equal(destaqueDaTela(montarTela(resposta([], []))), null);
   assert.equal(destaqueDaTela(null), null);
+});
+
+// ------------------------------------------------------------ formato 2 ---
+const sp = (texto) => texto.replace(/\s/g, " "); // o Intl usa espaco que nao quebra
+
+test("dinheiro e numero como o brasileiro le", () => {
+  assert.equal(sp(formatar(1234.5)), "R$ 1.234,50");
+  assert.equal(formatar(12, "numero"), "12");
+  assert.equal(sp(compacto(900)), "R$ 900");
+  assert.equal(sp(compacto(1500)), "R$ 1,5 mil");
+  assert.equal(compacto(7, "numero"), "7");
+});
+
+test("o eixo e redondo, tem o zero e nao inventa fracao de compromisso", () => {
+  assert.deepEqual(escala([0, 3565]).marcas, [0, 2000, 4000]);
+  assert.deepEqual(escala([0, 3, 5, 2], { inteiros: true }).marcas, [0, 2, 4, 6]);
+  const negativo = escala([6000, -2000]);
+  assert.ok(negativo.menor <= -2000 && negativo.maior >= 6000);
+  assert.ok(negativo.marcas.includes(0), "o zero precisa aparecer quando o saldo fica negativo");
+  // dia sem venda: eixo de verdade, e nao "R$ 0, R$ 0, R$ 0"
+  assert.deepEqual(escala([0, 0, 0], { topo: 100 }).marcas.at(-1) >= 100, true);
+  assert.deepEqual(escala([null, undefined, 4]).marcas.at(-1) >= 4, true);
+});
+
+test("o eixo X mostra poucos rotulos e sempre o ultimo (hoje)", () => {
+  assert.deepEqual(rotulosVisiveis(7, 7), [0, 1, 2, 3, 4, 5, 6]);
+  const trinta = rotulosVisiveis(30, 6);
+  assert.ok(trinta.length <= 6);
+  assert.equal(trinta.at(-1), 29);
+});
+
+const vendas = (extra = {}) => ({
+  app: "VENDAS", titulo: "Vendas",
+  cartoes: [{ rotulo: "Vendido hoje", valor: "R$ 50,00", papel: "destaque" }, { rotulo: "No mês", valor: "R$ 900,00" }],
+  listas: [], ...extra,
+});
+const periodos = [{ nome: "Hoje", rotulo: "Vendido hoje", valor: "R$ 50,00", numero: 50 }];
+
+test("a tela abre com o destaque da secao de maior peso", () => {
+  const tela = montarTela(resposta(["VENDAS"], [vendas({ destaque: { periodos } })]));
+  const abertura = aberturaDaTela(tela);
+  assert.equal(abertura.destaque.periodos[0].valor, "R$ 50,00");
+  assert.equal(abertura.secao.app, "VENDAS");
+  // o cartao que o celular antigo usava como destaque nao se repete na grade
+  assert.deepEqual(cartoesVisiveis(abertura.secao).map((c) => c.rotulo), ["No mês"]);
+});
+
+test("Hub antigo (sem destaque) continua abrindo com o primeiro cartao", () => {
+  const antigo = { app: "VENDAS", titulo: "Vendas", listas: [],
+                   cartoes: [{ rotulo: "Vendido hoje", valor: "R$ 50,00" }, { rotulo: "Ticket", valor: "R$ 5,00" }] };
+  const abertura = aberturaDaTela(montarTela(resposta(["VENDAS"], [antigo])));
+  assert.equal(abertura.cartao.rotulo, "Vendido hoje");
+  assert.equal(aberturaDaTela(montarTela(resposta([], []))), null);
+  // sem destaque, o cartao marcado continua aparecendo
+  assert.equal(cartoesVisiveis(vendas()).length, 2);
+});
+
+test("precisa de voce: problema antes de lembrete, dinheiro primeiro", () => {
+  const tela = montarTela(resposta(["VENDAS", "ESTOQUE", "CLIENTES"], [
+    vendas({ alertas: [{ texto: "Fechar o caixa", tom: "aviso" }] }),
+    { app: "ESTOQUE", titulo: "Estoque", cartoes: [], listas: [],
+      alertas: [{ texto: "Repor 2 produtos zerados", tom: "perigo" }, { texto: "", tom: "perigo" }] },
+    { app: "CLIENTES", titulo: "Clientes", cartoes: [], listas: [],
+      alertas: [{ texto: "Dar parabéns a Ana", tom: "ok" }] },
+    { app: "ORDENS", titulo: "Ordens", cartoes: [], listas: [], alertas: [{ texto: "nao liberado" }] },
+  ]));
+  const alertas = alertasDaTela(tela);
+  assert.deepEqual(alertas.map((a) => a.texto), ["Repor 2 produtos zerados", "Fechar o caixa", "Dar parabéns a Ana"]);
+  assert.equal(alertas[0].app, "ESTOQUE");
+  assert.deepEqual(alertasDaTela(null), []);
+});
+
+test("a variacao tem seta, numero e o nome do que foi comparado", () => {
+  assert.deepEqual(textoDaVariacao({ texto: "+18%", direcao: "sobe", tom: "ok", comparado: "sábado passado" }),
+                   { seta: "▲", numero: "18%", tom: "ok", comparado: "vs. sábado passado" });
+  assert.equal(textoDaVariacao({ texto: "\u22124%", direcao: "desce", tom: "perigo" }).numero, "4%");
+  assert.equal(textoDaVariacao(null), null);
+});
+
+test("WhatsApp so com numero brasileiro inteiro", () => {
+  const link = new URL(linkWhatsApp({ tipo: "whatsapp", numero: "5563988887777", mensagem: "Feliz aniversário!" }));
+  assert.equal(link.origin + link.pathname, "https://wa.me/5563988887777");
+  assert.equal(link.searchParams.get("text"), "Feliz aniversário!");
+  for (const ruim of [{ tipo: "whatsapp", numero: "123" }, { tipo: "whatsapp", numero: "55639888877771234" },
+                      { tipo: "link", numero: "5563988887777" }, { tipo: "whatsapp", numero: "javascript:alert(1)" }, null]) {
+    assert.equal(linkWhatsApp(ruim), "");
+  }
+});
+
+test("o dia de hoje por extenso, sem o -feira", () => {
+  assert.equal(hojePorExtenso(new Date(2026, 9, 17, 10)), "Sábado, 17 de outubro");
+  assert.equal(hojePorExtenso(new Date(2026, 9, 16, 10)), "Sexta, 16 de outubro");
 });

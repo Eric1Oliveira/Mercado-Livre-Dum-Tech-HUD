@@ -1,0 +1,29 @@
+{
+ "duracao": 19.0,
+ "passos": [
+  {
+   "t": 2.8,
+   "texto": "Abra o Financeiro"
+  },
+  {
+   "t": 4.8,
+   "texto": "Vá em Lançamentos"
+  },
+  {
+   "t": 6.8,
+   "texto": "Selecione a conta que foi paga"
+  },
+  {
+   "t": 8.1,
+   "texto": "Clique em Receber / pagar"
+  },
+  {
+   "t": 10.0,
+   "texto": "Confira valor, data e conta: pode ser tudo ou só uma parte"
+  },
+  {
+   "t": 14.3,
+   "texto": "A conta sai dos pendentes e o saldo atualiza"
+  }
+ ]
+}

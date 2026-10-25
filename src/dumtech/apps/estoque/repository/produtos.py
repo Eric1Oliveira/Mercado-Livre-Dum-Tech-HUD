@@ -13,6 +13,10 @@ CAMPOS = """
     preco_venda, ativo
 """
 
+#: teto do que vai para o banco. A imagem chega reduzida (dezenas de KB); isto
+#: so barra quem gravar um arquivo cru sem passar por `estoque/imagem.py`
+MAX_IMAGEM = 2 * 1024 * 1024
+
 
 class ProdutosMixin:
     """Parte do EstoqueRepository que cuida do catalogo."""
@@ -135,11 +139,11 @@ class ProdutosMixin:
 
     def atualizar(self, produto: Produto) -> Produto:
         if produto.id is None:
-            raise EstoqueError("Produto sem identificacao para atualizar.")
+            raise EstoqueError("Produto sem identificação para atualizar.")
         self._validar(produto)
         atual = self.obter(produto.id)
         if atual is None:
-            raise EstoqueError("Produto nao encontrado.")
+            raise EstoqueError("Produto não encontrado.")
 
         momento = agora()
         atribuicoes = ", ".join(f"{campo.strip()} = ?" for campo in CAMPOS.split(","))
@@ -158,7 +162,7 @@ class ProdutosMixin:
                 abs(quantidade(produto.quantidade) - quantidade(atual.quantidade)),
                 atual.quantidade,
                 produto.quantidade,
-                observacao="Quantidade corrigida na edicao do produto",
+                observacao="Quantidade corrigida na edição do produto",
             )
         produto.atualizado_em = momento
         return produto
@@ -185,11 +189,51 @@ class ProdutosMixin:
         )
         if movimentos:
             raise EstoqueError(
-                "Este produto ja tem movimentacoes registradas e nao pode ser "
-                "excluido sem apagar o historico. Use 'Inativar' para tira-lo "
-                "da lista mantendo o que ja aconteceu."
+                "Este produto já tem movimentações registradas e não pode ser "
+                "excluído sem apagar o histórico. Use 'Inativar' para tirá-lo "
+                "da lista mantendo o que já aconteceu."
             )
         self.db.execute("DELETE FROM produtos WHERE id = ?", (produto_id,))
+
+    # ------------------------------------------------------------------- imagem
+    def imagem(self, produto_id: int) -> bytes | None:
+        """A imagem ja preparada (ver `estoque/imagem.py`), ou None."""
+        row = self.db.query_one(
+            "SELECT imagem FROM produto_imagens WHERE produto_id = ?", (produto_id,)
+        )
+        return bytes(row["imagem"]) if row else None
+
+    def salvar_imagem(self, produto_id: int, dados: bytes | None) -> None:
+        """Grava, troca ou (com None/vazio) tira a imagem do produto."""
+        if not dados:
+            self.db.execute("DELETE FROM produto_imagens WHERE produto_id = ?", (produto_id,))
+            return
+        if len(dados) > MAX_IMAGEM:
+            raise EstoqueError("Imagem grande demais. Use uma foto menor.")
+        from ..imagem import miniatura_de  # Qt so quando ha foto para gravar
+
+        self.db.execute(
+            "INSERT INTO produto_imagens (produto_id, imagem, miniatura, atualizado_em) "
+            "VALUES (?, ?, ?, ?) ON CONFLICT(produto_id) DO UPDATE SET "
+            "imagem = excluded.imagem, miniatura = excluded.miniatura, "
+            "atualizado_em = excluded.atualizado_em",
+            (produto_id, sqlite3.Binary(dados), sqlite3.Binary(miniatura_de(dados)), agora()),
+        )
+
+    def miniatura(self, produto_id: int) -> bytes | None:
+        row = self.db.query_one(
+            "SELECT miniatura FROM produto_imagens WHERE produto_id = ?", (produto_id,)
+        )
+        return bytes(row["miniatura"]) if row else None
+
+    def miniaturas(self) -> dict[int, tuple[str, bytes]]:
+        """produto_id -> (quando mudou, miniatura): a lista guarda por versao."""
+        return {
+            row["produto_id"]: (row["atualizado_em"], bytes(row["miniatura"]))
+            for row in self.db.query(
+                "SELECT produto_id, miniatura, atualizado_em FROM produto_imagens"
+            )
+        }
 
     # ------------------------------------------------------------------ compras
     def a_comprar(self, limite: int = 0) -> list[Produto]:
@@ -218,7 +262,7 @@ class ProdutosMixin:
     # ---------------------------------------------------------------- validacao
     def _validar(self, produto: Produto) -> None:
         if not produto.codigo.strip():
-            raise EstoqueError("Informe o codigo do produto.")
+            raise EstoqueError("Informe o código do produto.")
         if not produto.nome.strip():
             raise EstoqueError("Informe o nome do produto.")
         if produto.unidade and produto.unidade.upper().strip() not in UNIDADES:
@@ -227,13 +271,13 @@ class ProdutosMixin:
                 f"Use uma destas: {', '.join(UNIDADES)}."
             )
         if quantidade(produto.quantidade) < 0:
-            raise EstoqueError("A quantidade nao pode ser negativa.")
+            raise EstoqueError("A quantidade não pode ser negativa.")
         if quantidade(produto.estoque_minimo) < 0 or quantidade(produto.estoque_maximo) < 0:
-            raise EstoqueError("Os niveis de estoque nao podem ser negativos.")
+            raise EstoqueError("Os níveis de estoque não podem ser negativos.")
         if 0 < quantidade(produto.estoque_maximo) < quantidade(produto.estoque_minimo):
-            raise EstoqueError("O estoque maximo nao pode ser menor que o minimo.")
+            raise EstoqueError("O estoque máximo não pode ser menor que o mínimo.")
         if dinheiro(produto.preco_custo) < 0 or dinheiro(produto.preco_venda) < 0:
-            raise EstoqueError("Os precos nao podem ser negativos.")
+            raise EstoqueError("Os preços não podem ser negativos.")
 
     @staticmethod
     def _valores(produto: Produto) -> tuple:
@@ -261,9 +305,9 @@ class ProdutosMixin:
         palavra = "outro produto" if outro else "um produto"
         if "codigo_barras" in str(exc):
             return EstoqueError(
-                f"Ja existe {palavra} com o codigo de barras "
+                f"Já existe {palavra} com o código de barras "
                 f"'{produto.codigo_barras.strip()}'."
             )
         return EstoqueError(
-            f"Ja existe {palavra} com o codigo '{produto.codigo.strip()}'."
+            f"Já existe {palavra} com o código '{produto.codigo.strip()}'."
         )

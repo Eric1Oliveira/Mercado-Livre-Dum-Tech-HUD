@@ -69,9 +69,9 @@ class DevolucoesMixin:
         """Registra a volta de itens. `linhas` sao pares (id do item, quantidade)."""
         venda = self.obter(venda_id)
         if venda is None:
-            raise VendaError("Venda nao encontrada.")
+            raise VendaError("Venda não encontrada.")
         if venda.status == CANCELADA:
-            raise VendaError(f"A venda {venda.numero} esta cancelada: nao ha o que devolver.")
+            raise VendaError(f"A venda {venda.numero} está cancelada: não há o que devolver.")
 
         por_id = {item.id: item for item in venda.itens}
         devolvidos: list[ItemDevolucao] = []
@@ -81,10 +81,10 @@ class DevolucoesMixin:
                 continue
             item = por_id.get(item_id)
             if item is None:
-                raise VendaError("Item que nao pertence a esta venda.")
+                raise VendaError("Item que não pertence a esta venda.")
             if qtd > item.restante + CENTAVO:
                 raise VendaError(
-                    f"'{item.descricao}': so restam "
+                    f"'{item.descricao}': só restam "
                     f"{quantidade_texto(item.restante, item.unidade, item.casas)} "
                     "para devolver."
                 )
@@ -99,7 +99,7 @@ class DevolucoesMixin:
             )
 
         if not devolvidos:
-            raise VendaError("Escolha o que esta sendo devolvido.")
+            raise VendaError("Escolha o que está sendo devolvido.")
 
         # o desconto da venda vale para o que volta tambem: quem pagou menos
         # nao recebe de volta o preco cheio
@@ -153,6 +153,6 @@ class DevolucoesMixin:
         devolucao.avisos = self._devolver_ao_estoque(
             [(por_id[linha.venda_item_id], linha.quantidade) for linha in devolvidos],
             documento=venda.numero,
-            motivo=f"Devolucao da venda {venda.numero}",
+            motivo=f"Devolução da venda {venda.numero}",
         )
         return devolucao

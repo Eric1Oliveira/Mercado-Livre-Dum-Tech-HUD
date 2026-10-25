@@ -20,10 +20,10 @@ from .itens_editor import ItensEditor
 
 PRAZOS = (
     "Imediato",
-    "3 dias uteis",
-    "5 dias uteis",
-    "10 dias uteis",
-    "15 dias uteis",
+    "3 dias úteis",
+    "5 dias úteis",
+    "10 dias úteis",
+    "15 dias úteis",
     "30 dias",
     "A combinar",
 )
@@ -42,8 +42,8 @@ class OrcamentoDialog(FormDialog):
         self.orcamento = orcamento or Orcamento(numero=repository.proximo_numero())
         self.editando = orcamento is not None
         super().__init__(
-            f"Orcamento {self.orcamento.numero}" if self.editando else "Nova proposta",
-            "Itens, condicoes e validade da proposta",
+            f"Orçamento {self.orcamento.numero}" if self.editando else "Nova proposta",
+            "Itens, condições e validade da proposta",
             parent,
             largura=880,
             rolagem=True,
@@ -51,10 +51,10 @@ class OrcamentoDialog(FormDialog):
 
         self.numero = form.texto(self.orcamento.numero, "Ex.: ORC-2026-0001")
         self.data = form.data(self.orcamento.data)
-        self.add_row("Numero", form.linha(self.numero, "Data", self.data))
+        self.add_row("Número", form.linha(self.numero, "Data", self.data))
 
         self.cliente = form.sugestao(
-            self.orcamento.cliente, "Para quem e a proposta", clientes or []
+            self.orcamento.cliente, "Para quem é a proposta", clientes or []
         )
         self.add_row("Cliente", self.cliente)
 
@@ -72,13 +72,13 @@ class OrcamentoDialog(FormDialog):
         self.condicao.addItems([""] + self._condicoes())
         self.condicao.setCurrentText(self.orcamento.condicao_pagamento)
         self.condicao.lineEdit().setPlaceholderText("Ex.: 50% na entrada, 50% na entrega")
-        self.add_row("Condicao de pagamento", self.condicao)
+        self.add_row("Condição de pagamento", self.condicao)
 
         self.prazo = QComboBox()
         self.prazo.setEditable(True)
         self.prazo.addItems([""] + list(PRAZOS))
         self.prazo.setCurrentText(self.orcamento.prazo_entrega)
-        self.prazo.lineEdit().setPlaceholderText("Ex.: 10 dias uteis")
+        self.prazo.lineEdit().setPlaceholderText("Ex.: 10 dias úteis")
         self.validade = form.inteiro(
             self.orcamento.validade_dias or VALIDADE_PADRAO, minimo=0, maximo=365
         )
@@ -92,7 +92,7 @@ class OrcamentoDialog(FormDialog):
         self.observacoes = form.area(
             self.orcamento.observacoes, "O que mais o cliente precisa saber", 70
         )
-        self.add_row("Observacoes", self.observacoes)
+        self.add_row("Observações", self.observacoes)
 
         self.add_note("")
         self._nota = self.extras.itemAt(self.extras.count() - 1).widget()
@@ -108,7 +108,7 @@ class OrcamentoDialog(FormDialog):
         total = max(subtotal - self.desconto.value(), 0)
         partes = [f"Itens: {fmt.moeda(subtotal)}"]
         if self.itens.descontos:
-            partes.append(f"ja com {fmt.moeda(self.itens.descontos)} de desconto nas linhas")
+            partes.append(f"já com {fmt.moeda(self.itens.descontos)} de desconto nas linhas")
         if self.desconto.value():
             partes.append(f"desconto na proposta: {fmt.moeda(self.desconto.value())}")
         partes.append(f"TOTAL: {fmt.moeda(total)}")
@@ -141,7 +141,7 @@ class RecusaDialog(FormDialog):
         self.repository = repository
         self.orcamento = orcamento
         super().__init__(
-            f"Orcamento {orcamento.numero} nao aprovado",
+            f"Orçamento {orcamento.numero} não aprovado",
             f"{orcamento.cliente}  ·  {fmt.moeda(orcamento.total)}",
             parent,
             largura=500,
@@ -150,18 +150,18 @@ class RecusaDialog(FormDialog):
         self.add_row("Motivo", self.motivo)
 
         self.observacao = form.texto("", "Opcional")
-        self.add_row("Observacao", self.observacao)
+        self.add_row("Observação", self.observacao)
 
         self.add_note(
-            "O motivo entra no funil: e assim que da para saber se voce perde "
-            "por preco, por prazo ou por demora."
+            "O motivo entra no funil: é assim que dá para saber se você perde "
+            "por preço, por prazo ou por demora."
         )
         self.motivo.setFocus()
 
     def salvar(self) -> None:
         escolha = self.motivo.currentData()
         if not escolha:
-            raise OrcamentoError("Escolha por que o orcamento nao foi aprovado.")
+            raise OrcamentoError("Escolha por que o orçamento não foi aprovado.")
         atualizado = self.repository.recusar(self.orcamento.id, escolha)
         if self.observacao.text().strip():
             atualizado.observacoes = (

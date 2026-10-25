@@ -1,0 +1,29 @@
+{
+ "duracao": 22.4,
+ "passos": [
+  {
+   "t": 2.8,
+   "texto": "Abra o Estoque"
+  },
+  {
+   "t": 4.8,
+   "texto": "Vá em Produtos"
+  },
+  {
+   "t": 6.9,
+   "texto": "Digite parte do nome"
+  },
+  {
+   "t": 9.9,
+   "texto": "Ou o código interno"
+  },
+  {
+   "t": 12.9,
+   "texto": "Ou bipe o código de barras com o leitor"
+  },
+  {
+   "t": 16.1,
+   "texto": "Duplo clique abre a ficha do produto"
+  }
+ ]
+}

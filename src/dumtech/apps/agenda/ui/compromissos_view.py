@@ -26,10 +26,10 @@ from ..repository import (
 from .compromisso_dialog import CompromissoDialog
 
 PERIODOS = (
-    ("Todos os periodos", ""),
+    ("Todos os períodos", ""),
     ("Hoje", PERIODO_HOJE),
     ("Esta semana", PERIODO_SEMANA),
-    ("Este mes", PERIODO_MES),
+    ("Este mês", PERIODO_MES),
     ("Sem fechar", PERIODO_ATRASADOS),
 )
 
@@ -39,8 +39,8 @@ class CompromissosView(CrudView):
     nome_registro = "compromisso"
     nome_plural = "compromissos"
     rotulo_novo = "Novo compromisso"
-    dica_pesquisa = "Pesquisar por titulo, cliente, local ou anotacao..."
-    colunas = ["Quando", "Horario", "Titulo", "Cliente", "Tipo", "Local", "Situacao"]
+    dica_pesquisa = "Pesquisar por título, cliente, local ou anotação..."
+    colunas = ["Quando", "Horário", "Título", "Cliente", "Tipo", "Local", "Situação"]
     larguras = {0: 130, 1: 140, 4: 130, 6: 150}
 
     def __init__(
@@ -74,7 +74,7 @@ class CompromissosView(CrudView):
         layout.addWidget(self.filtro_tipo, 1)
 
         self.filtro_status = QComboBox()
-        self.filtro_status.addItem("Todas as situacoes", "")
+        self.filtro_status.addItem("Todas as situações", "")
         for chave, rotulo in STATUS_LABEL.items():
             self.filtro_status.addItem(rotulo, chave)
         self.filtro_status.currentIndexChanged.connect(self.refresh)
@@ -92,7 +92,7 @@ class CompromissosView(CrudView):
         layout.insertWidget(2, self.botao_concluir)
 
         self.botao_whatsapp = Button("WhatsApp", "chat")
-        self.botao_whatsapp.setToolTip("Confirma o horario com o cliente")
+        self.botao_whatsapp.setToolTip("Confirma o horário com o cliente")
         self.botao_whatsapp.clicked.connect(self._whatsapp)
         layout.insertWidget(3, self.botao_whatsapp)
 

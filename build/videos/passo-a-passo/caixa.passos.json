@@ -1,0 +1,29 @@
+{
+ "duracao": 32.1,
+ "passos": [
+  {
+   "t": 2.8,
+   "texto": "Abra Vendas"
+  },
+  {
+   "t": 4.8,
+   "texto": "Vá em Caixa: o dinheiro do dia, conferido"
+  },
+  {
+   "t": 7.5,
+   "texto": "Sangria: dinheiro que sai da gaveta, sempre com motivo"
+  },
+  {
+   "t": 14.8,
+   "texto": "No fim do dia, clique em Fechar caixa"
+  },
+  {
+   "t": 16.6,
+   "texto": "Conte o dinheiro da gaveta: o Hub diz se confere"
+  },
+  {
+   "t": 23.3,
+   "texto": "No dia seguinte, Abrir caixa com o troco inicial"
+  }
+ ]
+}

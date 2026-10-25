@@ -19,7 +19,10 @@ SRC = RAIZ / "src"
 # dentro do produto pago - a mesma lista que tools/publicar_site.ps1 ja tira
 # antes de publicar o site.
 _FORA_DA_LANDING = {"tests", "node_modules", "package.json", "servidor.mjs",
-                    "README.md", "_headers", ".htaccess", "netlify.toml"}
+                    "README.md", "_headers", ".htaccess", "netlify.toml",
+                    # os videos do Passo a passo ficam so no site: a pagina dentro do programa
+                    # toca direto de dumtechsolution.com (o instalador nao engorda)
+                    "videos"}
 
 
 def _landing_do_cliente():

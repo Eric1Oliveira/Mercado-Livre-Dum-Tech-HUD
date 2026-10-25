@@ -61,7 +61,7 @@ class BackupView(QWidget):
         raiz.setContentsMargins(0, 0, 0, 0)
         raiz.setSpacing(Space.lg)
         raiz.addWidget(
-            label("Tudo que voce digitou vive neste computador. Guarde uma copia.",
+            label("Tudo que você digitou vive neste computador. Guarde uma cópia.",
                   "subtitle")
         )
 
@@ -83,7 +83,7 @@ class BackupView(QWidget):
 
         texto = QVBoxLayout()
         texto.setSpacing(1)
-        texto.addWidget(label("Onde as copias sao guardadas", "section"))
+        texto.addWidget(label("Onde as cópias são guardadas", "section"))
         self.caminho = label("", "muted")
         self.caminho.setWordWrap(True)
         texto.addWidget(self.caminho)
@@ -101,7 +101,7 @@ class BackupView(QWidget):
 
         card.body.addWidget(separator())
         self.automatico = QCheckBox(
-            "Fazer uma copia sozinho ao abrir o programa (uma por dia)"
+            "Fazer uma cópia sozinho ao abrir o programa (uma por dia)"
         )
         self.automatico.stateChanged.connect(self._salvar_preferencia)
         card.body.addWidget(self.automatico)
@@ -122,7 +122,7 @@ class BackupView(QWidget):
         topo.addWidget(IconBadge("box", "success", size=44, radius=13))
         texto = QVBoxLayout()
         texto.setSpacing(1)
-        texto.addWidget(label("Copia fora deste computador", "section"))
+        texto.addWidget(label("Cópia fora deste computador", "section"))
         self.caminho_fora = label("", "muted")
         self.caminho_fora.setWordWrap(True)
         texto.addWidget(self.caminho_fora)
@@ -143,11 +143,11 @@ class BackupView(QWidget):
 
     def _card_copias(self) -> Card:
         card = Card(padding=Space.lg)
-        card.body.addWidget(label("Copias guardadas", "section"))
+        card.body.addWidget(label("Cópias guardadas", "section"))
         card.body.addWidget(separator())
         self.tabela = DataTable(["Quando", "Origem", "Aplicativos", "Tamanho"])
         self.tabela.set_empty_message(
-            "Nenhuma copia ainda. Clique em 'Fazer backup agora'."
+            "Nenhuma cópia ainda. Clique em 'Fazer backup agora'."
         )
         self.tabela.itemSelectionChanged.connect(self._atualizar_acoes)
         card.body.addWidget(self.tabela, 1)
@@ -164,7 +164,7 @@ class BackupView(QWidget):
         self.botao_abrir_pasta.clicked.connect(self._abrir_pasta)
         linha.addWidget(self.botao_abrir_pasta)
 
-        self.botao_restaurar = Button("Restaurar esta copia", "back")
+        self.botao_restaurar = Button("Restaurar esta cópia", "back")
         self.botao_restaurar.clicked.connect(self._restaurar)
         linha.addWidget(self.botao_restaurar)
 
@@ -191,23 +191,23 @@ class BackupView(QWidget):
         self.botao_fora.setText("  Trocar pasta" if fora else "  Escolher pasta")
         if fora is None:
             sugestao = backup.nuvens_encontradas()
-            self.caminho_fora.setText("Nenhuma - a copia existe so neste computador.")
+            self.caminho_fora.setText("Nenhuma - a cópia existe só neste computador.")
             self.recado_fora.setText(
-                "Se o HD queimar ou a maquina for formatada, a copia vai junto. "
+                "Se o HD queimar ou a máquina for formatada, a cópia vai junto. "
                 "Escolha uma pasta que o "
                 + (f"{sugestao[0].name} sincroniza (achamos {sugestao[0]}) "
                    if sugestao else "OneDrive, o Google Drive ou o Dropbox sincroniza ")
-                + "ou um pendrive: cada backup e duplicado para la sozinho."
+                + "ou um pendrive: cada backup é duplicado para lá sozinho."
             )
             return
         self.caminho_fora.setText(str(fora))
         quando = str(self.settings.get("backup", "fora_em", "") or "")
         # o zip leva os dados dos SEUS clientes: quem puder abrir a pasta, le tudo
         self.recado_fora.setText(
-            (f"Ultima copia enviada em {quando}. " if quando
-             else "A proxima copia ja vai para la tambem. ")
-            + "A copia leva os dados dos seus clientes: use uma pasta particular "
-              "(nao compartilhada) e mantenha a criptografia do Windows ligada."
+            (f"Última cópia enviada em {quando}. " if quando
+             else "A próxima cópia já vai para lá também. ")
+            + "A cópia leva os dados dos seus clientes: use uma pasta particular "
+              "(não compartilhada) e mantenha a criptografia do Windows ligada."
         )
 
     def enviar_para_fora(self, copia) -> str:
@@ -235,8 +235,8 @@ class BackupView(QWidget):
         interna = self.paths is not None and _dentro(pasta, self.paths.root)
         if interna:
             self.alerta.setText(
-                "Estas copias estao no mesmo computador que os dados. Se o HD "
-                "queimar ou a maquina for formatada, elas somem junto. Escolha "
+                "Estas cópias estão no mesmo computador que os dados. Se o HD "
+                "queimar ou a máquina for formatada, elas somem junto. Escolha "
                 "um pendrive, um HD externo ou uma pasta do Google Drive / OneDrive."
             )
         else:
@@ -249,7 +249,7 @@ class BackupView(QWidget):
                 [
                     self.tabela.cell(self._quando(copia), bold=True),
                     self.tabela.cell(
-                        "Automatico" if copia.automatico else "Feito por voce",
+                        "Automático" if copia.automatico else "Feito por você",
                         tone="muted" if copia.automatico else "accent",
                     ),
                     self.tabela.cell(self._aplicativos(copia)),
@@ -289,43 +289,43 @@ class BackupView(QWidget):
         self.settings.set("backup", "automatico", self.automatico.isChecked())
         self.settings.save()
         self._dizer(
-            "Copia automatica ligada." if self.automatico.isChecked()
-            else "Copia automatica desligada. Lembre de fazer o backup na mao."
+            "Cópia automática ligada." if self.automatico.isChecked()
+            else "Cópia automática desligada. Lembre de fazer o backup na mão."
         )
 
     def _escolher_pasta_fora(self) -> None:
         sugestao = backup.nuvens_encontradas()
         inicio = str(self.pasta_fora or (sugestao[0] if sugestao else Path.home()))
         escolhida = QFileDialog.getExistingDirectory(
-            self, "Pasta da nuvem ou pendrive para a copia de fora", inicio
+            self, "Pasta da nuvem ou pendrive para a cópia de fora", inicio
         )
         if not escolhida:
             return
         if _dentro(Path(escolhida), self.pasta):
-            self._dizer("Escolha uma pasta FORA daqui - senao as duas copias morrem juntas.",
+            self._dizer("Escolha uma pasta FORA daqui - senão as duas cópias morrem juntas.",
                         "danger")
             return
         self.settings.set("backup", "pasta_fora", escolhida)
         self.settings.save()
         self.refresh()
-        self._dizer(f"Cada copia passa a ser duplicada em {escolhida}.", "success")
+        self._dizer(f"Cada cópia passa a ser duplicada em {escolhida}.", "success")
 
     def _tirar_pasta_fora(self) -> None:
         self.settings.set("backup", "pasta_fora", "")
         self.settings.save()
         self.refresh()
-        self._dizer("A copia de fora foi desligada. As copias ficam so neste computador.")
+        self._dizer("A cópia de fora foi desligada. As cópias ficam só neste computador.")
 
     def _escolher_pasta(self) -> None:
         escolhida = QFileDialog.getExistingDirectory(
-            self, "Onde guardar as copias de seguranca", str(self.pasta)
+            self, "Onde guardar as cópias de segurança", str(self.pasta)
         )
         if not escolhida:
             return
         self.settings.set("backup", "pasta", escolhida)
         self.settings.save()
         self.refresh()
-        self._dizer(f"As copias passam a ser guardadas em {escolhida}.", "success")
+        self._dizer(f"As cópias passam a ser guardadas em {escolhida}.", "success")
 
     def _abrir_pasta(self) -> None:
         from PySide6.QtCore import QUrl
@@ -347,7 +347,7 @@ class BackupView(QWidget):
             return
         destino = " (e na pasta de fora)" if self.pasta_fora else ""
         self._dizer(
-            f"Copia gravada: {copia.arquivo.name} ({tamanho_texto(copia.tamanho)}){destino}.",
+            f"Cópia gravada: {copia.arquivo.name} ({tamanho_texto(copia.tamanho)}){destino}.",
             "success",
         )
 
@@ -361,7 +361,7 @@ class BackupView(QWidget):
             "Restaurar backup",
             f"Isto troca TODOS os dados de agora pelos de "
             f"{self._quando(copia)}.\n\n"
-            "Uma copia do estado atual sera guardada antes, por seguranca.\n"
+            "Uma cópia do estado atual será guardada antes, por segurança.\n"
             "O programa precisa ser fechado e aberto de novo.\n\nContinuar?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,

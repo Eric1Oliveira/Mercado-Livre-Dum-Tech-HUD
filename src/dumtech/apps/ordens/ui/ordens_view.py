@@ -34,17 +34,17 @@ FILTRO_GARANTIA = "garantia"
 
 
 class OrdensView(CrudView):
-    titulo = "Ordens"
-    nome_registro = "ordem"
-    nome_plural = "ordens"
+    titulo = "Ordens de Serviço"
+    nome_registro = "OS"
+    nome_plural = "OS"
     genero = "f"
-    rotulo_novo = "Nova ordem"
-    dica_pesquisa = "Pesquisar por numero, cliente, item ou telefone..."
+    rotulo_novo = "Nova OS"
+    dica_pesquisa = "Pesquisar por número, cliente, item ou telefone..."
     # sem coluna "Responsavel": ela ja e filtro aqui em cima. A coluna do meio
     # mostra o item quando existe e, quando nao existe, o que foi pedido - e
     # assim serve tanto para quem recebe aparelho quanto para quem presta
     # servico no local
-    colunas = ["Numero", "Entrada", "Cliente", "Servico", "Valor", "Etapa"]
+    colunas = ["Número", "Entrada", "Cliente", "Serviço", "Valor", "Etapa"]
     larguras = {0: 130, 1: 165, 4: 125, 5: 165}
 
     def __init__(
@@ -99,11 +99,11 @@ class OrdensView(CrudView):
         layout.insertWidget(2, self.botao_entrega)
 
         self.botao_whatsapp = Button("WhatsApp", "chat")
-        self.botao_whatsapp.setToolTip("Avisa o cliente que o servico esta pronto")
+        self.botao_whatsapp.setToolTip("Avisa o cliente que o serviço está pronto")
         self.botao_whatsapp.clicked.connect(self._whatsapp)
         layout.insertWidget(3, self.botao_whatsapp)
 
-        self.botao_avancar = Button("Avancar", "check", "success")
+        self.botao_avancar = Button("Avançar", "check", "success")
         self.botao_avancar.clicked.connect(self._avancar)
         layout.insertWidget(4, self.botao_avancar)
 
@@ -118,7 +118,7 @@ class OrdensView(CrudView):
         self.botao_financeiro.setVisible(self.contas is not None)
 
         self.botao_cancelar = Button("Cancelar", "close", "danger")
-        self.botao_cancelar.setToolTip("Cancela a ordem de servico")
+        self.botao_cancelar.setToolTip("Cancela a ordem de serviço")
         self.botao_cancelar.clicked.connect(self._cancelar)
         layout.insertWidget(6, self.botao_cancelar)
 
@@ -127,7 +127,7 @@ class OrdensView(CrudView):
         atual = self.filtro_tecnico.currentData()
         self.filtro_tecnico.blockSignals(True)
         self.filtro_tecnico.clear()
-        self.filtro_tecnico.addItem("Todos os responsaveis", "")
+        self.filtro_tecnico.addItem("Todos os responsáveis", "")
         for tecnico in self.repository.tecnicos():
             self.filtro_tecnico.addItem(tecnico, tecnico)
         indice = self.filtro_tecnico.findData(atual)
@@ -164,7 +164,7 @@ class OrdensView(CrudView):
         """A data sozinha nao diz ha quanto tempo a ordem esta parada."""
         if ordem.aberta:
             dias = ordem.dias_em_aberto
-            tempo = "hoje" if dias == 0 else f"ha {fmt.dias(dias)}"
+            tempo = "hoje" if dias == 0 else f"há {fmt.dias(dias)}"
             return f"{fmt.data(ordem.aberta_em)}  ({tempo})"
         return fmt.data(ordem.aberta_em)
 
@@ -173,7 +173,7 @@ class OrdensView(CrudView):
         if ordem.atrasada:
             return f"{ordem.status_label} · atrasada"
         if ordem.status == ENTREGUE and ordem.na_garantia:
-            return f"Entregue · garantia ate {fmt.data(ordem.garantia_ate)}"
+            return f"Entregue · garantia até {fmt.data(ordem.garantia_ate)}"
         return ordem.status_label
 
     @staticmethod
@@ -253,11 +253,11 @@ class OrdensView(CrudView):
                           + (f" - {ordem.assunto}" if ordem.assunto else ""),
                 valor=ordem.total,
                 vencimento=ordem.entregue_em or ordem.aberta_em,
-                cliente=ordem.cliente, categoria="Servicos",
+                cliente=ordem.cliente, categoria="Serviços",
                 documento=ordem.numero,
             ))
         except Exception as erro:  # noqa: BLE001 - a ordem nao pode ser afetada
-            self.mostrar_aviso(f"Nao foi possivel lancar: {erro}", "danger")
+            self.mostrar_aviso(f"Não foi possível lançar: {erro}", "danger")
             return
         self._atualizar_acoes()
         self.mostrar_aviso(
@@ -292,7 +292,7 @@ class OrdensView(CrudView):
         atual = self.repository.obter(ordem.id)
         self.refresh()
         self.mostrar_aviso(
-            f"{ordem.numero}: agora esta em '{atual.status_label}'."
+            f"{ordem.numero}: agora está em '{atual.status_label}'."
             + getattr(dialogo, "recado_financeiro", ""), "success"
         )
         self.data_changed.emit()
@@ -304,7 +304,7 @@ class OrdensView(CrudView):
         dialogo = MotivoDialog(
             f"Cancelar a ordem {ordem.numero}",
             f"{ordem.equipamento}  ·  {ordem.cliente}",
-            "Ex.: o cliente desistiu do servico",
+            "Ex.: o cliente desistiu do serviço",
             self,
         )
         if not dialogo.exec():

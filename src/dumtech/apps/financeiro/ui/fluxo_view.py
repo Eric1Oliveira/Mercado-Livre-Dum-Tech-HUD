@@ -20,10 +20,10 @@ from ..models import CENTAVO, Projecao
 from ..repository import FinanceiroRepository
 from ....ui.graficos import GraficoLinha
 
-COLUNAS = ["Dia", "O que acontece", "Entra", "Sai", "Saldo projetado"]
+COLUNAS = ["Dia", "Descrição", "Valor", "Saldo projetado"]
 
-HORIZONTES = (("Proximos 15 dias", 15), ("Proximos 30 dias", 30),
-              ("Proximos 60 dias", 60), ("Proximos 90 dias", 90))
+HORIZONTES = (("Próximos 15 dias", 15), ("Próximos 30 dias", 30),
+              ("Próximos 60 dias", 60), ("Próximos 90 dias", 90))
 
 
 class FluxoView(QWidget):
@@ -72,10 +72,10 @@ class FluxoView(QWidget):
 
     def _cartoes(self) -> FaixaDeNumeros:
         linha = FaixaDeNumeros()
-        self.card_hoje = StatCard("Saldo hoje", "R$ 0,00", "money", "accent")
-        self.card_entradas = StatCard("Vai entrar", "R$ 0,00", "in", "success")
-        self.card_saidas = StatCard("Vai sair", "R$ 0,00", "out", "danger")
-        self.card_final = StatCard("Saldo no fim", "R$ 0,00", "chart", "accent")
+        self.card_hoje = StatCard("Saldo atual", "R$ 0,00", "money", "accent")
+        self.card_entradas = StatCard("Entradas previstas", "R$ 0,00", "in", "success")
+        self.card_saidas = StatCard("Saídas previstas", "R$ 0,00", "out", "danger")
+        self.card_final = StatCard("Saldo futuro", "R$ 0,00", "chart", "accent")
         for cartao in (self.card_hoje, self.card_entradas, self.card_saidas,
                        self.card_final):
             linha.add(cartao)
@@ -107,14 +107,14 @@ class FluxoView(QWidget):
         card.body.addWidget(label("Dia a dia", "section"))
         self.tabela = DataTable(COLUNAS)
         self.tabela.set_empty_message(
-            "Nenhum vencimento no periodo. O saldo segue como esta hoje."
+            "Nenhum vencimento no período. O saldo segue como está hoje."
         )
         card.body.addWidget(self.tabela, 1)
         return card
 
     def _card_contas(self) -> Card:
         card = Card(padding=Space.lg)
-        card.body.addWidget(label("Onde o dinheiro esta", "section"))
+        card.body.addWidget(label("Onde o dinheiro está", "section"))
         self._contas = QVBoxLayout()
         self._contas.setSpacing(0)
         card.body.addLayout(self._contas)
@@ -157,11 +157,11 @@ class FluxoView(QWidget):
         """A frase mais importante do modulo inteiro."""
         vermelho = self.projecao.dia_no_vermelho
         if vermelho is None:
-            self.recado.setText("O saldo nao fica negativo no periodo.")
+            self.recado.setText("O saldo não fica negativo no período.")
             self.recado.setProperty("tone", "success")
         else:
             self.recado.setText(
-                f"O dinheiro acaba em {fmt.data(vermelho.data)}  "
+                f"Saldo negativo em {fmt.data(vermelho.data)}  "
                 f"({fmt.moeda(vermelho.saldo)})"
             )
             self.recado.setProperty("tone", "danger")
@@ -173,7 +173,7 @@ class FluxoView(QWidget):
                 f"Vencidos entram no dia de hoje: "
                 f"{fmt.moeda(self.projecao.atrasado_receber)} a receber e "
                 f"{fmt.moeda(self.projecao.atrasado_pagar)} a pagar. "
-                "Receber atrasado e uma aposta - confira antes de contar com ele."
+                "Receber atrasado é uma aposta - confira antes de contar com ele."
             )
         else:
             self.atrasados.setText("")
@@ -186,20 +186,21 @@ class FluxoView(QWidget):
             linhas.append([
                 self.tabela.cell(self._rotulo_dia(dia), bold=True),
                 self.tabela.cell(self._resumo_dia(dia)),
-                self.tabela.cell(
-                    fmt.moeda(dia.entradas) if dia.entradas else "-", DIREITA,
-                    "success" if dia.entradas else "",
-                ),
-                self.tabela.cell(
-                    fmt.moeda(dia.saidas) if dia.saidas else "-", DIREITA,
-                    "danger" if dia.saidas else "",
-                ),
+                self._celula_valor(dia),
                 self.tabela.cell(
                     fmt.moeda(dia.saldo), DIREITA,
                     "danger" if dia.saldo < -CENTAVO else "accent", bold=True,
                 ),
             ])
-        self.tabela.fill(linhas, {0: 110, 2: 115, 3: 115, 4: 140})
+        self.tabela.fill(linhas, {0: 110, 2: 130, 3: 140})
+
+    def _celula_valor(self, dia):
+        """Uma coluna so: o quanto o dia mexe no saldo, com sinal e cor."""
+        movimento = dia.movimento
+        if abs(movimento) <= CENTAVO:
+            return self.tabela.cell(fmt.moeda(0), DIREITA, "text_muted")
+        sinal, tom = ("+", "success") if movimento > 0 else ("-", "danger")
+        return self.tabela.cell(f"{sinal} {fmt.moeda(abs(movimento))}", DIREITA, tom, True)
 
     @staticmethod
     def _rotulo_dia(dia) -> str:

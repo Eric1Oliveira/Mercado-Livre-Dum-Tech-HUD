@@ -118,21 +118,24 @@ function editar(cupom) {
     }, { feito: "Cupom salvo. Já vale na loja.", erro: "Não deu certo (o código já existe?)." });
   };
 
+  const pausar = (e) => agir(e.target, async () => {
+    await atualizar("cupons", { id: `eq.${cupom.id}` }, { ativo: false });
+    fecharGaveta();
+    await recarregar();
+  }, { feito: "Cupom pausado." });
+
+  // usado ou nao, os pedidos guardam o codigo do cupom como texto: o historico fica
   const excluir = (e) => {
-    if (cupom.usos > 0) {
-      if (!confirmar(`O cupom ${cupom.codigo} já foi usado ${cupom.usos} vez(es) e fica no histórico. Pausar?`)) return;
-      return agir(e.target, async () => {
-        await atualizar("cupons", { id: `eq.${cupom.id}` }, { ativo: false });
-        fecharGaveta();
-        await recarregar();
-      }, { feito: "Cupom pausado." });
-    }
-    if (!confirmar(`Apagar o cupom ${cupom.codigo}? Ele nunca foi usado.`)) return;
+    const aviso = cupom.usos > 0
+      ? `O cupom ${cupom.codigo} já foi usado ${cupom.usos} vez(es). Os pedidos guardam o código e o desconto ` +
+        "que deram.\n\nExcluir mesmo assim? Ele para de valer na loja na hora."
+      : `Excluir o cupom ${cupom.codigo}? Ele nunca foi usado.`;
+    if (!confirmar(aviso)) return;
     agir(e.target, async () => {
-      await apagar("cupons", { id: `eq.${cupom.id}` });
+      await apagar("cupons", { id: `eq.${cupom.id}` }, { conferir: true });
       fecharGaveta();
       await recarregar();
-    }, { feito: "Cupom apagado." });
+    }, { feito: "Cupom excluído." });
   };
 
   const copiar = el("button", {
@@ -161,7 +164,8 @@ function editar(cupom) {
           el("div", { classe: "acoes-linha" }, [link, copiar])]),
         el("div", { classe: "acoes-linha", estilo: "margin-top:14px" }, [
           el("button", { classe: "botao botao-primario", texto: novo ? "Criar cupom" : "Salvar", onclick: salvar }),
-          novo ? "" : el("button", { classe: "botao botao-perigo", texto: cupom.usos ? "Pausar" : "Apagar", onclick: excluir }),
+          novo || !cupom.usos || !cupom.ativo ? "" : el("button", { classe: "botao botao-fantasma", texto: "Pausar", onclick: pausar }),
+          novo ? "" : el("button", { classe: "botao botao-perigo", texto: "Excluir", onclick: excluir }),
           el("button", { classe: "botao botao-fantasma", texto: "Cancelar", onclick: fecharGaveta }),
         ]),
       ]),

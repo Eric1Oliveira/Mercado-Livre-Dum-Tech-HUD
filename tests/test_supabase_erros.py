@@ -111,7 +111,7 @@ class ErrosHTTPTestCase(unittest.TestCase):
             with self.assertRaises(ServicoIndisponivel) as ctx:
                 self.cliente.rpc("teste", {})
             mensagem = str(ctx.exception)
-            self.assertIn("permissao", mensagem.lower())
+            self.assertIn("permissão", mensagem.lower())
 
     def test_http_403_vira_servico_indisponivel(self) -> None:
         """HTTP 403 (forbidden) vira ServicoIndisponivel com mensagem de permissão."""
@@ -124,7 +124,7 @@ class ErrosHTTPTestCase(unittest.TestCase):
             with self.assertRaises(ServicoIndisponivel) as ctx:
                 self.cliente.rpc("teste", {})
             mensagem = str(ctx.exception)
-            self.assertIn("permissao", mensagem.lower())
+            self.assertIn("permissão", mensagem.lower())
 
     def test_resposta_nao_json_vira_servico_indisponivel(self) -> None:
         """Resposta não-JSON vira ServicoIndisponivel com mensagem clara."""

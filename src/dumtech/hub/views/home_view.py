@@ -130,15 +130,15 @@ class HomeView(QWidget):
     def _build_empty(self) -> EmptyState:
         empty = EmptyState(
             "Nenhum aplicativo liberado",
-            "Ative a sua licenca DumTech para liberar os aplicativos que voce comprou.",
+            "Ative a sua licença DumTech para liberar os aplicativos que você comprou.",
             "key",
         )
         empty.setMinimumHeight(260)
-        botao = Button("Ativar licenca", "key", "primary")
+        botao = Button("Ativar licença", "key", "primary")
         botao.setMinimumHeight(40)
         botao.clicked.connect(self.ativar_licenca.emit)
         # quem ainda nao comprou precisa de uma saida daqui que nao seja a chave
-        conhecer = Button("Conhecer os modulos", "cart", "ghost")
+        conhecer = Button("Conhecer os módulos", "cart", "ghost")
         conhecer.setMinimumHeight(40)
         conhecer.clicked.connect(self.adquirir.emit)
         caixa = QHBoxLayout()
@@ -250,16 +250,16 @@ class HomeView(QWidget):
         ultima = copias[0].momento if copias else None
         if ultima is None:
             return nucleo_indicadores.Indicador(
-                app_id=SINAL_DA_PLATAFORMA, rotulo="Copia de seguranca",
-                valor="Nenhuma", detalhe="seus dados ainda nao tem copia",
+                app_id=SINAL_DA_PLATAFORMA, rotulo="Cópia de segurança",
+                valor="Nenhuma", detalhe="seus dados ainda não têm cópia",
                 tom="warning", icone="shield", peso=-10,
             )
         dias = (date.today() - ultima.date()).days
         return nucleo_indicadores.Indicador(
-            app_id=SINAL_DA_PLATAFORMA, rotulo="Copia de seguranca",
+            app_id=SINAL_DA_PLATAFORMA, rotulo="Cópia de segurança",
             valor="Hoje" if dias == 0 else fmt.data(ultima.date().isoformat()),
-            detalhe=(f"{fmt.contagem(len(copias), 'copia', 'copias')} guardadas"
-                     if dias <= 1 else f"a ultima foi ha {fmt.dias(dias)}"),
+            detalhe=(f"{fmt.contagem(len(copias), 'cópia', 'cópias')} guardadas"
+                     if dias <= 1 else f"a última foi há {fmt.dias(dias)}"),
             tom="success" if dias <= 1 else "warning",
             icone="shield", peso=-10,
         )
@@ -317,10 +317,10 @@ class HomeView(QWidget):
 
         textos = QVBoxLayout()
         textos.setSpacing(2)
-        titulo = "Atualizacao importante do DumTech Hub" if aviso.obrigatoria \
-            else f"Versao {aviso.versao} do DumTech Hub disponivel"
+        titulo = "Atualização importante do DumTech Hub" if aviso.obrigatoria \
+            else f"Versão {aviso.versao} do DumTech Hub disponível"
         textos.addWidget(label(titulo, "strong"))
-        recado = label(aviso.notas or "Baixe a versao nova para receber as melhorias e as correcoes.",
+        recado = label(aviso.notas or "Baixe a versão nova para receber as melhorias e as correções.",
                        "muted")
         recado.setWordWrap(True)
         textos.addWidget(recado)
@@ -332,7 +332,7 @@ class HomeView(QWidget):
         baixar.clicked.connect(self.baixar_versao.emit)
         botoes.addWidget(baixar)
         if not aviso.obrigatoria:     # obrigatoria fica ate a pessoa atualizar
-            depois = Button("Agora nao", "", "ghost")
+            depois = Button("Agora não", "", "ghost")
             depois.clicked.connect(self.dispensar_versao.emit)
             botoes.addWidget(depois)
         linha.addLayout(botoes)

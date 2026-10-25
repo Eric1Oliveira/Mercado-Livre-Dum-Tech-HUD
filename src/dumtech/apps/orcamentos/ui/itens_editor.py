@@ -38,7 +38,7 @@ class ItensEditor(QWidget):
 
         entrada = QHBoxLayout()
         entrada.setSpacing(Space.sm)
-        self.descricao = form.texto(dica="O que esta sendo cotado")
+        self.descricao = form.texto(dica="O que está sendo cotado")
         self.descricao.returnPressed.connect(self.adicionar)
         entrada.addWidget(self.descricao, 4)
         # a largura minima padrao dos campos de dinheiro somaria mais que o
@@ -65,10 +65,10 @@ class ItensEditor(QWidget):
         self.busca.escolhido.connect(self._usar_produto)
 
         self.tabela = DataTable(
-            ["Descricao", "Qtd.", "Valor unit.", "Desconto", "Total"]
+            ["Descrição", "Qtd.", "Valor unit.", "Desconto", "Total"]
         )
         self.tabela.setMinimumHeight(160)
-        self.tabela.set_empty_message("Adicione o que esta sendo cotado.")
+        self.tabela.set_empty_message("Adicione o que está sendo cotado.")
         raiz.addWidget(self.tabela)
 
         rodape = QHBoxLayout()
@@ -168,7 +168,7 @@ class ItensEditor(QWidget):
             texto = (f"{fmt.contagem(len(self._itens), 'item', 'itens')}"
                      f"   -   {fmt.moeda(self.subtotal)}")
             if self.descontos:
-                texto += f"   (ja com {fmt.moeda(self.descontos)} de desconto nas linhas)"
+                texto += f"   (já com {fmt.moeda(self.descontos)} de desconto nas linhas)"
             self.resumo.setText(texto)
         else:
             self.resumo.setText("Nenhum item na proposta")

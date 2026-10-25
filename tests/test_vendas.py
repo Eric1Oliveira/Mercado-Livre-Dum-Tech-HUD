@@ -221,7 +221,7 @@ class DevolucaoTestCase(VendasBase):
         self.repo.devolver(venda.id, [(camisa.id, 1)])
         with self.assertRaises(VendaError) as erro:
             self.repo.devolver(venda.id, [(camisa.id, 2)])
-        self.assertIn("so restam", str(erro.exception))
+        self.assertIn("só restam", str(erro.exception))
 
     def test_devolucao_devolve_o_que_o_cliente_pagou_nao_o_preco_cheio(self) -> None:
         """Venda de 100 com 10 de desconto: devolver metade volta 45, nao 50."""

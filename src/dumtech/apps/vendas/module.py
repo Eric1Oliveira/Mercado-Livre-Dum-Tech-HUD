@@ -8,7 +8,7 @@ MANIFEST = AppManifest(
     app_id="vendas",
     name="DumTech Vendas",
     short_name="Vendas",
-    description="PDV de balcao: bipe, receba em varias formas e feche o caixa.",
+    description="PDV de balcão: bipe, receba em várias formas e feche o caixa.",
     version="2.0.0",
     icon="cart",
     accent="#D8574F",
@@ -63,37 +63,14 @@ def indicadores(paths):
     return [Indicador(
         app_id=MANIFEST.app_id, rotulo="Vendido hoje",
         valor=fmt.moeda(resumo.total_hoje),
-        detalhe=(f"{fmt.moeda(resumo.total_mes)} no mes"
-                 if resumo.total_mes else "nenhuma venda no mes"),
+        detalhe=(f"{fmt.moeda(resumo.total_mes)} no mês"
+                 if resumo.total_mes else "nenhuma venda no mês"),
         tom="accent", icone="cart", peso=90,
     )]
 
 
 def celular(paths):
-    """No celular: quanto entrou hoje, o caixa e as ultimas vendas."""
-    from ...core import celular as c
-    from ...ui import format as fmt
-    from .database import open_database
-    from .repository import VendasRepository
+    """No celular: o ritmo do dia, a tendencia, o caixa e o que mais sai."""
+    from .celular import secao
 
-    banco = open_database(paths.app_db(MANIFEST.app_id))
-    try:
-        repositorio = VendasRepository(banco)
-        r = repositorio.resumo(limite_listas=c.LIMITE_LISTA)
-        caixa = repositorio.caixa_aberto()
-    finally:
-        banco.close()
-    return c.secao(MANIFEST.app_id, "Vendas", peso=90, cartoes=[
-        c.cartao("Vendido hoje", fmt.moeda(r.total_hoje), f"{fmt.moeda(r.total_mes)} no mês"),
-        c.cartao("Caixa", "Aberto" if caixa else "Fechado",
-                 f"desde {fmt.data_hora_curta(caixa.aberto_em)}" if caixa else "",
-                 "ok" if caixa else ""),
-        c.cartao("Ticket médio", fmt.moeda(r.ticket_medio),
-                 fmt.contagem(r.vendas_mes, "venda", "vendas") + " no mês"),
-    ], listas=[
-        c.lista("Como pagaram no mês", [c.linha(forma, valor=fmt.moeda(valor)) for forma, valor in r.por_forma]),
-        c.lista("Últimas vendas", [
-            c.linha(v.cliente or "Consumidor", f"{v.numero} · {fmt.data(v.data)}", fmt.moeda(v.total_liquido),
-                    "aviso" if v.status == "pendente" else "")
-            for v in r.ultimas], "Nenhuma venda ainda."),
-    ])
+    return secao(paths, MANIFEST)

@@ -52,7 +52,7 @@ def comprovante(venda: Venda, empresa=None) -> str:
     if venda.devolvido:
         linhas.append(linha())
         linhas.append(lado_a_lado("Devolvido", f"-{fmt.moeda(venda.devolvido)}"))
-        linhas.append(lado_a_lado("Valor liquido", fmt.moeda(venda.total_liquido)))
+        linhas.append(lado_a_lado("Valor líquido", fmt.moeda(venda.total_liquido)))
 
     if venda.status == CANCELADA:
         linhas += ["", centro("*** VENDA CANCELADA ***")]
@@ -106,7 +106,7 @@ def fechamento(conferencia: ConferenciaCaixa, empresa=None) -> str:
     ]
     if conferencia.devolucoes_dinheiro:
         linhas.append(
-            lado_a_lado("Devolucoes", f"-{fmt.moeda(conferencia.devolucoes_dinheiro)}")
+            lado_a_lado("Devoluções", f"-{fmt.moeda(conferencia.devolucoes_dinheiro)}")
         )
     linhas.append(lado_a_lado("ESPERADO", fmt.moeda(conferencia.esperado)))
 
@@ -114,7 +114,7 @@ def fechamento(conferencia: ConferenciaCaixa, empresa=None) -> str:
         linhas += [
             "",
             lado_a_lado("Contado", fmt.moeda(caixa.contado)),
-            lado_a_lado("Diferenca", fmt.moeda(caixa.diferenca)),
+            lado_a_lado("Diferença", fmt.moeda(caixa.diferenca)),
         ]
         if caixa.observacoes:
             linhas += quebrar(caixa.observacoes)

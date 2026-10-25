@@ -71,7 +71,7 @@ class AtualizacaoDialog(QDialog):
         cabeca = QVBoxLayout()
         cabeca.setSpacing(2)
         cabeca.addWidget(label(
-            "Atualizacao importante" if aviso.obrigatoria else "Versao nova disponivel",
+            "Atualização importante" if aviso.obrigatoria else "Versão nova disponível",
             "title"))
         cabeca.addWidget(label(
             f"{instalada}  →  {aviso.versao}"
@@ -114,7 +114,7 @@ class AtualizacaoDialog(QDialog):
 
         botoes = QHBoxLayout()
         botoes.setSpacing(Space.sm)
-        self.botao_depois = Button("Agora nao", "", "ghost")
+        self.botao_depois = Button("Agora não", "", "ghost")
         self.botao_depois.setAutoDefault(False)
         self.botao_depois.clicked.connect(self._depois)
         botoes.addWidget(self.botao_depois)
@@ -139,10 +139,10 @@ class AtualizacaoDialog(QDialog):
     # ------------------------------------------------------------------ texto
     def _explicacao(self) -> str:
         if not self.aviso.automatica:
-            return "Esta versao e instalada pelo site. Seus dados continuam onde estao."
+            return "Esta versão é instalada pelo site. Seus dados continuam onde estão."
         if not nucleo.pode_atualizar_aqui():
-            return "Rodando pelo codigo: instale pelo site."
-        return "O Hub fecha, instala e abre sozinho em menos de 1 minuto. Seus dados nao sao tocados."
+            return "Rodando pelo código: instale pelo site."
+        return "O Hub fecha, instala e abre sozinho em menos de 1 minuto. Seus dados não são tocados."
 
     def _dizer(self, texto: str, tom: str = "muted") -> None:
         self.aviso_tela.setText(texto)
@@ -175,7 +175,7 @@ class AtualizacaoDialog(QDialog):
         self.botao_depois.setText("  Cancelar")
         self.barra.setValue(0)
         self.barra.setVisible(True)
-        self._dizer("Baixando a atualizacao...")
+        self._dizer("Baixando a atualização...")
 
         def andar(baixado: int, total: int) -> None:
             # vem da thread do download: so numeros, nenhum widget tocado aqui
@@ -228,12 +228,12 @@ class AtualizacaoDialog(QDialog):
         self._baixando = False
         self.barra.setVisible(False)
         self.botao_instalar.setEnabled(True)
-        self.botao_depois.setText("  Agora nao")
+        self.botao_depois.setText("  Agora não")
         if isinstance(erro, AtualizacaoError) and erro.codigo == "cancelado":
             self._dizer("Download cancelado.")
             return
         texto = str(erro) if isinstance(erro, AtualizacaoError) else \
-            "Nao foi possivel baixar agora."
+            "Não foi possível baixar agora."
         self._dizer(texto, "danger")
         self.botao_instalar.setText("  Tentar de novo")
         self.link_site.setVisible(True)

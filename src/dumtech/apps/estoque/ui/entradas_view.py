@@ -20,14 +20,16 @@ from ....ui import format as fmt
 from ....ui import icons
 from ....ui.theme import Space, palette_for
 from ....ui.widgets import form
+from ....ui.widgets.busca_catalogo import BuscaCatalogo
 from ....ui.widgets.buttons import Button
 from ....ui.widgets.common import Card, label, repolish
 from ....ui.widgets.table import DIREITA, DataTable
 from ....core.contas import APagar
+from ..catalog import CatalogoEstoque
 from ..models import EstoqueError, ItemEntrada, Produto, quantidade_texto
 from ..repository import EstoqueRepository
 
-COLUNAS = ["Codigo", "Produto", "Quantidade", "Custo unitario", "Total"]
+COLUNAS = ["Código", "Produto", "Quantidade", "Custo unitário", "Total"]
 
 
 class EntradasView(QWidget):
@@ -74,13 +76,13 @@ class EntradasView(QWidget):
         linha = QHBoxLayout()
         linha.setSpacing(Space.md)
         self.fornecedor = form.sugestao(
-            "", "Quem vendeu para voce", self.repository.fornecedores()
+            "", "Quem vendeu para você", self.repository.fornecedores()
         )
         linha.addWidget(form.campo("Fornecedor", self.fornecedor), 3)
         self.documento = form.texto("", "Ex.: NF 1234")
         linha.addWidget(form.campo("Documento", self.documento), 2)
         self.observacao = form.texto("", "Opcional")
-        linha.addWidget(form.campo("Observacao", self.observacao), 3)
+        linha.addWidget(form.campo("Observação", self.observacao), 3)
         card.body.addLayout(linha)
 
         # Comprar mercadoria e criar uma divida. Com o Financeiro na casa, a
@@ -89,7 +91,7 @@ class EntradasView(QWidget):
         if self.contas is not None:
             conta = QHBoxLayout()
             conta.setSpacing(Space.md)
-            self.lancar_conta = QCheckBox("Lancar no Financeiro como conta a pagar")
+            self.lancar_conta = QCheckBox("Lançar no Financeiro como conta a pagar")
             self.lancar_conta.setChecked(True)
             self.lancar_conta.toggled.connect(self._conta_mudou)
             conta.addWidget(self.lancar_conta)
@@ -112,13 +114,17 @@ class EntradasView(QWidget):
         linha.setSpacing(Space.md)
 
         self.bipe = QLineEdit()
-        self.bipe.setPlaceholderText("Bipe o codigo de barras ou digite o codigo...")
+        self.bipe.setPlaceholderText("Bipe o código de barras ou digite o código ou o nome...")
         self._acao_bipe = self.bipe.addAction(
             icons.icon("tag", palette_for(self).accent, 16),
             QLineEdit.ActionPosition.LeadingPosition,
         )
         self.bipe.returnPressed.connect(self._localizar)
         linha.addWidget(form.campo("Produto", self.bipe), 4)
+        # os produtos cadastrados aparecem enquanto se digita; o Enter do leitor
+        # de codigo de barras continua caindo no `_localizar`
+        self.busca = BuscaCatalogo(self.bipe, CatalogoEstoque(self.repository.db))
+        self.busca.escolhido.connect(self._escolhido)
 
         self.quantidade = QDoubleSpinBox()
         self.quantidade.setRange(0, 9_999_999)
@@ -128,7 +134,7 @@ class EntradasView(QWidget):
         linha.addWidget(form.campo("Quantidade", self.quantidade), 1)
 
         self.custo = form.dinheiro(0.0)
-        linha.addWidget(form.campo("Custo unitario", self.custo), 2)
+        linha.addWidget(form.campo("Custo unitário", self.custo), 2)
 
         self.botao_adicionar = Button("Adicionar", "plus", "primary")
         self.botao_adicionar.clicked.connect(self._adicionar)
@@ -218,8 +224,25 @@ class EntradasView(QWidget):
         produto = self.repository.buscar(termo)
         if produto is None:
             self._selecionar(None)
-            self._dizer(f"Nenhum produto encontrado para '{termo}'.", "danger")
+            if self.repository.listar(busca=termo):
+                # o nome bate com mais de um produto: a lista mostra quais
+                self.busca.procurar(termo)
+                self._dizer(f"Mais de um produto com '{termo}'. Escolha na lista.")
+            else:
+                self._dizer(f"Nenhum produto encontrado para '{termo}'.", "danger")
             return
+        self._usar(produto)
+
+    def _escolhido(self, item) -> None:
+        """Produto escolhido na lista de sugestões."""
+        produto = self.repository.obter(item.produto_id)
+        if produto is not None:
+            self._usar(produto)
+
+    def _usar(self, produto: Produto) -> None:
+        self.bipe.blockSignals(True)
+        self.bipe.setText(produto.nome)
+        self.bipe.blockSignals(False)
         self._selecionar(produto)
         self._dizer("")
         self.quantidade.setFocus()
@@ -300,7 +323,7 @@ class EntradasView(QWidget):
         self.refresh()
         self._dizer(
             f"Entrada confirmada: {len(registros)} {plural}, {fmt.moeda(total)}. "
-            f"Os saldos e os custos medios foram atualizados.{recado_conta}",
+            f"Os saldos e os custos médios foram atualizados.{recado_conta}",
             "success",
         )
         self.data_changed.emit()
@@ -317,7 +340,7 @@ class EntradasView(QWidget):
         documento = self.documento.text().strip()
         fornecedor = self.fornecedor.text().strip()
         if documento and self.contas.ja_lancado(documento):
-            return f"  A nota {documento} ja tinha conta no Financeiro - nao lancei de novo."
+            return f"  A nota {documento} já tinha conta no Financeiro - não lancei de novo."
         try:
             self.contas.lancar_pagamento(APagar(
                 descricao=f"Compra {documento}".strip() if documento
@@ -329,8 +352,8 @@ class EntradasView(QWidget):
                 documento=documento,
             ))
         except Exception as erro:  # noqa: BLE001 - a compra ja entrou, nao se desfaz
-            return f"  Nao consegui lancar a conta a pagar ({erro}) - lance na mao."
-        return "  A conta a pagar foi lancada no Financeiro."
+            return f"  Não consegui lançar a conta a pagar ({erro}) - lance na mão."
+        return "  A conta a pagar foi lançada no Financeiro."
 
     def apply_theme(self, palette) -> None:
         self._acao_bipe.setIcon(icons.icon("tag", palette.accent, 16))

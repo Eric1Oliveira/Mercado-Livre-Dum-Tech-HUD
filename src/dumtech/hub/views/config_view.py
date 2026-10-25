@@ -34,9 +34,9 @@ class ConfigView(QWidget):
 
         titulos = QVBoxLayout()
         titulos.setSpacing(2)
-        titulos.addWidget(label("Configuracoes", "display"))
+        titulos.addWidget(label("Configurações", "display"))
         titulos.addWidget(
-            label("Ajuste o programa do seu jeito - tudo ja funciona sem mexer",
+            label("Ajuste o programa do seu jeito - tudo já funciona sem mexer",
                   "subtitle")
         )
         raiz.addLayout(titulos)

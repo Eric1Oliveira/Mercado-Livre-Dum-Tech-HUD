@@ -273,7 +273,7 @@ class DocumentoTestCase(OrcamentosBase):
         self.assertIn("R$ 1.950,00", texto)          # total
         self.assertIn("50% na entrada", texto)
         self.assertIn("10 dias uteis", texto)
-        self.assertIn("Proposta valida ate", texto)
+        self.assertIn("Proposta válida até", texto)
         self.assertTrue(all(len(linha) <= 40 for linha in texto.splitlines()))
 
     def test_sem_desconto_o_documento_nao_mostra_linha_de_desconto(self) -> None:

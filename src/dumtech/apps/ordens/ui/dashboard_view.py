@@ -30,14 +30,14 @@ class DashboardView(QWidget):
         titulos = QVBoxLayout()
         titulos.setSpacing(2)
         titulos.addWidget(label("Painel", "title"))
-        titulos.addWidget(label("Como estao os servicos", "subtitle"))
+        titulos.addWidget(label("Como estão os serviços", "subtitle"))
         raiz.addLayout(titulos)
 
         cartoes = FaixaDeNumeros()
         self.card_oficina = StatCard("Em andamento", "0", "wrench", "accent")
         self.card_aguardando = StatCard("Esperando o cliente", "0", "clock", "warning")
         self.card_atrasadas = StatCard("Passaram do prazo", "0", "alert", "danger")
-        self.card_faturado = StatCard("Entregue no mes", "R$ 0,00", "money", "success")
+        self.card_faturado = StatCard("Entregue no mês", "R$ 0,00", "money", "success")
         for cartao in (self.card_oficina, self.card_aguardando, self.card_atrasadas,
                        self.card_faturado):
             cartoes.add(cartao)
@@ -52,10 +52,10 @@ class DashboardView(QWidget):
         )
         desenhos.addWidget(self.painel_etapas, 3)
 
-        self.grafico_composicao = GraficoRosca(titulo_centro="Entregue no mes")
-        self.grafico_composicao.vazio = "Nenhuma entrega neste mes."
+        self.grafico_composicao = GraficoRosca(titulo_centro="Entregue no mês")
+        self.grafico_composicao.vazio = "Nenhuma entrega neste mês."
         self.painel_composicao = ChartPanel(
-            "Material ou mao de obra", self.grafico_composicao
+            "Material ou mão de obra", self.grafico_composicao
         )
         desenhos.addWidget(self.painel_composicao, 2)
         raiz.addLayout(desenhos, 3)
@@ -64,7 +64,7 @@ class DashboardView(QWidget):
         listas.setSpacing(Space.lg)
         # esperando resposta na frente: e a fila que so anda com um telefonema
         self.painel_aguardando = ListPanel(
-            "Esperando aprovacao", "Nenhum orcamento parado esperando o cliente."
+            "Esperando aprovação", "Nenhum orçamento parado esperando o cliente."
         )
         listas.addWidget(self.painel_aguardando, 1)
         self.painel_prontas = ListPanel(
@@ -80,7 +80,7 @@ class DashboardView(QWidget):
 
         self.card_oficina.set_value(
             fmt.numero(resumo.abertas + resumo.aguardando + resumo.em_andamento),
-            f"{resumo.em_andamento} em servico  ·  {resumo.abertas} na entrada",
+            f"{resumo.em_andamento} em serviço  ·  {resumo.abertas} na entrada",
         )
         self.card_aguardando.set_value(fmt.numero(resumo.aguardando))
         self.card_atrasadas.set_value(fmt.numero(resumo.atrasadas))
@@ -100,7 +100,7 @@ class DashboardView(QWidget):
 
         self.grafico_composicao.set_fatias([
             Fatia("Materiais", resumo.pecas_mes, "accent", fmt.moeda(resumo.pecas_mes)),
-            Fatia("Mao de obra", resumo.servicos_mes, "success",
+            Fatia("Mão de obra", resumo.servicos_mes, "success",
                   fmt.moeda(resumo.servicos_mes)),
         ] if resumo.valor_mes else [])
         self.grafico_composicao.set_total(fmt.moeda(resumo.valor_mes))
@@ -125,17 +125,17 @@ class DashboardView(QWidget):
         if ordem.prazo:
             return fmt.prazo_texto(ordem.prazo)
         dias = ordem.dias_em_aberto
-        return "entrou hoje" if dias == 0 else f"ha {fmt.dias(dias)}"
+        return "entrou hoje" if dias == 0 else f"há {fmt.dias(dias)}"
 
     @staticmethod
     def _composicao(resumo) -> str:
         """Material e mao de obra separados: a conta que diz se valeu a pena."""
         if not resumo.concluidas_mes:
-            return "nenhuma entrega neste mes"
+            return "nenhuma entrega neste mês"
         partes = [fmt.contagem(resumo.concluidas_mes, "entrega")]
         if resumo.pecas_mes or resumo.servicos_mes:
             partes.append(
                 f"{fmt.moeda(resumo.pecas_mes)} em material, "
-                f"{fmt.moeda(resumo.servicos_mes)} em servico"
+                f"{fmt.moeda(resumo.servicos_mes)} em serviço"
             )
         return "  ·  ".join(partes)

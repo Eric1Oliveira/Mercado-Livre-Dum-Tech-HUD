@@ -29,28 +29,28 @@ class DashboardView(QWidget):
         titulos = QVBoxLayout()
         titulos.setSpacing(2)
         titulos.addWidget(label("Painel", "title"))
-        titulos.addWidget(label("Como estao as vendas", "subtitle"))
+        titulos.addWidget(label("Como estão as vendas", "subtitle"))
         raiz.addLayout(titulos)
 
         cartoes = FaixaDeNumeros()
         self.card_hoje = StatCard("Vendido hoje", "R$ 0,00", "cart", "accent")
         self.card_caixa = StatCard("Caixa", "Fechado", "money", "muted")
-        self.card_mes = StatCard("Vendido no mes", "R$ 0,00", "chart", "success")
-        self.card_ticket = StatCard("Ticket medio", "R$ 0,00", "list", "warning")
+        self.card_mes = StatCard("Vendido no mês", "R$ 0,00", "chart", "success")
+        self.card_ticket = StatCard("Ticket médio", "R$ 0,00", "list", "warning")
         for cartao in (self.card_hoje, self.card_caixa, self.card_mes, self.card_ticket):
             cartoes.add(cartao)
         raiz.addWidget(cartoes)
 
         desenhos = QHBoxLayout()
         desenhos.setSpacing(Space.lg)
-        self.grafico_formas = GraficoRosca(titulo_centro="No mes")
+        self.grafico_formas = GraficoRosca(titulo_centro="No mês")
         self.painel_formas = ChartPanel(
-            "Como o cliente paga", self.grafico_formas, "vendas do mes"
+            "Como o cliente paga", self.grafico_formas, "vendas do mês"
         )
         desenhos.addWidget(self.painel_formas, 3)
 
         self.grafico_ultimas = GraficoBarras(largura_rotulo=170)
-        self.painel_ultimas = ChartPanel("Ultimas vendas", self.grafico_ultimas)
+        self.painel_ultimas = ChartPanel("Últimas vendas", self.grafico_ultimas)
         desenhos.addWidget(self.painel_ultimas, 2)
         raiz.addLayout(desenhos, 3)
 
@@ -73,7 +73,7 @@ class DashboardView(QWidget):
             + (f"  ·  {fmt.moeda(resumo.devolvido_mes)} devolvido"
                if resumo.devolvido_mes else ""),
         )
-        self.card_ticket.set_value(fmt.moeda(resumo.ticket_medio), "por venda no mes")
+        self.card_ticket.set_value(fmt.moeda(resumo.ticket_medio), "por venda no mês")
 
         formas = maiores(resumo.por_forma, 5)
         self.grafico_formas.set_fatias(fatias_de(

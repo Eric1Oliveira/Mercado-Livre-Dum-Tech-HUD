@@ -40,6 +40,7 @@ Options -Indexes
   AddType font/ttf                             .ttf
   AddType image/svg+xml                        .svg
   AddType text/javascript                      .js .mjs
+  AddType video/mp4                            .mp4
 </IfModule>
 
 # ------------------------------------------------------------ cabecalhos ----
@@ -64,6 +65,12 @@ Options -Indexes
   <FilesMatch "\.exe$">
     Header set Content-Disposition "attachment"
     Header set Cache-Control "no-cache"
+  </FilesMatch>
+
+  # videos e capas do Passo a passo: arquivo que nao muda entre gravacoes no mesmo dia;
+  # cache de uma semana poupa a banda da hospedagem (o navegador nao baixa de novo)
+  <FilesMatch "\.(mp4|jpg)$">
+    Header set Cache-Control "public, max-age=604800"
   </FilesMatch>
 
   # o service worker do app do celular nao pode ficar preso em cache

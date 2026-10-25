@@ -24,7 +24,7 @@ from ....ui.widgets.table import DIREITA, DataTable
 from ..models import Devolucao, Venda, VendaError, quantidade_texto
 from ..repository import VendasRepository
 
-COLUNAS = ["Item", "Vendido", "Ja devolvido", "Devolver"]
+COLUNAS = ["Item", "Vendido", "Já devolvido", "Devolver"]
 
 
 class DevolucaoDialog(QDialog):
@@ -42,7 +42,7 @@ class DevolucaoDialog(QDialog):
         self.devolucao: Devolucao | None = None
         self._campos: list[tuple[int, QDoubleSpinBox, float]] = []
 
-        self.setWindowTitle("Devolucao")
+        self.setWindowTitle("Devolução")
         self.setModal(True)
         self.setMinimumWidth(640)
 
@@ -52,7 +52,7 @@ class DevolucaoDialog(QDialog):
 
         cabecalho = QVBoxLayout()
         cabecalho.setSpacing(2)
-        cabecalho.addWidget(label(f"Devolucao da venda {venda.numero}", "section"))
+        cabecalho.addWidget(label(f"Devolução da venda {venda.numero}", "section"))
         cabecalho.addWidget(
             label(
                 f"{venda.cliente or 'Consumidor'}  ·  {fmt.data(venda.data)}"
@@ -121,7 +121,7 @@ class DevolucaoDialog(QDialog):
         cancelar.clicked.connect(self.reject)
         linha.addWidget(cancelar)
 
-        self.botao_confirmar = Button("Confirmar devolucao", "check", "primary")
+        self.botao_confirmar = Button("Confirmar devolução", "check", "primary")
         self.botao_confirmar.setDefault(True)
         self.botao_confirmar.clicked.connect(self._confirmar)
         linha.addWidget(self.botao_confirmar)

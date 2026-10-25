@@ -44,7 +44,7 @@ class RelatorioTestCase(unittest.TestCase):
     def test_o_relatorio_tem_o_que_o_suporte_precisa(self) -> None:
         texto = relatorio(_estourar(), versao="2.0.0", contexto="abrindo o Estoque")
 
-        self.assertIn("DumTech Hub - relatorio de erro", texto)
+        self.assertIn("DumTech Hub - relatório de erro", texto)
         self.assertIn("2.0.0", texto)
         self.assertIn("abrindo o Estoque", texto)
         self.assertIn("ValueError: coisa ruim", texto)

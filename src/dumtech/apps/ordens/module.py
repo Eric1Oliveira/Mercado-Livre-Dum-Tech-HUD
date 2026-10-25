@@ -6,13 +6,13 @@ from ...core.app_module import AppContext, AppManifest
 
 MANIFEST = AppManifest(
     app_id="ordens",
-    name="DumTech Ordem de Servico",
-    short_name="Ordens",
-    description="Servicos por etapa, aprovacao, garantia e comprovantes.",
+    name="DumTech Ordem de Serviço",
+    short_name="OS",
+    description="Serviços por etapa, aprovação, garantia e comprovantes.",
     version="2.0.0",
     icon="wrench",
     accent="#4C7EF3",
-    category="Servicos",
+    category="Serviços",
 )
 
 
@@ -50,8 +50,8 @@ def avisos(paths, config):
         primeira = atrasadas[0]
         encontrados.append(Aviso(
             app_id=MANIFEST.app_id, tipo="os_atrasada",
-            titulo=("1 ordem passou do prazo" if len(atrasadas) == 1
-                    else f"{len(atrasadas)} ordens passaram do prazo"),
+            titulo=("1 OS passou do prazo" if len(atrasadas) == 1
+                    else f"{len(atrasadas)} OS passaram do prazo"),
             detalhe=_citar(primeira),
             tom="danger", urgencia=80, icone="wrench", quantidade=len(atrasadas),
         ))
@@ -67,7 +67,7 @@ def avisos(paths, config):
         primeira = paradas[0]
         encontrados.append(Aviso(
             app_id=MANIFEST.app_id, tipo="os_para_retirar",
-            titulo=f"{fmt.contagem(len(paradas), 'servico')} pronto"
+            titulo=f"{fmt.contagem(len(paradas), 'serviço')} pronto"
                    f"{'s' if len(paradas) > 1 else ''} esperando retirada",
             detalhe=_citar(primeira),
             tom="accent", urgencia=30, icone="wrench", quantidade=len(paradas),
@@ -100,28 +100,7 @@ def indicadores(paths):
 
 
 def celular(paths):
-    """No celular: o quadro, o que atrasou e o que esta pronto."""
-    from ...core import celular as c
-    from ...ui import format as fmt
-    from .database import open_database
-    from .repository import OrdensRepository
+    """No celular: o quadro, o que atrasou e o que esta pronto para entregar."""
+    from .celular import secao
 
-    banco = open_database(paths.app_db(MANIFEST.app_id))
-    try:
-        r = OrdensRepository(banco).resumo(limite_listas=c.LIMITE_LISTA)
-    finally:
-        banco.close()
-
-    def ordem(o):
-        oque = o.assunto
-        return c.linha(o.cliente or "Sem cliente", " · ".join(p for p in (o.numero, oque, o.status_label) if p),
-                       fmt.moeda(o.total) if o.total else "", "perigo" if o.atrasada else "")
-    return c.secao(MANIFEST.app_id, "Ordens de serviço", peso=70, cartoes=[
-        c.cartao("Em aberto", fmt.numero(r.abertas + r.aguardando + r.em_andamento),
-                 f"{r.aguardando} aguardando aprovação"),
-        c.cartao("Atrasadas", fmt.numero(r.atrasadas), "passaram do prazo", "perigo" if r.atrasadas else ""),
-        c.cartao("Entregues no mês", fmt.numero(r.concluidas_mes), fmt.moeda(r.valor_mes)),
-    ], listas=[
-        c.lista("Prontas para entregar", [ordem(o) for o in r.prontas], "Nenhuma pronta agora."),
-        c.lista("Na fila", [ordem(o) for o in r.fila], "Fila vazia."),
-    ])
+    return secao(paths, MANIFEST)

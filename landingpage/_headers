@@ -7,3 +7,6 @@
   X-Frame-Options: DENY
   Content-Security-Policy: frame-ancestors 'none'
   Cache-Control: no-cache
+
+/videos/*
+  Cache-Control: public, max-age=604800

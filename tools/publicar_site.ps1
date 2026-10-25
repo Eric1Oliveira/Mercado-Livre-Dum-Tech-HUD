@@ -149,8 +149,12 @@ $pagina = "file:///" + ((Join-Path $saida "guia\pdf.html") -replace "\\", "/")
 # Start-Process: o Edge escreve avisos inofensivos no stderr, que o
 # ErrorActionPreference=Stop confundiria com erro
 $lixo = Join-Path $env:TEMP "dumtech-edge-pdf.log"
+# perfil proprio: com o Edge do dia a dia aberto, sem isto o pedido vai para a
+# janela que ja esta aberta e o PDF nao sai ("O Edge nao gerou o PDF do guia")
+$perfilPdf = Join-Path $env:TEMP "dumtech-edge-pdf"
 Start-Process -FilePath $edge -Wait -NoNewWindow -RedirectStandardError $lixo -ArgumentList @(
   "--headless=new", "--disable-gpu", "--no-pdf-header-footer", "--virtual-time-budget=8000",
+  "--user-data-dir=`"$perfilPdf`"", "--no-first-run",
   "--print-to-pdf=`"$pdf`"", "`"$pagina`"")
 $espera = 0
 while (-not (Test-Path $pdf) -and $espera -lt 30) { Start-Sleep -Milliseconds 500; $espera++ }

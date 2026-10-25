@@ -283,7 +283,7 @@ class RestaurarTestCase(BackupBase):
 
         with self.assertRaises(BackupError) as erro:
             backup.restaurar(futuro, self.paths)
-        self.assertIn("versao mais nova", str(erro.exception))
+        self.assertIn("versão mais nova", str(erro.exception))
 
 
 class IdaEVoltaTestCase(BackupBase):

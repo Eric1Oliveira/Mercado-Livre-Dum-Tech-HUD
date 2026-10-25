@@ -1,0 +1,17 @@
+{
+ "duracao": 12.9,
+ "passos": [
+  {
+   "t": 2.8,
+   "texto": "Clique no botão de tema, no alto à direita"
+  },
+  {
+   "t": 6.0,
+   "texto": "Pronto: tema escuro, para quem trabalha à noite"
+  },
+  {
+   "t": 7.6,
+   "texto": "Clique de novo para voltar ao claro"
+  }
+ ]
+}

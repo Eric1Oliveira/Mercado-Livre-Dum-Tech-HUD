@@ -76,7 +76,7 @@ class BaixaDialog(FormDialog):
             self._pix_mudou()
 
         self.observacao = form.texto("", "Opcional")
-        self.add_row("Observacao", self.observacao)
+        self.add_row("Observação", self.observacao)
 
         self.add_note("")
         self._nota = self.extras.itemAt(self.extras.count() - 1).widget()
@@ -116,8 +116,8 @@ class BaixaDialog(FormDialog):
         atual = self.repository.obter(self.lancamento.id) or self.lancamento
         restante = max(atual.em_aberto - self.valor.value(), 0)
         self._nota.setText(
-            f"Valor do lancamento: {fmt.moeda(atual.valor)}      "
-            f"Ja baixado: {fmt.moeda(atual.baixado)}      "
+            f"Valor do lançamento: {fmt.moeda(atual.valor)}      "
+            f"Já baixado: {fmt.moeda(atual.baixado)}      "
             f"Fica em aberto: {fmt.moeda(restante)}"
         )
 
@@ -170,7 +170,7 @@ class ContaDialog(FormDialog):
         self.editando = conta is not None
         super().__init__(
             "Editar conta" if self.editando else "Nova conta",
-            "Caixa, banco ou cartao",
+            "Caixa, banco ou cartão",
             parent,
             largura=480,
         )
@@ -185,10 +185,10 @@ class ContaDialog(FormDialog):
         self.add_row("Saldo inicial", self.saldo_inicial)
 
         self.observacoes = form.texto(self.conta.observacoes, "Opcional")
-        self.add_row("Observacoes", self.observacoes)
+        self.add_row("Observações", self.observacoes)
 
         self.add_note(
-            "O saldo inicial e quanto havia nesta conta quando voce comecou a usar "
+            "O saldo inicial é quanto havia nesta conta quando você começou a usar "
             "o sistema. Dali para frente o saldo anda sozinho, com as baixas."
         )
         self.nome.setFocus()
@@ -210,7 +210,7 @@ class TransferenciaDialog(FormDialog):
     def __init__(self, repository: FinanceiroRepository, parent: QWidget | None = None) -> None:
         self.repository = repository
         super().__init__(
-            "Transferencia entre contas",
+            "Transferência entre contas",
             "Sacar do banco, levar para o caixa, guardar o troco",
             parent,
             largura=520,
@@ -232,10 +232,10 @@ class TransferenciaDialog(FormDialog):
         self.add_row("Valor", form.linha(self.valor, "Data", self.data))
 
         self.observacao = form.texto("", "Opcional")
-        self.add_row("Observacao", self.observacao)
+        self.add_row("Observação", self.observacao)
 
         self.add_note(
-            "Transferencia nao entra no resultado do mes: o dinheiro so trocou "
+            "Transferência não entra no resultado do mês: o dinheiro só trocou "
             "de lugar."
         )
         self.valor.setFocus()
@@ -267,15 +267,15 @@ class SerieDialog(FormDialog):
         parcelado = modo == PARCELAMENTO
 
         super().__init__(
-            "Parcelar" if parcelado else "Repetir",
-            base.descricao or "Novo lancamento",
+            "Parcelar" if parcelado else "Recorrência",
+            base.descricao or "Novo lançamento",
             parent,
             largura=520,
         )
 
         self.quantidade = form.inteiro(3 if parcelado else 12, minimo=2, maximo=120)
         self.quantidade.valueChanged.connect(self._atualizar_nota)
-        self.add_row("Quantidade" if parcelado else "Repeticoes", self.quantidade)
+        self.add_row("Parcelas" if parcelado else "Quantidade", self.quantidade)
 
         self.frequencia = QComboBox()
         for chave, rotulo in FREQUENCIAS:

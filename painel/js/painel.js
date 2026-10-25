@@ -29,6 +29,8 @@ const TELAS = {
   cupons:    () => import("./telas/cupons.js").then((m) => m.cupons),
   anuncios:  () => import("./telas/catalogo.js").then((m) => m.anuncios),
   uso:       () => import("./telas/uso.js").then((m) => m.uso),
+  testes:    () => import("./telas/testes.js").then((m) => m.testes),
+  celulares: () => import("./telas/celulares.js").then((m) => m.celulares),
   seguranca: () => import("./telas/uso.js").then((m) => m.seguranca),
 };
 
@@ -285,7 +287,8 @@ async function aquecer() {
     ? new Promise((pronto) => requestIdleCallback(() => pronto(fn()), { timeout: 1500 }))
     : new Promise((pronto) => setTimeout(() => pronto(fn()), 200)));
 
-  for (const nome of ["pedidos", "clientes", "catalogo", "kits", "cupons", "resumo", "anuncios", "uso", "seguranca"]) {
+  for (const nome of ["pedidos", "clientes", "catalogo", "kits", "cupons", "resumo", "anuncios", "uso",
+                      "testes", "celulares", "seguranca"]) {
     if ($("painel").hidden) return; // saiu no meio
     if (nome === telaAtual()) continue;
     await ocioso(async () => {

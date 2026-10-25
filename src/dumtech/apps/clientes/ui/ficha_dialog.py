@@ -49,7 +49,7 @@ class FichaDialog(QDialog):
         raiz.addLayout(self._cabecalho())
         raiz.addWidget(separator())
         raiz.addWidget(self._dados())
-        raiz.addWidget(label("Anotacoes", "section"))
+        raiz.addWidget(label("Anotações", "section"))
         raiz.addLayout(self._nova_nota())
         raiz.addWidget(self._lista_notas(), 1)
 
@@ -105,10 +105,10 @@ class FichaDialog(QDialog):
             ("Telefone", self.contato.telefone_formatado),
             ("WhatsApp", self.contato.whatsapp_formatado),
             ("E-mail", self.contato.email),
-            ("Endereco", self.contato.endereco_completo),
-            ("Aniversario", aniversario),
+            ("Endereço", self.contato.endereco_completo),
+            ("Aniversário", aniversario),
             ("Cadastrado em", fmt.data(self.contato.criado_em)),
-            ("Observacoes", self.contato.observacoes),
+            ("Observações", self.contato.observacoes),
         ):
             if not (valor or "").strip():
                 continue  # ficha nao mostra campo vazio: so ruido
@@ -130,7 +130,7 @@ class FichaDialog(QDialog):
         linha.setSpacing(Space.sm)
         self.nova_nota = QLineEdit()
         self.nova_nota.setPlaceholderText(
-            "O que aconteceu? Ex.: ligou pedindo orcamento de 10 monitores"
+            "O que aconteceu? Ex.: ligou pedindo orçamento de 10 monitores"
         )
         self.nova_nota.returnPressed.connect(self._anotar)
         linha.addWidget(self.nova_nota, 1)
@@ -162,8 +162,8 @@ class FichaDialog(QDialog):
         notas = self.store.notas(self.contato.id)
         if not notas:
             vazio = label(
-                "Nenhuma anotacao ainda. Registre o que foi combinado com o cliente "
-                "para nao depender da memoria.",
+                "Nenhuma anotação ainda. Registre o que foi combinado com o cliente "
+                "para não depender da memória.",
                 "dim",
             )
             vazio.setWordWrap(True)
@@ -179,7 +179,7 @@ class FichaDialog(QDialog):
         topo = QHBoxLayout()
         topo.addWidget(label(fmt.data_hora(nota.criado_em), "dim"), 1)
         apagar = Button("", "trash", "ghost")
-        apagar.setToolTip("Apagar esta anotacao")
+        apagar.setToolTip("Apagar esta anotação")
         apagar.setFixedWidth(34)
         apagar.clicked.connect(lambda _=False, i=nota.id: self._apagar_nota(i))
         topo.addWidget(apagar)
@@ -199,13 +199,13 @@ class FichaDialog(QDialog):
         self.nova_nota.clear()
         self.houve_mudanca = True
         self.carregar_notas()
-        self._dizer("Anotacao registrada.", "success")
+        self._dizer("Anotação registrada.", "success")
 
     def _apagar_nota(self, nota_id: int) -> None:
         self.store.excluir_nota(nota_id)
         self.houve_mudanca = True
         self.carregar_notas()
-        self._dizer("Anotacao apagada.")
+        self._dizer("Anotação apagada.")
 
     def _dizer(self, texto: str, tom: str = "muted") -> None:
         self.aviso.setText(texto)

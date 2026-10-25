@@ -16,13 +16,22 @@ from PySide6.QtWidgets import (
 from ....ui import format as fmt
 from ....ui import icons
 from ....ui.theme import palette_for
+from ....ui.widgets.busca_catalogo import BuscaCatalogo
 from ....ui.widgets.buttons import Button
 from ....ui.widgets.common import Card, label, repolish
 from ....ui.widgets.table import DIREITA, DataTable
-from ..models import TIPO_ENTRADA, TIPO_SAIDA, EstoqueError, Movimentacao
+from ..catalog import CatalogoEstoque
+from ..models import (
+    TIPO_ENTRADA,
+    TIPO_SAIDA,
+    EstoqueError,
+    Movimentacao,
+    Produto,
+    quantidade_texto,
+)
 from ..repository import EstoqueRepository
 
-COLUNAS = ["Data", "Tipo", "Produto", "Quantidade", "Saldo", "Observacao"]
+COLUNAS = ["Data", "Tipo", "Produto", "Quantidade", "Saldo", "Observação"]
 
 
 class MovimentacoesView(QWidget):
@@ -40,8 +49,8 @@ class MovimentacoesView(QWidget):
 
         titulos = QVBoxLayout()
         titulos.setSpacing(2)
-        titulos.addWidget(label("Movimentacoes", "title"))
-        titulos.addWidget(label("Registre entradas e saidas do seu estoque", "subtitle"))
+        titulos.addWidget(label("Movimentações", "title"))
+        titulos.addWidget(label("Registre entradas e saídas do seu estoque", "subtitle"))
         root.addLayout(titulos)
 
         root.addWidget(self._formulario())
@@ -49,7 +58,7 @@ class MovimentacoesView(QWidget):
         filtros = QHBoxLayout()
         filtros.setSpacing(10)
         self.busca = QLineEdit()
-        self.busca.setPlaceholderText("Pesquisar no historico...")
+        self.busca.setPlaceholderText("Pesquisar no histórico...")
         self._acao_busca = self.busca.addAction(
             icons.icon("search", palette_for(self).text_dim, 16),
             QLineEdit.ActionPosition.LeadingPosition,
@@ -61,7 +70,7 @@ class MovimentacoesView(QWidget):
         self.filtro_tipo = QComboBox()
         self.filtro_tipo.addItem("Todos os tipos", "")
         self.filtro_tipo.addItem("Somente entradas", TIPO_ENTRADA)
-        self.filtro_tipo.addItem("Somente saidas", TIPO_SAIDA)
+        self.filtro_tipo.addItem("Somente saídas", TIPO_SAIDA)
         self.filtro_tipo.currentIndexChanged.connect(self.refresh)
         filtros.addWidget(self.filtro_tipo, 1)
         root.addLayout(filtros)
@@ -74,7 +83,7 @@ class MovimentacoesView(QWidget):
     # -------------------------------------------------------------- formulario
     def _formulario(self) -> Card:
         card = Card()
-        card.body.addWidget(label("Registrar movimentacao", "section"))
+        card.body.addWidget(label("Registrar movimentação", "section"))
 
         linha = QHBoxLayout()
         linha.setSpacing(12)
@@ -82,9 +91,20 @@ class MovimentacoesView(QWidget):
         coluna_produto = QVBoxLayout()
         coluna_produto.setSpacing(4)
         coluna_produto.addWidget(label("PRODUTO", "dim"))
-        self.combo_produto = QComboBox()
-        self.combo_produto.setMinimumWidth(280)
-        coluna_produto.addWidget(self.combo_produto)
+        # digitar o nome (ou o codigo) e escolher na lista: com centenas de
+        # produtos, rolar uma caixa de selecao nao era busca
+        self.campo_produto = QLineEdit()
+        self.campo_produto.setPlaceholderText("Digite o nome ou o código, ou bipe o código de barras...")
+        self.campo_produto.setMinimumWidth(280)
+        self.campo_produto.setClearButtonEnabled(True)
+        self.campo_produto.returnPressed.connect(self._localizar)
+        self.campo_produto.textEdited.connect(self._digitou)
+        coluna_produto.addWidget(self.campo_produto)
+        self.busca_produto = BuscaCatalogo(
+            self.campo_produto, CatalogoEstoque(self.repository.db)
+        )
+        self.busca_produto.escolhido.connect(self._escolhido)
+        self._produto: Produto | None = None
         linha.addLayout(coluna_produto, 3)
 
         coluna_qtd = QVBoxLayout()
@@ -99,9 +119,9 @@ class MovimentacoesView(QWidget):
 
         coluna_obs = QVBoxLayout()
         coluna_obs.setSpacing(4)
-        coluna_obs.addWidget(label("OBSERVACAO (OPCIONAL)", "dim"))
+        coluna_obs.addWidget(label("OBSERVAÇÃO (OPCIONAL)", "dim"))
         self.observacao = QLineEdit()
-        self.observacao.setPlaceholderText("Ex.: compra do fornecedor, venda no balcao...")
+        self.observacao.setPlaceholderText("Ex.: compra do fornecedor, venda no balcão...")
         coluna_obs.addWidget(self.observacao)
         linha.addLayout(coluna_obs, 3)
         card.body.addLayout(linha)
@@ -115,7 +135,7 @@ class MovimentacoesView(QWidget):
         self.botao_entrada.clicked.connect(lambda: self._registrar(TIPO_ENTRADA))
         acoes.addWidget(self.botao_entrada)
 
-        self.botao_saida = Button("Registrar saida", "out", "danger")
+        self.botao_saida = Button("Registrar saída", "out", "danger")
         self.botao_saida.clicked.connect(lambda: self._registrar(TIPO_SAIDA))
         acoes.addWidget(self.botao_saida)
         card.body.addLayout(acoes)
@@ -131,27 +151,66 @@ class MovimentacoesView(QWidget):
         self._preencher_tabela(movimentacoes)
 
     def _carregar_produtos(self) -> None:
-        atual = self.combo_produto.currentData()
-        produtos = self.repository.listar()
-        self.combo_produto.blockSignals(True)
-        self.combo_produto.clear()
-        for produto in produtos:
-            self.combo_produto.addItem(
-                f"{produto.codigo}  -  {produto.nome}   (saldo: {produto.quantidade})",
-                produto.id,
-            )
-        indice = self.combo_produto.findData(atual)
-        if indice >= 0:
-            self.combo_produto.setCurrentIndex(indice)
-        self.combo_produto.blockSignals(False)
+        # o produto escolhido volta do banco: o saldo mostrado e o de agora
+        if self._produto is not None:
+            self._selecionar(self.repository.obter(self._produto.id))
 
-        tem_produtos = bool(produtos)
-        self.botao_entrada.setEnabled(tem_produtos)
-        self.botao_saida.setEnabled(tem_produtos)
+        tem_produtos = bool(self.repository.listar())
+        self.campo_produto.setEnabled(tem_produtos)
         if not tem_produtos:
-            self.aviso.setText("Cadastre um produto antes de movimentar o estoque.")
-            self.aviso.setProperty("tone", "muted")
-            repolish(self.aviso)
+            self._dizer("Cadastre um produto antes de movimentar o estoque.")
+        self._atualizar_botoes()
+
+    def _atualizar_botoes(self) -> None:
+        escolhido = self._produto is not None
+        self.botao_entrada.setEnabled(escolhido)
+        self.botao_saida.setEnabled(escolhido)
+
+    def _dizer(self, texto: str, tom: str = "muted") -> None:
+        self.aviso.setText(texto)
+        self.aviso.setProperty("tone", tom)
+        repolish(self.aviso)
+
+    # ----------------------------------------------------------------- produto
+    def _digitou(self, _texto: str) -> None:
+        # mexeu no nome depois de escolher: o produto so volta a valer escolhido de novo
+        if self._produto is not None:
+            self._selecionar(None)
+            self._dizer("")
+
+    def _localizar(self) -> None:
+        termo = self.campo_produto.text().strip()
+        if not termo or self._produto is not None:
+            return
+        produto = self.repository.buscar(termo)
+        if produto is not None:
+            self._usar(produto)
+            return
+        if self.repository.listar(busca=termo):
+            # o nome bate com mais de um produto: a lista mostra quais
+            self.busca_produto.procurar(termo)
+            self._dizer(f"Mais de um produto com '{termo}'. Escolha na lista.")
+        else:
+            self._dizer(f"Nenhum produto encontrado para '{termo}'.", "danger")
+
+    def _escolhido(self, item) -> None:
+        """Produto escolhido na lista de sugestões."""
+        produto = self.repository.obter(item.produto_id)
+        if produto is not None:
+            self._usar(produto)
+
+    def _usar(self, produto: Produto) -> None:
+        self._selecionar(produto)
+        self.quantidade.setFocus()
+        self.quantidade.selectAll()
+
+    def _selecionar(self, produto: Produto | None) -> None:
+        self._produto = produto
+        if produto is not None:
+            saldo = quantidade_texto(produto.quantidade, produto.unidade, com_unidade=True)
+            self.campo_produto.setText(produto.nome)
+            self._dizer(f"{produto.codigo}  -  {produto.nome}   (saldo atual: {saldo})")
+        self._atualizar_botoes()
 
     def _preencher_tabela(self, movimentacoes: list[Movimentacao]) -> None:
         tons = {TIPO_ENTRADA: "success", TIPO_SAIDA: "danger"}
@@ -170,27 +229,25 @@ class MovimentacoesView(QWidget):
 
     # ------------------------------------------------------------------- acoes
     def _registrar(self, tipo: str) -> None:
-        produto_id = self.combo_produto.currentData()
-        if not produto_id:
-            QMessageBox.warning(self, "Selecione um produto", "Escolha o produto da movimentacao.")
+        if self._produto is None:
+            QMessageBox.warning(self, "Selecione um produto", "Escolha o produto da movimentação.")
             return
         try:
             movimentacao = self.repository.movimentar(
-                int(produto_id), tipo, self.quantidade.value(), self.observacao.text()
+                int(self._produto.id), tipo, self.quantidade.value(), self.observacao.text()
             )
         except EstoqueError as erro:
-            QMessageBox.warning(self, "Movimentacao nao registrada", str(erro))
+            QMessageBox.warning(self, "Movimentação não registrada", str(erro))
             return
 
-        self.aviso.setText(
-            f"{movimentacao.tipo_label} de {movimentacao.quantidade} registrada em "
-            f"'{movimentacao.produto_nome}'. Saldo atual: {movimentacao.saldo_atual}."
-        )
-        self.aviso.setProperty("tone", "success" if tipo == TIPO_ENTRADA else "danger")
-        repolish(self.aviso)
         self.quantidade.setValue(1)
         self.observacao.clear()
         self.refresh()
+        self._dizer(
+            f"{movimentacao.tipo_label} de {movimentacao.quantidade} registrada em "
+            f"'{movimentacao.produto_nome}'. Saldo atual: {movimentacao.saldo_atual}.",
+            "success" if tipo == TIPO_ENTRADA else "danger",
+        )
         self.data_changed.emit()
 
     def apply_theme(self, palette) -> None:

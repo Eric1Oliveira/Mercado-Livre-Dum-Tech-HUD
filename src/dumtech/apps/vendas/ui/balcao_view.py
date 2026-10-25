@@ -5,14 +5,18 @@ entra na lista, o TOTAL cresce e F12 recebe. Nada e gravado ate o pagamento
 fechar - desistir da venda nao deixa rastro no banco.
 
 Teclas: F2 volta para o bipe, F4 desconto, F12 recebe, Delete tira a linha.
+
+Produto com foto no Estoque aparece com ela: grande, ao lado do bipe (o ultimo
+produto achado), e pequena na lista da venda. Foto e enfeite - se nao der para
+le-la, a venda segue sem ela.
 """
 
 from __future__ import annotations
 
 import logging
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QKeySequence, QShortcut
+from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtGui import QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QDoubleSpinBox,
     QHBoxLayout,
@@ -28,6 +32,7 @@ from ....ui.widgets import form
 from ....ui.widgets.buttons import Button
 from ....ui.widgets.busca_catalogo import BuscaCatalogo
 from ....ui.widgets.common import Card, label, repolish, tone_label
+from ....ui.widgets.foto import FotoProduto, miniatura, miniatura_vazia
 from ....ui.widgets.table import DIREITA, DataTable
 from ..models import PENDENTE, ItemVenda, Venda, VendaError, quantidade_texto
 from ..repository import VendasRepository
@@ -35,7 +40,11 @@ from .pagamento_dialog import PagamentoDialog
 
 logger = logging.getLogger(__name__)
 
-COLUNAS = ["Item", "Quantidade", "Valor unitario", "Total"]
+COLUNAS = ["Item", "Quantidade", "Valor unitário", "Total"]
+#: foto do ultimo produto achado (a altura do campo + a linha "saldo")
+FOTO = 80
+#: foto pequena na lista da venda (a linha da tabela tem 40)
+MINIATURA = 28
 
 
 class BalcaoView(QWidget):
@@ -59,6 +68,9 @@ class BalcaoView(QWidget):
         #: de onde sai a chave Pix do QR Code; o Hub troca quando ela muda
         self.empresa = empresa
         self.itens: list[ItemVenda] = []
+        #: ("imagem" | "miniatura", produto_id) -> bytes ou None; le uma vez so
+        self._imagens: dict[tuple[str, int], bytes | None] = {}
+        self._foto_de = 0
 
         raiz = QVBoxLayout(self)
         raiz.setContentsMargins(30, 26, 30, 24)
@@ -69,6 +81,7 @@ class BalcaoView(QWidget):
 
         self.tabela = DataTable(COLUNAS)
         self.tabela.set_empty_message("Bipe ou digite o primeiro item da venda.")
+        self.tabela.setIconSize(QSize(MINIATURA, MINIATURA))
         self.tabela.itemSelectionChanged.connect(self._atualizar_acoes)
         raiz.addWidget(self.tabela, 1)
 
@@ -82,7 +95,7 @@ class BalcaoView(QWidget):
         linha = QHBoxLayout()
         titulos = QVBoxLayout()
         titulos.setSpacing(2)
-        titulos.addWidget(label("Balcao", "title"))
+        titulos.addWidget(label("Balcão", "title"))
         titulos.addWidget(label("Bipe, confira e receba", "subtitle"))
         linha.addLayout(titulos)
         linha.addStretch(1)
@@ -94,7 +107,17 @@ class BalcaoView(QWidget):
 
     def _card_item(self) -> Card:
         card = Card(padding=Space.lg)
-        card.body.setSpacing(Space.sm)
+        conteudo = QHBoxLayout()
+        conteudo.setSpacing(Space.md)
+        # a altura da foto vale sempre: ela aparecer e sumir nao sacode a lista
+        conteudo.addStrut(FOTO)
+        self.foto = FotoProduto(FOTO, parent=self)
+        self.foto.hide()
+        conteudo.addWidget(self.foto, 0, Qt.AlignmentFlag.AlignTop)
+        campos = QVBoxLayout()
+        campos.setSpacing(Space.sm)
+        conteudo.addLayout(campos, 1)
+        card.body.addLayout(conteudo)
 
         linha = QHBoxLayout()
         linha.setSpacing(Space.md)
@@ -116,15 +139,18 @@ class BalcaoView(QWidget):
         linha.addWidget(form.campo("Quantidade", self.quantidade), 1)
 
         self.valor = form.dinheiro(0.0)
-        linha.addWidget(form.campo("Valor unitario", self.valor), 2)
+        # o campo de dinheiro so assume o numero quando perde o foco; o
+        # Adicionar acompanha o que esta escrito, tecla a tecla
+        self.valor.lineEdit().textChanged.connect(lambda _texto: self._atualizar_acoes())
+        linha.addWidget(form.campo("Valor unitário", self.valor), 2)
 
         self.botao_adicionar = Button("Adicionar", "plus", "primary")
         self.botao_adicionar.clicked.connect(self._adicionar)
         linha.addWidget(form.campo(" ", self.botao_adicionar), 1)
-        card.body.addLayout(linha)
+        campos.addLayout(linha)
 
         self.achado = label("", "dim")
-        card.body.addWidget(self.achado)
+        campos.addWidget(self.achado)
         self._catalogado: object | None = None
 
         # a lista de produtos que aparece enquanto se digita. Ela nunca fica
@@ -207,24 +233,56 @@ class BalcaoView(QWidget):
         if not self.repository.tem_catalogo:
             self.bipe.setPlaceholderText("Descreva o item vendido...")
             self.achado.setText(
-                "Sem o DumTech Estoque, o item e digitado na hora e nao baixa saldo."
+                "Sem o DumTech Estoque, o item é digitado na hora e não baixa saldo."
             )
         else:
-            self.bipe.setPlaceholderText("Bipe o codigo de barras ou digite o produto...")
+            self.bipe.setPlaceholderText("Bipe o código de barras ou digite o produto...")
+        self._imagens.clear()  # a foto pode ter mudado no Estoque
         self._preencher()
 
     def _preencher(self) -> None:
+        fotos = [
+            miniatura(self._ler("miniatura", item.produto_id), MINIATURA) for item in self.itens
+        ]
+        # com alguma foto na venda, quem nao tem ganha o quadro vazio (o mesmo do
+        # Estoque e da sugestao): os nomes continuam alinhados na mesma coluna
+        tem_foto = any(foto is not None for foto in fotos)
+        vazio = miniatura_vazia(MINIATURA, palette_for(self)) if tem_foto else None
         linhas = []
-        for item in self.itens:
+        for item, foto in zip(self.itens, fotos):
             nome = f"{item.codigo} · {item.descricao}" if item.codigo else item.descricao
+            celula = self.tabela.cell(nome, bold=True)
+            if tem_foto:
+                celula.setIcon(QIcon(foto if foto is not None else vazio))
             linhas.append([
-                self.tabela.cell(nome, bold=True),
+                celula,
                 self.tabela.cell(item.quantidade_texto, DIREITA),
                 self.tabela.cell(fmt.moeda(item.valor_unitario), DIREITA),
                 self.tabela.cell(fmt.moeda(item.total), DIREITA, "accent", bold=True),
             ])
         self.tabela.fill(linhas, {1: 140, 2: 150, 3: 150})
         self._atualizar_total()
+
+    # ------------------------------------------------------------------- foto
+    def _ler(self, tipo: str, produto_id: int) -> bytes | None:
+        """A foto inteira (`imagem`) ou o recorte das listas (`miniatura`)."""
+        if not produto_id or not self.repository.tem_catalogo:
+            return None
+        chave = (tipo, produto_id)
+        if chave not in self._imagens:
+            ler = getattr(self.repository.catalogo, tipo, None)
+            try:
+                self._imagens[chave] = ler(produto_id) if ler else None
+            except Exception:  # noqa: BLE001 - sem foto, a venda continua
+                logger.exception("Nao foi possivel ler a foto do produto %s", produto_id)
+                self._imagens[chave] = None
+        return self._imagens[chave]
+
+    def _mostrar_foto(self, produto_id: int = 0) -> None:
+        """Foto grande do ultimo produto achado; some se ele nao tem foto."""
+        tem = self.foto.set_imagem(self._ler("imagem", produto_id))
+        self._foto_de = produto_id if tem else 0
+        self.foto.setVisible(bool(self._foto_de))
 
     def _atualizar_total(self) -> None:
         venda = self._montar()
@@ -246,8 +304,16 @@ class BalcaoView(QWidget):
         self.botao_limpar.setEnabled(tem_itens)
         self.botao_remover.setEnabled(0 <= self.tabela.currentRow() < len(self.itens))
         self.botao_adicionar.setEnabled(
-            bool(self.bipe.text().strip()) and self.valor.value() > 0
+            bool(self.bipe.text().strip()) and self._valor_digitado() > 0
         )
+
+    def _valor_digitado(self) -> float:
+        """O valor escrito no campo, inclusive o que ainda nao saiu dele.
+
+        `value()` so muda quando o campo perde o foco: era por isso que o
+        Adicionar ficava apagado ate a pessoa trocar de aba e voltar.
+        """
+        return self.valor.valueFromText(self.valor.cleanText())
 
     def _montar(self) -> Venda:
         return Venda(
@@ -281,8 +347,9 @@ class BalcaoView(QWidget):
         item = self.repository.catalogo.buscar(termo)
         if item is None:
             self._catalogado = None
+            self._mostrar_foto()
             self.achado.setText(
-                f"'{termo}' nao esta no estoque. Informe o valor para vender avulso."
+                f"'{termo}' não está no estoque. Informe o valor para vender avulso."
             )
             self.valor.setFocus()
             self.valor.selectAll()
@@ -297,6 +364,7 @@ class BalcaoView(QWidget):
         de codigo de barras) e a escolha na lista de sugestao.
         """
         self._catalogado = item
+        self._mostrar_foto(item.produto_id)
         self.busca.fechar()
         self.bipe.blockSignals(True)
         self.bipe.setText(item.nome)
@@ -311,9 +379,12 @@ class BalcaoView(QWidget):
         self._atualizar_acoes()
 
     def _adicionar(self) -> None:
+        # o clique pode chegar antes de o campo largar o foco: vale o que esta escrito
+        self.valor.interpretText()
+        self.quantidade.interpretText()
         descricao = self.bipe.text().strip()
         if not descricao:
-            self._dizer("Informe o que esta sendo vendido.", "danger")
+            self._dizer("Informe o que está sendo vendido.", "danger")
             return
         if self.quantidade.value() <= 0:
             self._dizer("A quantidade precisa ser maior que zero.", "danger")
@@ -345,7 +416,7 @@ class BalcaoView(QWidget):
             vendido = sum(i.quantidade for i in self.itens if i.produto_id == item.produto_id)
             if vendido > catalogado.saldo:
                 self._dizer(
-                    f"Atencao: o estoque de '{item.descricao}' tem apenas "
+                    f"Atenção: o estoque de '{item.descricao}' tem apenas "
                     f"{quantidade_texto(catalogado.saldo, item.unidade, item.casas)}. "
                     "A venda continua.",
                     "warning",
@@ -371,6 +442,8 @@ class BalcaoView(QWidget):
         linha = self.tabela.currentRow()
         if 0 <= linha < len(self.itens):
             item = self.itens.pop(linha)
+            if item.produto_id and item.produto_id == self._foto_de:
+                self._mostrar_foto()
             self._dizer(f"'{item.descricao}' saiu da venda.")
             self._preencher()
 
@@ -379,6 +452,7 @@ class BalcaoView(QWidget):
         self.cliente.clear()
         self.desconto.setValue(0.0)
         self._limpar_entrada()
+        self._mostrar_foto()
         self._dizer("Venda descartada. Nada foi gravado.")
         self._preencher()
 
@@ -409,6 +483,7 @@ class BalcaoView(QWidget):
         self.cliente.clear()
         self.desconto.setValue(0.0)
         self._limpar_entrada()
+        self._mostrar_foto()
         self.refresh()
         recado = self._lancar_no_financeiro(venda)
         self._anunciar(venda, recado)
@@ -436,11 +511,11 @@ class BalcaoView(QWidget):
             ))
         except Exception:  # noqa: BLE001 - a venda ja esta gravada; a ponte nao
             logger.exception("Nao foi possivel lancar a venda no Financeiro")
-            return "  Nao consegui lancar no Financeiro - lance na mao."
+            return "  Não consegui lançar no Financeiro - lance na mão."
         return "  Conta a receber criada no Financeiro."
 
     def _anunciar(self, venda, extra: str = "") -> None:
-        recado = f"Venda {venda.numero} concluida: {fmt.moeda(venda.total)}.{extra}"
+        recado = f"Venda {venda.numero} concluída: {fmt.moeda(venda.total)}.{extra}"
         if venda.troco:
             recado += f"  TROCO: {fmt.moeda(venda.troco)}."
         if venda.avisos:
@@ -450,3 +525,5 @@ class BalcaoView(QWidget):
 
     def apply_theme(self, palette) -> None:
         self._acao_bipe.setIcon(icons.icon("tag", palette.accent, 16))
+        if self.itens:  # o quadro vazio das miniaturas tem a cor do tema
+            self._preencher()

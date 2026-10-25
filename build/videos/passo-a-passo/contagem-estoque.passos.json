@@ -1,0 +1,37 @@
+{
+ "duracao": 27.8,
+ "passos": [
+  {
+   "t": 2.9,
+   "texto": "Abra o Estoque"
+  },
+  {
+   "t": 4.9,
+   "texto": "Vá em Contagem"
+  },
+  {
+   "t": 6.9,
+   "texto": "Bipe o produto e diga quantos você contou"
+  },
+  {
+   "t": 11.2,
+   "texto": "Clique em Anotar"
+  },
+  {
+   "t": 12.8,
+   "texto": "Bipe o produto e diga quantos você contou"
+  },
+  {
+   "t": 17.3,
+   "texto": "Clique em Anotar"
+  },
+  {
+   "t": 18.9,
+   "texto": "A folha mostra a diferença de cada produto"
+  },
+  {
+   "t": 20.8,
+   "texto": "Aplicar ajustes corrige o estoque de uma vez"
+  }
+ ]
+}

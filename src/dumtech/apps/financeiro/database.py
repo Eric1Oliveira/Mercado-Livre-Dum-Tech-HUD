@@ -93,6 +93,17 @@ MIGRATIONS = (
             """,
         ),
     ),
+    Migration(
+        version=3,
+        name="despesa fixa",
+        statements=(
+            # aluguel, internet e salario separados do que varia com o mes;
+            # tudo que ja existia nasce variavel - ninguem perde lancamento
+            """
+            ALTER TABLE lancamentos ADD COLUMN fixa INTEGER NOT NULL DEFAULT 0;
+            """,
+        ),
+    ),
 )
 
 

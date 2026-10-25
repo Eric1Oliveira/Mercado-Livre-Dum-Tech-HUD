@@ -327,7 +327,7 @@ class ContactsStore:
 
     def atualizar(self, contato: Contato) -> Contato:
         if contato.id is None:
-            raise ContatoError("Cliente sem identificacao.")
+            raise ContatoError("Cliente sem identificação.")
         self._validar(contato)
         agora = _agora()
         atribuicoes = ", ".join(f"{campo} = ?" for campo in CAMPOS)
@@ -363,26 +363,26 @@ class ContactsStore:
             raise ContatoError("Informe o nome do cliente.")
         if not documento_valido(contato.documento):
             raise ContatoError(
-                "CPF ou CNPJ invalido. Confira os numeros - o documento e "
-                "conferido pelo digito verificador."
+                "CPF ou CNPJ inválido. Confira os números - o documento é "
+                "conferido pelo dígito verificador."
             )
         uf = contato.uf.upper().strip()
         if uf and uf not in UFS:
-            raise ContatoError(f"UF '{contato.uf}' nao existe.")
+            raise ContatoError(f"UF '{contato.uf}' não existe.")
         if contato.nascimento.strip():
             try:
                 nascimento = date.fromisoformat(contato.nascimento.strip())
             except ValueError as exc:
-                raise ContatoError("Data de nascimento invalida.") from exc
+                raise ContatoError("Data de nascimento inválida.") from exc
             if nascimento > date.today():
-                raise ContatoError("A data de nascimento nao pode estar no futuro.")
+                raise ContatoError("A data de nascimento não pode estar no futuro.")
 
         digitos = so_digitos(contato.documento)
         if digitos:
             existente = self.por_documento(digitos)
             if existente is not None and existente.id != contato.id:
                 raise ContatoError(
-                    f"O documento {formatar_documento(digitos)} ja esta cadastrado "
+                    f"O documento {formatar_documento(digitos)} já está cadastrado "
                     f"em '{existente.nome}'."
                 )
 
@@ -421,9 +421,9 @@ class ContactsStore:
     def anotar(self, contato_id: int, texto: str) -> Nota:
         texto = texto.strip()
         if not texto:
-            raise ContatoError("Escreva a anotacao antes de salvar.")
+            raise ContatoError("Escreva a anotação antes de salvar.")
         if self.obter(contato_id) is None:
-            raise ContatoError("Cliente nao encontrado.")
+            raise ContatoError("Cliente não encontrado.")
         agora = _agora()
         cursor = self.db.execute(
             "INSERT INTO contato_notas (contato_id, texto, criado_em) VALUES (?, ?, ?)",

@@ -9,8 +9,8 @@ from __future__ import annotations
 
 from datetime import datetime, time, timedelta
 
-from PySide6.QtCore import QPoint, QPointF, QRectF, Qt, Signal
-from PySide6.QtGui import QColor, QCursor, QPainter, QPainterPath, QPen
+from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, Qt, Signal
+from PySide6.QtGui import QColor, QCursor, QFontMetrics, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import QWidget
 
 from ....ui.theme import Radius, current_palette, font_for, mix, palette_for
@@ -26,6 +26,8 @@ ALTURA_HORA_MAXIMA = 58
 FOLGA = 2
 #: abaixo disso o bloco so cabe o horario
 ALTURA_MINIMA_TITULO = 30
+#: a linha do horario, no topo do bloco
+ALTURA_LINHA_HORA = 13
 
 
 def _faixas(compromissos: list[Compromisso]) -> dict[int, tuple[int, int]]:
@@ -247,31 +249,64 @@ class GradeWidget(QWidget):
         faixa.addRoundedRect(QRectF(rect.left(), rect.top(), 3, rect.height()), 1.5, 1.5)
         painter.fillPath(faixa, cor)
 
-        painter.setPen(QColor(p.text_dim if cancelado else p.text))
+        cor_texto = QColor(p.text_dim if cancelado else p.text)
+        cor_cliente = QColor(p.text_dim if cancelado else p.text_muted)
         painter.save()
         painter.setClipRect(rect)
-        texto = QRectF(rect.left() + 8, rect.top() + 3, rect.width() - 12, rect.height() - 6)
-        if rect.height() >= ALTURA_MINIMA_TITULO:
-            painter.setFont(font_for("caption"))
-            painter.drawText(
-                QRectF(texto.left(), texto.top(), texto.width(), 13),
-                Qt.AlignmentFlag.AlignLeft,
-                compromisso.inicio_dt.strftime("%H:%M"),
-            )
-            painter.setFont(font_for("strong"))
-            painter.drawText(
-                QRectF(texto.left(), texto.top() + 13, texto.width(), texto.height() - 13),
-                Qt.AlignmentFlag.AlignLeft | Qt.TextFlag.TextWordWrap,
-                compromisso.titulo,
-            )
-        else:
-            painter.setFont(font_for("caption"))
-            painter.drawText(
-                texto,
-                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
-                f"{compromisso.inicio_dt.strftime('%H:%M')}  {compromisso.titulo}",
-            )
+        for area, papel, texto, e_cliente, alinhamento in self._textos(rect, compromisso):
+            painter.setFont(font_for(papel))
+            painter.setPen(cor_cliente if e_cliente else cor_texto)
+            painter.drawText(area, alinhamento, texto)
         painter.restore()
+
+    def _textos(self, rect: QRectF, compromisso: Compromisso) -> list[tuple]:
+        """O que vai escrito no bloco: (onde, fonte, texto, e_cliente, alinhamento).
+
+        De cima para baixo: horario, titulo e, bem pequeno, a cliente - quem
+        bate o olho na agenda ja sabe para quem e. Sem altura para a terceira
+        linha, a cliente vai ao lado do horario; no bloco mais baixo, tudo
+        cabe numa linha so.
+        """
+        area = QRectF(rect.left() + 8, rect.top() + 3, rect.width() - 12, rect.height() - 6)
+        hora = compromisso.inicio_dt.strftime("%H:%M")
+        cliente = (compromisso.cliente or "").strip()
+        esquerda = Qt.AlignmentFlag.AlignLeft
+        legenda = QFontMetrics(font_for("caption"), self)
+
+        if rect.height() < ALTURA_MINIMA_TITULO:
+            linha = f"{hora}  {compromisso.titulo}"
+            if cliente:
+                linha += f"  ·  {cliente}"
+            return [(area, "caption", linha, False, esquerda | Qt.AlignmentFlag.AlignVCenter)]
+
+        forte = QFontMetrics(font_for("strong"), self)
+        topo_titulo = area.top() + ALTURA_LINHA_HORA
+        espaco = area.bottom() - topo_titulo
+        embaixo = bool(cliente) and espaco >= forte.height() + legenda.height()
+
+        textos = [(QRectF(area.left(), area.top(), area.width(), ALTURA_LINHA_HORA),
+                   "caption", hora, False, esquerda)]
+        if cliente and not embaixo:
+            x = area.left() + legenda.horizontalAdvance(hora) + 6
+            nome = legenda.elidedText(f"·  {cliente}", Qt.TextElideMode.ElideRight,
+                                      int(area.right() - x))
+            textos.append((QRectF(x, area.top(), area.right() - x, ALTURA_LINHA_HORA),
+                           "caption", nome, True, esquerda))
+
+        # o titulo ocupa so as linhas que usa: a cliente vem logo depois dele
+        reserva = legenda.height() if embaixo else 0
+        linhas = max(1, int((espaco - reserva) // forte.lineSpacing()))
+        medido = forte.boundingRect(
+            QRect(0, 0, int(area.width()), 10_000), Qt.TextFlag.TextWordWrap, compromisso.titulo
+        ).height()
+        altura_titulo = min(medido, linhas * forte.lineSpacing())
+        textos.append((QRectF(area.left(), topo_titulo, area.width(), max(altura_titulo, 0)),
+                       "strong", compromisso.titulo, False, esquerda | Qt.TextFlag.TextWordWrap))
+        if embaixo:
+            nome = legenda.elidedText(cliente, Qt.TextElideMode.ElideRight, int(area.width()))
+            textos.append((QRectF(area.left(), topo_titulo + altura_titulo, area.width(),
+                                  legenda.height()), "caption", nome, True, esquerda))
+        return textos
 
     def _linha_de_agora(self, painter: QPainter) -> None:
         """A linha da hora atual: e o que faz a grade parecer viva."""

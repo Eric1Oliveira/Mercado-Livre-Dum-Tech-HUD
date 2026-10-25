@@ -136,7 +136,7 @@ class AppCard(_CardBase):
         descricao.setAlignment(Qt.AlignmentFlag.AlignTop)
         coluna.addWidget(descricao, 1)
 
-        coluna.addWidget(label(last_opened or f"Versao {manifest.version}", "dim"))
+        coluna.addWidget(label(last_opened or f"Versão {manifest.version}", "dim"))
 
 
 class ContinueCard(_CardBase):

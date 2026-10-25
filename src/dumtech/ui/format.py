@@ -105,7 +105,7 @@ def prazo_texto(iso: str | None) -> str:
     if dias == 0:
         return "vence hoje"
     if dias == 1:
-        return "vence amanha"
+        return "vence amanhã"
     if dias > 1:
         return f"em {dias} dias"
     if dias == -1:

@@ -8,11 +8,11 @@ MANIFEST = AppManifest(
     app_id="agenda",
     name="DumTech Agenda",
     short_name="Agenda",
-    description="Grade da semana, conflito de horario, bloqueio e repeticao.",
+    description="Grade da semana, conflito de horário, bloqueio e repetição.",
     version="2.0.0",
     icon="calendar",
     accent="#C05FD4",
-    category="Servicos",
+    category="Serviços",
 )
 
 
@@ -70,32 +70,14 @@ def indicadores(paths):
     return [Indicador(
         app_id=MANIFEST.app_id, rotulo="Compromissos hoje",
         valor=fmt.numero(resumo.hoje),
-        detalhe=(f"o proximo as {proximo.horario}" if proximo
+        detalhe=(f"o próximo às {proximo.horario}" if proximo
                  else "nenhum compromisso hoje"),
         tom="accent", icone="calendar", peso=50,
     )]
 
 
 def celular(paths):
-    """No celular: o dia de hoje e o que vem depois."""
-    from ...core import celular as c
-    from ...ui import format as fmt
-    from .database import open_database
-    from .repository import AgendaRepository
+    """No celular: quem vem agora, o dia em linha do tempo e a semana."""
+    from .celular import secao
 
-    banco = open_database(paths.app_db(MANIFEST.app_id))
-    try:
-        r = AgendaRepository(banco).resumo(limite_listas=c.LIMITE_LISTA)
-    finally:
-        banco.close()
-    hoje = {x.id for x in r.do_dia}  # o de hoje ja esta na lista de cima
-    return c.secao(MANIFEST.app_id, "Agenda", peso=50, cartoes=[
-        c.cartao("Hoje", fmt.numero(r.hoje), f"{r.semana} na semana"),
-        c.cartao("Sem fechar", fmt.numero(r.atrasados), "compromissos que já passaram",
-                 "aviso" if r.atrasados else ""),
-    ], listas=[
-        c.lista("Hoje", [c.linha(x.titulo, x.cliente or x.tipo_label, x.horario) for x in r.do_dia],
-                "Nada marcado para hoje."),
-        c.lista("Próximos", [c.linha(x.titulo, f"{fmt.data(x.inicio)} · {x.cliente or x.tipo_label}", x.horario)
-                             for x in r.proximos if x.id not in hoje]),
-    ])
+    return secao(paths, MANIFEST)

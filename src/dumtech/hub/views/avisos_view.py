@@ -1,4 +1,4 @@
-"""O que aparece no "Hoje", e com quanta antecedencia.
+"""O que aparece no "Hoje", e com quanta antecedência.
 
 O prazo certo nao existe: quem vende a prazo quer saber da conta com sete dias,
 quem trabalha com obra quer trinta. Em vez de escolher por eles - ou de atender
@@ -43,8 +43,8 @@ class AvisosView(QWidget):
         raiz.setContentsMargins(0, 0, 0, 0)
         raiz.setSpacing(Space.lg)
         raiz.addWidget(
-            label("O Inicio mostra o que precisa de atencao. Voce decide o que "
-                  "entra e com quanta antecedencia.", "subtitle")
+            label("O Início mostra o que precisa de atenção. Você decide o que "
+                  "entra e com quanta antecedência.", "subtitle")
         )
 
         self.area = QScrollArea()
@@ -56,7 +56,7 @@ class AvisosView(QWidget):
 
         self.vazio = EmptyState(
             "Nenhum aplicativo liberado",
-            "Os avisos aparecem conforme os aplicativos que a sua licenca libera.",
+            "Os avisos aparecem conforme os aplicativos que a sua licença libera.",
             "alert",
         )
         raiz.addWidget(self.vazio, 1)
@@ -66,7 +66,7 @@ class AvisosView(QWidget):
     def _card_perguntas(self) -> Card:
         """A saida do "nao perguntar de novo" - senao ele e uma porta so de ida."""
         card = Card(padding=Space.lg)
-        card.body.addWidget(label("Perguntas de confirmacao", "section"))
+        card.body.addWidget(label("Perguntas de confirmação", "section"))
         card.body.addWidget(separator())
 
         linha = QHBoxLayout()
@@ -90,7 +90,7 @@ class AvisosView(QWidget):
                    if not confirmacoes.deve_perguntar(chave)]
         if caladas:
             self.estado_perguntas.setText(
-                "Voce pediu para nao perguntar mais: " + "; ".join(caladas).lower() + "."
+                "Você pediu para não perguntar mais: " + "; ".join(caladas).lower() + "."
             )
         else:
             self.estado_perguntas.setText(

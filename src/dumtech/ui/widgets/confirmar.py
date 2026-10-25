@@ -67,7 +67,7 @@ class ConfirmarDialog(QDialog):
         topo.addLayout(texto, 1)
         raiz.addLayout(topo)
 
-        self.calar = QCheckBox("Nao perguntar de novo")
+        self.calar = QCheckBox("Não perguntar de novo")
         # no layout primeiro: `setVisible` sem pai abriria uma janela solta
         raiz.addWidget(self.calar)
         self.calar.setVisible(pode_calar)

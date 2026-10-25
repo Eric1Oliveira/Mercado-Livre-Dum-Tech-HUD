@@ -1,0 +1,25 @@
+{
+ "duracao": 22.0,
+ "passos": [
+  {
+   "t": 2.8,
+   "texto": "O Início mostra o dia inteiro da sua empresa"
+  },
+  {
+   "t": 6.9,
+   "texto": "Cada módulo é uma aba aqui em cima"
+  },
+  {
+   "t": 9.3,
+   "texto": "Clique na aba para trocar de módulo"
+  },
+  {
+   "t": 11.6,
+   "texto": "A aba Início volta para o resumo do dia"
+  },
+  {
+   "t": 13.9,
+   "texto": "Ctrl + K abre a busca de qualquer lugar"
+  }
+ ]
+}

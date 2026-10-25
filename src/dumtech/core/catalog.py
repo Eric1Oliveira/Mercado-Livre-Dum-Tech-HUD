@@ -45,6 +45,12 @@ class Catalogo(Protocol):
     def procurar(self, termo: str, limite: int = 20) -> list[ItemCatalogo]:
         """Lista candidatos para o usuario escolher."""
 
+    def imagem(self, produto_id: int) -> bytes | None:
+        """Foto do produto (JPEG/PNG), ou None quando nao ha."""
+
+    def miniatura(self, produto_id: int) -> bytes | None:
+        """Recorte quadrado pequeno da foto, para listas; None quando nao ha."""
+
     def baixar(
         self, produto_id: int, quantidade: float, documento: str = "", motivo: str = ""
     ) -> None:

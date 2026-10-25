@@ -31,7 +31,7 @@ from ..models import (
 )
 from ..repository import AgendaRepository
 
-MODOS = (("Semana", 7), ("Dia", 1), ("Proximos 3 dias", 3))
+MODOS = (("Semana", 7), ("Dia", 1), ("Próximos 3 dias", 3))
 
 
 class AgendaView(QWidget):
@@ -75,7 +75,7 @@ class AgendaView(QWidget):
         linha.addStretch(1)
 
         self.botao_antes = Button("", "back", "ghost")
-        self.botao_antes.setToolTip("Periodo anterior")
+        self.botao_antes.setToolTip("Período anterior")
         self.botao_antes.clicked.connect(lambda: self._navegar(-1))
         linha.addWidget(self.botao_antes)
 
@@ -86,7 +86,7 @@ class AgendaView(QWidget):
         # o par da seta de voltar - "external" desenhava a setinha de abrir
         # link fora do programa, que aqui nao quer dizer nada
         self.botao_depois = Button("", "forward", "ghost")
-        self.botao_depois.setToolTip("Proximo periodo")
+        self.botao_depois.setToolTip("Próximo período")
         self.botao_depois.clicked.connect(lambda: self._navegar(1))
         linha.addWidget(self.botao_depois)
 
@@ -172,7 +172,7 @@ class AgendaView(QWidget):
             linha.addWidget(tone_label(f"■ {rotulo}", TIPO_TOM[tipo], "caption"))
         linha.addStretch(1)
 
-        self.aviso = label("Clique num horario vago para marcar ali.", "muted")
+        self.aviso = label("Clique num horário vago para marcar ali.", "muted")
         linha.addWidget(self.aviso)
 
         self.botao_abrir = Button("Abrir", "file")
@@ -224,7 +224,7 @@ class AgendaView(QWidget):
             and not compromisso.e_bloqueio
         )
         if compromisso is None:
-            self._dizer("Clique num horario vago para marcar ali.")
+            self._dizer("Clique num horário vago para marcar ali.")
         else:
             self._dizer(
                 f"{compromisso.horario}  ·  {compromisso.titulo}"
@@ -313,7 +313,7 @@ class AgendaView(QWidget):
             f"Excluir '{compromisso.titulo}' de {compromisso.horario}?",
             chave=confirmacoes.EXCLUIR,
             rotulo_ok="Excluir",
-            detalhe="Esta acao nao pode ser desfeita.",
+            detalhe="Esta ação não pode ser desfeita.",
         ):
             return
         self.repository.excluir(compromisso.id)
@@ -321,7 +321,7 @@ class AgendaView(QWidget):
             self.selecionado = None
             self.grade.selecao = None
         self.refresh()
-        self._dizer(f"'{compromisso.titulo}' excluido.", "success")
+        self._dizer(f"'{compromisso.titulo}' excluído.", "success")
         self.data_changed.emit()
 
     def _concluir(self) -> None:
@@ -330,5 +330,5 @@ class AgendaView(QWidget):
             return
         self.repository.definir_status(compromisso.id, CONCLUIDO)
         self.refresh()
-        self._dizer(f"'{compromisso.titulo}' marcado como concluido.", "success")
+        self._dizer(f"'{compromisso.titulo}' marcado como concluído.", "success")
         self.data_changed.emit()

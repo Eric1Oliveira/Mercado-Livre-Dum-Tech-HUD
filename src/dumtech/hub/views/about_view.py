@@ -36,7 +36,7 @@ class AboutView(QWidget):
         titles = QVBoxLayout()
         titles.setSpacing(2)
         titles.addWidget(label("Sobre", "title"))
-        titles.addWidget(label("Informacoes da plataforma DumTech", "subtitle"))
+        titles.addWidget(label("Informações da plataforma DumTech", "subtitle"))
         root.addLayout(titles)
 
         root.addWidget(self._identity_card())
@@ -57,10 +57,10 @@ class AboutView(QWidget):
         text.setSpacing(3)
         name = label("DumTech Hub", "cardTitle")
         text.addWidget(name)
-        text.addWidget(label(f"Versao {__version__}", "muted"))
+        text.addWidget(label(f"Versão {__version__}", "muted"))
         description = label(
-            "Plataforma que reune os aplicativos DumTech em um unico lugar. Cada "
-            "aplicativo e vendido separadamente e aparece aqui quando liberado.",
+            "Plataforma que reúne os aplicativos DumTech em um único lugar. Cada "
+            "aplicativo é vendido separadamente e aparece aqui quando liberado.",
             "muted",
         )
         description.setWordWrap(True)
@@ -73,7 +73,7 @@ class AboutView(QWidget):
         card = Card()
         card.body.addWidget(label("Precisa de ajuda?", "section"))
         texto = label(
-            "Fale com a DumTech pelo WhatsApp ou abra o guia com a instalacao, a ativacao "
+            "Fale com a DumTech pelo WhatsApp ou abra o guia com a instalação, a ativação "
             "e os primeiros passos.",
             "muted",
         )
@@ -86,7 +86,7 @@ class AboutView(QWidget):
             lambda: QDesktopServices.openUrl(QUrl(f"https://wa.me/{WHATSAPP_SUPORTE}"))
         )
         acoes.addWidget(whatsapp)
-        guia = Button("Guia de instalacao", "external", "ghost")
+        guia = Button("Guia de instalação", "external", "ghost")
         guia.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(URL_GUIA)))
         acoes.addWidget(guia)
         acoes.addStretch(1)
@@ -97,9 +97,9 @@ class AboutView(QWidget):
         card = Card()
         card.body.addWidget(label("Funciona sem internet", "section"))
         text = label(
-            "Os aplicativos guardam tudo no proprio computador, em bancos de dados "
-            "locais. Nenhuma conexao e necessaria para cadastrar produtos, movimentar "
-            "estoque ou consultar informacoes.",
+            "Os aplicativos guardam tudo no próprio computador, em bancos de dados "
+            "locais. Nenhuma conexão é necessária para cadastrar produtos, movimentar "
+            "estoque ou consultar informações.",
             "muted",
         )
         text.setWordWrap(True)

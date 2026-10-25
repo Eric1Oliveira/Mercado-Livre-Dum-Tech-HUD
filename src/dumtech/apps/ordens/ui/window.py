@@ -33,7 +33,7 @@ class OrdensWindow(AppWindow):
             "Painel", "dashboard", DashboardView(self.repository)
         )
         self.ordens_view = self.add_view(
-            "Ordens", "list", OrdensView(self.repository, self.clientes,
+            "Ordens de Serviço", "list", OrdensView(self.repository, self.clientes,
                                          empresa=self.empresa,
                                          paths=self.context.paths,
                                          mensageiro=self.mensagens,

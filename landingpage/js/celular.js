@@ -66,6 +66,8 @@ export function montarTela(dados, escolhido = 0) {
 
   return {
     empresa: resumo.empresa || dados?.cliente || "",
+    // 1 = Hub antigo (cartoes e listas); 2 = destaque, graficos e alertas
+    formato: Number(resumo.formato) || 1,
     computadores: espelhos.map((e) => ({ nome: e.computador || "Computador", atualizadoEm: e.atualizado_em })),
     indice,
     atualizadoEm: espelho?.atualizado_em ?? null,
@@ -124,4 +126,123 @@ export function linkDaLoja(base, codigo) {
   url.searchParams.set("kit", codigo);
   url.hash = "montador";
   return url.toString();
+}
+
+/* ===========================================================================
+   FORMATO 2 — o que transforma número em resposta
+   O Hub manda, por seção: `destaque` (o número que abre a tela, com períodos e
+   gráfico), `graficos`, `alertas` e, em cartões e linhas, `variacao`,
+   `medidor` e `acao`. Tudo opcional: resumo de Hub antigo continua valendo.
+   ========================================================================= */
+
+const MOEDA = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+const MOEDA_CURTA = new Intl.NumberFormat("pt-BR", {
+  style: "currency", currency: "BRL", notation: "compact", maximumFractionDigits: 1,
+});
+const NUMERO = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 });
+
+/** O número por extenso, como o Hub escreve: "R$ 1.234,50", "12". */
+export function formatar(valor, formato = "moeda") {
+  const n = Number(valor) || 0;
+  return formato === "moeda" ? MOEDA.format(n) : NUMERO.format(n);
+}
+
+/** Para eixo e rótulo de gráfico, onde cabe pouco: "R$ 1,5 mil", "R$ 900". */
+export function compacto(valor, formato = "moeda") {
+  const n = Number(valor) || 0;
+  if (formato !== "moeda") return NUMERO.format(n);
+  return Math.abs(n) < 1000 ? MOEDA.format(Math.round(n)).replace(/,00$/, "") : MOEDA_CURTA.format(n);
+}
+
+/**
+ * O eixo de um gráfico: de onde a onde vai e onde passam as linhas de grade.
+ * Números redondos (0, 500, 1.000...), o zero sempre dentro, e só inteiros
+ * quando o que se conta não se divide (compromissos, ordens).
+ */
+export function escala(valores, { divisoes = 3, inteiros = false, topo = 1 } = {}) {
+  const numeros = valores.filter((v) => typeof v === "number" && Number.isFinite(v));
+  let menor = Math.min(0, ...numeros);
+  let maior = Math.max(0, ...numeros);
+  // tudo zero (dia sem venda): um eixo de verdade, e nao marcas de centavos
+  if (maior === menor) maior = menor + (inteiros ? divisoes : topo);
+  const bruto = (maior - menor) / divisoes;
+  const potencia = 10 ** Math.floor(Math.log10(bruto));
+  let passo = [1, 2, 2.5, 3, 4, 5, 6, 8, 10].map((m) => m * potencia).find((p) => p >= bruto) ?? 10 * potencia;
+  if (inteiros) passo = Math.max(1, Math.ceil(passo));
+  menor = Math.floor(menor / passo) * passo;
+  maior = Math.ceil(maior / passo) * passo;
+  const marcas = [];
+  for (let v = menor; v <= maior + passo / 2; v += passo) marcas.push(Math.round(v * 100) / 100);
+  return { menor, maior, marcas };
+}
+
+/** Quais rótulos do eixo X aparecem: no máximo `cabem`, sempre o último. */
+export function rotulosVisiveis(total, cabem) {
+  if (total <= cabem) return Array.from({ length: total }, (_, i) => i);
+  const passo = Math.ceil(total / cabem);
+  const escolhidos = [];
+  for (let i = total - 1; i >= 0; i -= passo) escolhidos.unshift(i);
+  return escolhidos;
+}
+
+/**
+ * O número que abre a tela.
+ *   - o `destaque` da seção de maior peso (com períodos e gráfico), ou
+ *   - na falta dele (Hub antigo), o primeiro cartão - como sempre foi.
+ */
+export function aberturaDaTela(tela) {
+  const secao = tela?.secoes?.[0];
+  if (!secao) return null;
+  const periodos = (secao.destaque?.periodos ?? []).filter((p) => p && p.valor);
+  if (periodos.length) return { secao, destaque: { ...secao.destaque, periodos } };
+  const cartao = destaqueDaTela(tela);
+  return cartao ? { secao, cartao } : null;
+}
+
+/** Os cartões que a seção mostra: o que já virou destaque não se repete. */
+export function cartoesVisiveis(secao, pular = null) {
+  const temDestaque = (secao?.destaque?.periodos ?? []).length > 0;
+  return (secao?.cartoes ?? []).filter((c) => c !== pular && !(temDestaque && c?.papel === "destaque"));
+}
+
+const PESO_DO_TOM = { perigo: 0, aviso: 1, ok: 2 };
+
+/**
+ * "Precisa de você": o que cada módulo pediu, num lugar só. Problema antes de
+ * lembrete; dentro do mesmo tom, a ordem dos módulos (dinheiro primeiro).
+ */
+export function alertasDaTela(tela) {
+  const todos = [];
+  (tela?.secoes ?? []).forEach((s, ordem) => {
+    for (const a of s.alertas ?? []) {
+      if (!a?.texto) continue;
+      todos.push({ ...a, tom: a.tom in PESO_DO_TOM ? a.tom : "aviso", app: String(s.app).toUpperCase(),
+                   modulo: s.titulo, ordem });
+    }
+  });
+  return todos.sort((a, b) => PESO_DO_TOM[a.tom] - PESO_DO_TOM[b.tom] || a.ordem - b.ordem);
+}
+
+/** "+18%" + "vs. sábado passado até 15:18" - a comparação sempre tem nome. */
+export function textoDaVariacao(v) {
+  if (!v?.texto) return null;
+  const seta = v.direcao === "sobe" ? "▲" : v.direcao === "desce" ? "▼" : "=";
+  return { seta, numero: v.texto.replace(/^[+−-]/, ""), tom: v.tom || "",
+           comparado: v.comparado ? `vs. ${v.comparado}` : "" };
+}
+
+/**
+ * Link do WhatsApp com a mensagem pronta. O número vem do computador da loja:
+ * só passa número brasileiro inteiro (55 + DDD + telefone).
+ */
+export function linkWhatsApp(acao) {
+  if (acao?.tipo !== "whatsapp" || !/^55\d{10,11}$/.test(String(acao.numero ?? ""))) return "";
+  const texto = String(acao.mensagem ?? "").slice(0, 500);
+  return `https://wa.me/${acao.numero}${texto ? `?text=${encodeURIComponent(texto)}` : ""}`;
+}
+
+/** "Sábado, 17 de outubro" - o dia de hoje no alto da tela. */
+export function hojePorExtenso(agora = new Date()) {
+  const texto = agora.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
+  return texto.charAt(0).toUpperCase() + texto.slice(1).replace("-feira", "");
 }

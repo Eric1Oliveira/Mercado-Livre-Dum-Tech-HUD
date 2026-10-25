@@ -24,7 +24,7 @@ from .pagamento_dialog import PagamentoDialog
 from .venda_dialog import VendaDialog
 
 #: (rotulo, dias contados para tras); 0 = hoje, -1 = tudo
-PERIODOS = (("Hoje", 0), ("Ultimos 7 dias", 7), ("Ultimos 30 dias", 30), ("Tudo", -1))
+PERIODOS = (("Hoje", 0), ("Últimos 7 dias", 7), ("Últimos 30 dias", 30), ("Tudo", -1))
 
 
 class VendasView(CrudView):
@@ -32,9 +32,9 @@ class VendasView(CrudView):
     nome_registro = "venda"
     nome_plural = "vendas"
     genero = "f"
-    rotulo_novo = "Lancar venda"
-    dica_pesquisa = "Pesquisar por numero, cliente ou forma de pagamento..."
-    colunas = ["Numero", "Data", "Cliente", "Itens", "Pagamento", "Total", "Situacao"]
+    rotulo_novo = "Lançar venda"
+    dica_pesquisa = "Pesquisar por número, cliente ou forma de pagamento..."
+    colunas = ["Número", "Data", "Cliente", "Itens", "Pagamento", "Total", "Situação"]
     larguras = {0: 150, 1: 110, 3: 80, 4: 170, 5: 140, 6: 190}
 
     def __init__(
@@ -57,7 +57,7 @@ class VendasView(CrudView):
 
     def build_filters(self, layout: QHBoxLayout) -> None:
         self.filtro_status = QComboBox()
-        self.filtro_status.addItem("Todas as situacoes", "")
+        self.filtro_status.addItem("Todas as situações", "")
         for chave, rotulo in STATUS_LABEL.items():
             self.filtro_status.addItem(rotulo, chave)
         self.filtro_status.currentIndexChanged.connect(self.refresh)
@@ -84,7 +84,7 @@ class VendasView(CrudView):
         self.botao_receber.clicked.connect(self._receber)
         layout.insertWidget(3, self.botao_receber)
 
-        self.botao_devolver = Button("Devolucao", "in")
+        self.botao_devolver = Button("Devolução", "in")
         self.botao_devolver.clicked.connect(self._devolver)
         layout.insertWidget(4, self.botao_devolver)
 
@@ -199,7 +199,7 @@ class VendasView(CrudView):
             return
         devolucao = dialogo.devolucao
         self.refresh()
-        recado = f"Devolucao registrada: {fmt.moeda(devolucao.valor)}."
+        recado = f"Devolução registrada: {fmt.moeda(devolucao.valor)}."
         if devolucao.avisos:
             self.mostrar_aviso(f"{recado} {'; '.join(devolucao.avisos)}", "warning")
         else:
@@ -212,7 +212,7 @@ class VendasView(CrudView):
             return
         dialogo = MotivoDialog(
             f"Cancelar a venda {venda.numero}",
-            "O cancelamento devolve os itens ao estoque e some dos relatorios",
+            "O cancelamento devolve os itens ao estoque e some dos relatórios",
             "Ex.: cliente desistiu",
             self,
         )

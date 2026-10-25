@@ -1,0 +1,33 @@
+{
+ "duracao": 33.9,
+ "passos": [
+  {
+   "t": 2.9,
+   "texto": "No site da DumTech, clique em Passo a passo, no topo"
+  },
+  {
+   "t": 4.7,
+   "texto": "Escreva a sua dúvida do seu jeito"
+  },
+  {
+   "t": 8.6,
+   "texto": "O vídeo exato aparece na hora, com o passo a passo ao lado"
+  },
+  {
+   "t": 12.1,
+   "texto": "Dê o play: é o programa de verdade fazendo a tarefa"
+  },
+  {
+   "t": 17.9,
+   "texto": "Clique num passo para pular direto para ele"
+  },
+  {
+   "t": 22.8,
+   "texto": "Ou escolha pelo assunto, nos filtros"
+  },
+  {
+   "t": 27.2,
+   "texto": "Copiar link manda o vídeo certo para quem precisa"
+  }
+ ]
+}

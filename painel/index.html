@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no">
 <title>Painel DumTech</title>
 <meta name="robots" content="noindex, nofollow">
 <!-- So scripts desta pasta, e conversa so com o Supabase da DumTech (ou com um
@@ -23,6 +23,8 @@
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect width='24' height='24' rx='6' fill='%237353F6'/><path d='M6 6h4v4H6z M14 6h4v4h-4z M6 14h4v4H6z M14 14h4v4h-4z' fill='none' stroke='white' stroke-width='2'/></svg>">
 <link rel="stylesheet" href="css/estilo.css">
+<!-- sem zoom no celular: o iPhone ignora o meta, o script resolve -->
+<script src="js/sem-zoom.js"></script>
 </head>
 <body>
 
@@ -164,6 +166,14 @@
       <button type="button" data-tela="uso" title="Uso">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V11 M11 20V5 M17 20v-6 M3 20h18"/></svg>
         <span class="nav-texto">Uso</span>
+      </button>
+      <button type="button" data-tela="testes" title="Testes grátis">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 22h14 M5 2h14 M17 22v-4.2a2 2 0 0 0-.6-1.4L12 12l-4.4 4.4a2 2 0 0 0-.6 1.4V22 M7 2v4.2a2 2 0 0 0 .6 1.4L12 12l4.4-4.4a2 2 0 0 0 .6-1.4V2"/></svg>
+        <span class="nav-texto">Testes grátis</span>
+      </button>
+      <button type="button" data-tela="celulares" title="Celulares">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z M11 18h2"/></svg>
+        <span class="nav-texto">Celulares</span>
       </button>
       <button type="button" data-tela="seguranca" title="Segurança">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6z M9 12l2 2 4-4"/></svg>

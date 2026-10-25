@@ -141,6 +141,26 @@ MIGRATIONS = (
             """,
         ),
     ),
+    Migration(
+        version=3,
+        name="imagem do produto",
+        statements=(
+            # tabela a parte: a lista de produtos (SELECT * FROM produtos) nao
+            # carrega imagem nenhuma. Dentro do banco, a imagem entra no backup
+            # e volta na restauracao sem nenhuma pasta extra para se perder.
+            # A miniatura (96 px, poucos KB) e o que as listas desenham: abrir a
+            # foto inteira de cada produto travaria a tela de Produtos.
+            """
+            CREATE TABLE IF NOT EXISTS produto_imagens (
+                produto_id    INTEGER PRIMARY KEY
+                              REFERENCES produtos(id) ON DELETE CASCADE,
+                imagem        BLOB NOT NULL,
+                miniatura     BLOB NOT NULL,
+                atualizado_em TEXT NOT NULL
+            );
+            """,
+        ),
+    ),
 )
 
 

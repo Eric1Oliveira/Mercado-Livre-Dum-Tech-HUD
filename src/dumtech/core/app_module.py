@@ -31,7 +31,7 @@ class AppManifest:
     version: str = "1.0.0"
     icon: str = "box"    # nome do icone (ver dumtech/ui/icons.py)
     accent: str = "#4F8DFD"  # cor de destaque do aplicativo
-    category: str = "Gestao"
+    category: str = "Gestão"
     requires_internet: bool = False
 
     @property

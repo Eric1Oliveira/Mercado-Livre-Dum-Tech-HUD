@@ -27,20 +27,20 @@ class AprovacaoDialog(FormDialog):
         self.repository = repository
         self.ordem = ordem
         super().__init__(
-            f"Aprovacao da {ordem.numero}",
+            f"Aprovação da {ordem.numero}",
             "  ·  ".join(p for p in (ordem.assunto, ordem.cliente) if p),
             parent,
             largura=500,
         )
 
-        self.quem = form.sugestao(ordem.cliente, "Quem autorizou o servico", [ordem.cliente])
+        self.quem = form.sugestao(ordem.cliente, "Quem autorizou o serviço", [ordem.cliente])
         self.add_row("Aprovado por", self.quem)
 
         self.observacao = form.texto("", "Ex.: autorizou por telefone")
-        self.add_row("Observacao", self.observacao)
+        self.add_row("Observação", self.observacao)
 
         self.add_note(
-            f"Orcamento de {fmt.moeda(ordem.total)}. A aprovacao fica gravada com a "
+            f"Orçamento de {fmt.moeda(ordem.total)}. A aprovação fica gravada com a "
             "data e sai no comprovante de entrega."
         )
         self.quem.setFocus()
@@ -89,11 +89,11 @@ class EntregaDialog(FormDialog):
             largura=520,
         )
 
-        self.quem = form.sugestao(ordem.cliente, "Quem esta retirando", [ordem.cliente])
+        self.quem = form.sugestao(ordem.cliente, "Quem está retirando", [ordem.cliente])
         self.add_row("Retirado por", self.quem)
 
         self.observacao = form.texto("", "Opcional")
-        self.add_row("Observacao", self.observacao)
+        self.add_row("Observação", self.observacao)
 
         # --- o dinheiro (so faz sentido com valor e com o Financeiro ligado)
         self.cobrar = ordem.total > 0 and contas is not None
@@ -114,9 +114,9 @@ class EntregaDialog(FormDialog):
         garantia = (
             f"Garantia de {ordem.garantia_dias} dias a partir de hoje."
             if ordem.garantia_dias
-            else "Este servico sai sem garantia."
+            else "Este serviço sai sem garantia."
         )
-        self.add_note(f"Total do servico: {fmt.moeda(ordem.total)}. {garantia}")
+        self.add_note(f"Total do serviço: {fmt.moeda(ordem.total)}. {garantia}")
 
         # o cliente esta na sua frente recebendo o servico: e agora que paga
         self.painel_pix = None
@@ -153,7 +153,7 @@ class EntregaDialog(FormDialog):
         from ....core.contas import AReceber
 
         if self.contas.ja_lancado(self.ordem.numero):
-            return "  A conta desta ordem ja existia no Financeiro."
+            return "  A conta desta ordem já existia no Financeiro."
         pagou = self.situacao.currentData() == self.PAGOU
         hoje = date.today().isoformat()
         try:
@@ -161,15 +161,15 @@ class EntregaDialog(FormDialog):
                 descricao=f"Ordem {self.ordem.numero} - {self.ordem.equipamento or self.ordem.cliente}",
                 valor=self.ordem.total,
                 vencimento=hoje if pagou else form.iso_da_data(self.vencimento),
-                cliente=self.ordem.cliente, categoria="Servicos",
+                cliente=self.ordem.cliente, categoria="Serviços",
                 documento=self.ordem.numero,
             ))
             if pagou:
                 self.contas.quitar(self.ordem.numero)
         except Exception as erro:  # noqa: BLE001 - o aparelho ja saiu pela porta
-            return f"  Nao consegui lancar no Financeiro ({erro}) - use o botao Financeiro."
+            return f"  Não consegui lançar no Financeiro ({erro}) - use o botão Financeiro."
         if pagou:
-            return f"  Recebido em {self.forma.currentText()}: ja entrou no caixa do Financeiro."
+            return f"  Recebido em {self.forma.currentText()}: já entrou no caixa do Financeiro."
         return f"  Conta a receber criada para {fmt.data(form.iso_da_data(self.vencimento))}."
 
 

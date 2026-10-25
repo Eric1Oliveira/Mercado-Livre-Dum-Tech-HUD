@@ -1,0 +1,45 @@
+{
+ "duracao": 31.0,
+ "passos": [
+  {
+   "t": 2.8,
+   "texto": "Abra o Estoque"
+  },
+  {
+   "t": 4.8,
+   "texto": "Vá em Entradas"
+  },
+  {
+   "t": 6.8,
+   "texto": "Diga quem vendeu e o número da nota"
+  },
+  {
+   "t": 11.0,
+   "texto": "Bipe ou digite o produto e aperte Enter"
+  },
+  {
+   "t": 13.8,
+   "texto": "Quantidade e custo de cada unidade"
+  },
+  {
+   "t": 16.7,
+   "texto": "Clique em Adicionar"
+  },
+  {
+   "t": 18.2,
+   "texto": "Bipe ou digite o produto e aperte Enter"
+  },
+  {
+   "t": 21.2,
+   "texto": "Quantidade e custo de cada unidade"
+  },
+  {
+   "t": 24.2,
+   "texto": "Clique em Adicionar"
+  },
+  {
+   "t": 25.7,
+   "texto": "Confira o total e clique em Confirmar entrada"
+  }
+ ]
+}

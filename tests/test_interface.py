@@ -142,7 +142,7 @@ class InterfaceTestCase(unittest.TestCase):
         casca = self.hub.launcher.get("estoque")
         self.assertEqual(
             [v.title for v in casca.views],
-            ["Painel", "Produtos", "Entradas", "Movimentacoes", "Contagem"],
+            ["Painel", "Produtos", "Entradas", "Movimentações", "Contagem"],
         )
 
     def test_estoque_movimenta_pela_lista_de_produtos(self) -> None:
@@ -179,7 +179,7 @@ class InterfaceTestCase(unittest.TestCase):
         from dumtech.ui.widgets.command_palette import filtrar
 
         comandos = self.hub.build_commands()
-        self.assertEqual(filtrar(comandos, "orca")[0].title, "Orcamentos")
+        self.assertEqual(filtrar(comandos, "orca")[0].title, "Orçamentos")
         self.assertEqual(filtrar(comandos, "vnd")[0].title, "Vendas")
         self.assertEqual(filtrar(comandos, "xyzw"), [])
 
@@ -289,7 +289,7 @@ class BalcaoTestCase(unittest.TestCase):
 
     def test_vendas_comeca_pelo_balcao(self) -> None:
         self.assertEqual(
-            [v.title for v in self.casca.views], ["Balcao", "Painel", "Vendas", "Caixa"]
+            [v.title for v in self.casca.views], ["Balcão", "Painel", "Vendas", "Caixa"]
         )
 
     def test_item_avulso_entra_na_venda(self) -> None:
@@ -431,14 +431,14 @@ class FluxoDeCaixaTestCase(unittest.TestCase):
     def test_financeiro_comeca_pelo_fluxo(self) -> None:
         self.assertEqual(
             [v.title for v in self.casca.views],
-            ["Fluxo", "Painel", "Lancamentos", "Contas"],
+            ["Fluxo", "Painel", "Lançamentos", "Contas"],
         )
 
     def test_sem_conta_a_tela_ensina_o_proximo_passo(self) -> None:
         fluxo = self.casca.fluxo_view
         fluxo.refresh()
         self.assertIn("R$ 0,00", fluxo.card_hoje.value_label.text())
-        self.assertIn("nao fica negativo", fluxo.recado.text())
+        self.assertIn("não fica negativo", fluxo.recado.text())
 
     def test_a_tela_diz_o_dia_em_que_o_dinheiro_acaba(self) -> None:
         self._conta(100.0)
@@ -446,7 +446,7 @@ class FluxoDeCaixaTestCase(unittest.TestCase):
 
         fluxo = self.casca.fluxo_view
         fluxo.refresh()
-        self.assertIn("O dinheiro acaba em", fluxo.recado.text())
+        self.assertIn("Saldo negativo em", fluxo.recado.text())
         self.assertIn("-R$ 400,00", fluxo.recado.text())
         self.assertEqual(fluxo.projecao.dia_no_vermelho.data, self._dia(7))
         # so os dias com movimento entram na tabela
@@ -532,7 +532,7 @@ class FluxoDeCaixaTestCase(unittest.TestCase):
         contas.refresh()
         contas.tabela.selectRow(0)
         contas._excluir()
-        self.assertIn("ja tem movimento", contas.aviso.text())
+        self.assertIn("já tem movimento", contas.aviso.text())
         self.assertEqual(contas.tabela.rowCount(), 1)
 
 
@@ -604,7 +604,7 @@ class OficinaTestCase(unittest.TestCase):
 
     def test_ordens_comeca_pelo_quadro(self) -> None:
         self.assertEqual(
-            [v.title for v in self.casca.views], ["Quadro", "Painel", "Ordens"]
+            [v.title for v in self.casca.views], ["Quadro", "Painel", "Ordens de Serviço"]
         )
 
     def test_cada_ordem_vira_um_cartao_na_faixa_da_etapa(self) -> None:
@@ -639,12 +639,12 @@ class OficinaTestCase(unittest.TestCase):
 
         bancada._selecionar(ordem.id)
         self.assertTrue(bancada.botao_avancar.isEnabled())
-        self.assertIn("Mandar para aprovacao", bancada.botao_avancar.text())
+        self.assertIn("Mandar para aprovação", bancada.botao_avancar.text())
 
         self.repo.avancar(ordem.id)
         bancada.refresh()
         bancada._selecionar(ordem.id)
-        self.assertIn("Registrar aprovacao", bancada.botao_avancar.text())
+        self.assertIn("Registrar aprovação", bancada.botao_avancar.text())
 
     def test_faixa_vazia_ensina_em_vez_de_ficar_em_branco(self) -> None:
         from dumtech.apps.ordens.models import CONCLUIDA
@@ -667,7 +667,7 @@ class OficinaTestCase(unittest.TestCase):
         lista.refresh()
         self.assertEqual(lista.tabela.rowCount(), 1)
         limite = (date.today() + timedelta(days=90)).strftime("%d/%m/%Y")
-        self.assertIn(f"garantia ate {limite}", lista.tabela.item(0, 5).text())
+        self.assertIn(f"garantia até {limite}", lista.tabela.item(0, 5).text())
 
     def test_o_filtro_padrao_mostra_o_que_esta_na_oficina(self) -> None:
         na_oficina = self._ordem()
@@ -734,7 +734,7 @@ class PropostaTestCase(unittest.TestCase):
         ))
 
     def test_orcamentos_tem_duas_telas_comecando_pelo_funil(self) -> None:
-        self.assertEqual([v.title for v in self.casca.views], ["Funil", "Orcamentos"])
+        self.assertEqual([v.title for v in self.casca.views], ["Funil", "Orçamentos"])
 
     def test_o_funil_mostra_as_quatro_etapas(self) -> None:
         funil = self.casca.funil_view
@@ -780,7 +780,7 @@ class PropostaTestCase(unittest.TestCase):
 
         lista = self.casca.orcamentos_view
         lista.refresh()
-        self.assertIn("esperando ha 8 dias", lista.tabela.item(0, 3).text())
+        self.assertIn("esperando há 8 dias", lista.tabela.item(0, 3).text())
 
     def test_a_lista_diz_por_que_perdeu(self) -> None:
         from dumtech.apps.orcamentos.models import MOTIVO_PRECO
@@ -938,7 +938,7 @@ class GradeDaAgendaTestCase(unittest.TestCase):
 
         novo = Compromisso(titulo="Em cima", inicio=self._quando(0, 9, 30))
         dialogo = CompromissoDialog(self.repo, novo, [], self.casca.agenda_view)
-        self.assertIn("Ja existe algo neste horario", dialogo._nota.text())
+        self.assertIn("Já existe algo neste horário", dialogo._nota.text())
 
         # o primeiro clique so avisa: nada e gravado ainda
         self.assertIs(dialogo.salvar(), False)
@@ -955,7 +955,7 @@ class GradeDaAgendaTestCase(unittest.TestCase):
 
         novo = Compromisso(titulo="Sozinho", inicio=self._quando(2, 15))
         dialogo = CompromissoDialog(self.repo, novo, [], self.casca.agenda_view)
-        self.assertIn("Horario livre", dialogo._nota.text())
+        self.assertIn("Horário livre", dialogo._nota.text())
         dialogo.salvar()
         self.assertEqual(len(self.repo.listar()), 1)
 
@@ -988,7 +988,7 @@ class BackupNoHubTestCase(unittest.TestCase):
         self.assertTrue(self.hub.item_config.isChecked())
 
         titulos = [c.title for c in self.hub.build_commands()]
-        self.assertIn("Configuracoes", titulos)
+        self.assertIn("Configurações", titulos)
         self.assertIn("Backup", titulos)
 
         # a paleta leva direto para a secao, nao so para a tela - e o comando
@@ -1018,7 +1018,7 @@ class BackupNoHubTestCase(unittest.TestCase):
 
         self.vista._fazer_backup()
         self.assertEqual(self.vista.tabela.rowCount(), 1)
-        self.assertIn("Copia gravada", self.vista.aviso.text())
+        self.assertIn("Cópia gravada", self.vista.aviso.text())
         self.assertEqual(len(list(externa.glob("*.zip"))), 1)
 
     def test_restaurar_devolve_os_dados_e_fecha_os_bancos(self) -> None:

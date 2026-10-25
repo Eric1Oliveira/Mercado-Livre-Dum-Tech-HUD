@@ -64,14 +64,14 @@ class AppLauncher(QObject):
         """Devolve a casca do aplicativo pronta para ser montada, ou None."""
         entry = self.registry.get(app_id)
         if entry is None:
-            self._error(parent_window, "Aplicativo nao encontrado", app_id)
+            self._error(parent_window, "Aplicativo não encontrado", app_id)
             return None
 
         if not self.registry.license_service.allows(app_id):
             self._error(
                 parent_window,
                 "Aplicativo bloqueado",
-                f"{entry.manifest.name} nao esta liberado na licenca deste computador.",
+                f"{entry.manifest.name} não está liberado na licença deste computador.",
             )
             return None
 
@@ -86,7 +86,7 @@ class AppLauncher(QObject):
                 surface = entry.create_window(self.build_context(entry.manifest))
             except Exception as exc:  # o Hub continua vivo mesmo se o app falhar
                 logger.exception("Falha ao abrir o aplicativo %s", app_id)
-                self._error(parent_window, "Nao foi possivel abrir o aplicativo", str(exc))
+                self._error(parent_window, "Não foi possível abrir o aplicativo", str(exc))
                 return None
             surface.setWindowIcon(icons.icon(entry.manifest.icon, entry.manifest.accent, 64))
         self._open[app_id] = surface

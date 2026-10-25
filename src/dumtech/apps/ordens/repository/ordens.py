@@ -172,15 +172,15 @@ class OrdensMixin:
         # entregue e historico do cliente: para desfazer, cancele
         if ordem is not None and ordem.status == ENTREGUE:
             raise OrdemError(
-                f"A ordem {ordem.numero} ja foi entregue e nao pode ser apagada. "
-                "Cancele a ordem para manter o historico."
+                f"A ordem {ordem.numero} já foi entregue e não pode ser apagada. "
+                "Cancele a ordem para manter o histórico."
             )
         self.db.execute("DELETE FROM ordens WHERE id = ?", (ordem_id,))
 
     # ------------------------------------------------------------------ regras
     def _validar(self, ordem: Ordem) -> None:
         if not ordem.numero.strip():
-            raise OrdemError("Informe o numero da ordem.")
+            raise OrdemError("Informe o número da ordem.")
         if not ordem.cliente.strip():
             raise OrdemError("Informe o cliente da ordem.")
         # Um dos dois basta: a lavanderia escreve o pedido e nao tem
@@ -191,14 +191,14 @@ class OrdensMixin:
                 "Diga o que foi pedido (ou qual item entrou) para abrir a ordem."
             )
         if dinheiro(ordem.valor) < 0:
-            raise OrdemError("O valor nao pode ser negativo.")
+            raise OrdemError("O valor não pode ser negativo.")
         if int(ordem.garantia_dias or 0) < 0:
-            raise OrdemError("A garantia nao pode ser negativa.")
+            raise OrdemError("A garantia não pode ser negativa.")
         if ordem.itens and dinheiro(ordem.desconto) > ordem.subtotal:
-            raise OrdemError("O desconto nao pode ser maior que o total dos itens.")
+            raise OrdemError("O desconto não pode ser maior que o total dos itens.")
         repetido = self.db.query_one(
             "SELECT id FROM ordens WHERE numero = ? AND id IS NOT ?",
             (ordem.numero.strip(), ordem.id),
         )
         if repetido is not None:
-            raise OrdemError(f"Ja existe uma ordem com o numero {ordem.numero}.")
+            raise OrdemError(f"Já existe uma ordem com o número {ordem.numero}.")

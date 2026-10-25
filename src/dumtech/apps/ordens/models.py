@@ -25,9 +25,9 @@ CANCELADA = "cancelada"
 
 STATUS_LABEL = {
     ABERTA: "Aberta",
-    AGUARDANDO: "Aguardando aprovacao",
+    AGUARDANDO: "Aguardando aprovação",
     ANDAMENTO: "Em andamento",
-    CONCLUIDA: "Concluida",
+    CONCLUIDA: "Concluída",
     ENTREGUE: "Entregue",
     CANCELADA: "Cancelada",
 }
@@ -64,7 +64,7 @@ BANCADA = (ABERTA, AGUARDANDO, ANDAMENTO, CONCLUIDA)
 PECA = "peca"
 SERVICO = "servico"
 
-TIPO_ITEM_LABEL = {PECA: "Material", SERVICO: "Servico"}
+TIPO_ITEM_LABEL = {PECA: "Material", SERVICO: "Serviço"}
 TIPO_ITEM_OPCOES = [(rotulo, chave) for chave, rotulo in TIPO_ITEM_LABEL.items()]
 
 #: o que costuma vir junto com o item (sugestao de fabrica, o usuario edita).
@@ -73,7 +73,7 @@ TIPO_ITEM_OPCOES = [(rotulo, chave) for chave, rotulo in TIPO_ITEM_LABEL.items()
 #: curta e sem ramo - a de celular fazia o chaveiro rolar por "Pelicula".
 ACESSORIOS_COMUNS = (
     "Chave", "Carregador", "Cabo", "Capa ou bolsa", "Controle",
-    "Manual", "Documento", "Acessorios",
+    "Manual", "Documento", "Acessórios",
 )
 
 #: prazo de garantia padrao, em dias
@@ -331,3 +331,5 @@ class ResumoOrdens:
     fila: list[Ordem] = field(default_factory=list)
     prontas: list[Ordem] = field(default_factory=list)
     aguardando_lista: list[Ordem] = field(default_factory=list)
+    #: quantas estao prontas esperando o cliente (a lista acima vem cortada)
+    prontas_total: int = 0

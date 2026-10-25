@@ -1,0 +1,25 @@
+{
+ "duracao": 19.0,
+ "passos": [
+  {
+   "t": 2.8,
+   "texto": "Abra o Financeiro: ele começa no Fluxo"
+  },
+  {
+   "t": 5.1,
+   "texto": "O gráfico mostra o saldo de hoje e dos próximos dias"
+  },
+  {
+   "t": 7.9,
+   "texto": "Dia a dia: o que entra e o que sai em cada data"
+  },
+  {
+   "t": 10.5,
+   "texto": "E onde o dinheiro está: banco e gaveta"
+  },
+  {
+   "t": 12.9,
+   "texto": "O Painel mostra o que vence e o que atrasou"
+  }
+ ]
+}

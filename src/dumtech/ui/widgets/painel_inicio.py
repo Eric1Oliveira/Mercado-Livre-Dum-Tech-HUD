@@ -43,7 +43,7 @@ from .. import format as fmt
 from ..motion import Realce
 from ..theme import LIGHT, Palette, Radius, Space, current_palette, font_for, mix, palette_for
 from .buttons import Button
-from .common import Card, IconBadge, Pill, label, separator, tone_label
+from .common import Card, IconBadge, Pill, label, repolish, separator, tone_label
 
 DIAS = ("segunda-feira", "terca-feira", "quarta-feira", "quinta-feira",
         "sexta-feira", "sabado", "domingo")
@@ -205,7 +205,7 @@ class CabecalhoEmpresa(QFrame):
             self.setCursor(QCursor(Qt.CursorShape.ArrowCursor))
         else:
             self.detalhe.setText(
-                "Configuracoes > Minha empresa: o nome da loja passa a assinar "
+                "Configurações > Minha empresa: o nome da loja passa a assinar "
                 "os documentos e as mensagens."
             )
             self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
@@ -579,17 +579,36 @@ class LinhaDeAviso(QWidget):
 
 
 class PainelDeAvisos(Card):
-    """Tudo que pede atencao hoje, num cartao so, na ordem da urgencia."""
+    """Tudo que pede atencao hoje, num cartao so, na ordem da urgencia.
+
+    E o unico cartao do Inicio que se pinta com a cor da urgencia - faixa na
+    lateral, fio e fundo tingidos, titulo na mesma cor. Se todos chamassem
+    atencao, nenhum chamaria; este so existe quando ha o que fazer.
+    """
 
     abrir = Signal(str)
-    TITULO = "Precisa de voce"
+    TITULO = "Atenção"
+    #: largura da faixa colorida da lateral
+    FAIXA = 4
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent, padding=Space.lg + 2)
+        self._palette = palette_for(parent) if parent else current_palette()
+        self._tom = "warning"
+        self.body.setContentsMargins(Space.lg + 2 + self.FAIXA, Space.lg + 2,
+                                     Space.lg + 2, Space.lg + 2)
         self.body.setSpacing(Space.sm)
         self.contagem = Pill("", "warning")
         self.nota = label("", "dim")
-        topo = cabecalho_de_cartao(self.TITULO, self.contagem)
+
+        topo = QHBoxLayout()
+        topo.setSpacing(Space.sm + 2)
+        self.icone = IconBadge("alert", self._tom, size=30, radius=9)
+        topo.addWidget(self.icone, 0, Qt.AlignmentFlag.AlignVCenter)
+        self.titulo = tone_label(self.TITULO, self._tom, "cardTitle")
+        topo.addWidget(self.titulo, 0, Qt.AlignmentFlag.AlignVCenter)
+        topo.addWidget(self.contagem, 0, Qt.AlignmentFlag.AlignVCenter)
+        topo.addStretch(1)
         topo.addWidget(self.nota, 0, Qt.AlignmentFlag.AlignVCenter)
         self.body.addLayout(topo)
 
@@ -608,9 +627,12 @@ class PainelDeAvisos(Card):
                 widget.deleteLater()
         total = len(avisos) + max(sobrando, 0)
         self.contagem.setText(str(total))
-        self.contagem.set_tone(
-            "danger" if any(a.tom == "danger" for a in avisos) else "warning"
-        )
+        self._tom = "danger" if any(a.tom == "danger" for a in avisos) else "warning"
+        self.contagem.set_tone(self._tom)
+        self.icone.set_color(self._tom)
+        self.titulo.setProperty("tone", self._tom)
+        repolish(self.titulo)
+        self.update()
         self.nota.setText(
             f"e mais {fmt.contagem(sobrando, 'assunto')} dentro dos aplicativos"
             if sobrando > 0 else ""
@@ -621,6 +643,30 @@ class PainelDeAvisos(Card):
             linha = LinhaDeAviso(aviso, nomes.get(aviso.app_id, ""), self)
             linha.clicado.connect(self.abrir.emit)
             self.linhas.addWidget(linha)
+
+    def apply_theme(self, palette: Palette) -> None:
+        self._palette = palette
+        self.update()
+
+    def paintEvent(self, evento) -> None:  # noqa: N802 (Qt)
+        super().paintEvent(evento)  # o cartao de sempre, pelo QSS
+        cor = QColor(self._palette.resolve(self._tom))
+        pintor = QPainter(self)
+        pintor.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        forma = QPainterPath()
+        forma.addRoundedRect(QRectF(0.5, 0.5, self.width() - 1, self.height() - 1),
+                             Radius.lg, Radius.lg)
+        fundo = QColor(cor)
+        fundo.setAlphaF(0.06)
+        pintor.fillPath(forma, fundo)
+        fio = QColor(cor)
+        fio.setAlphaF(0.55)
+        pintor.setPen(QPen(fio, 1))
+        pintor.drawPath(forma)
+        # a faixa acompanha a curva do cartao: recortada pela propria forma
+        pintor.setClipPath(forma)
+        pintor.fillRect(QRectF(0, 0, self.FAIXA, self.height()), cor)
+        pintor.end()
 
 
 class TudoEmDia(Card):
@@ -643,9 +689,9 @@ class TudoEmDia(Card):
         texto.setSpacing(2)
         texto.addWidget(tone_label("Tudo em dia", "success", "cardTitle"))
         texto.addWidget(label(
-            "Nada vencido, nada atrasado e nada no minimo."
+            "Nada vencido, nada atrasado e nada no mínimo."
             if sistemas else
-            "Ative a sua licenca para o Inicio comecar a acompanhar o negocio.",
+            "Ative a sua licença para o Início começar a acompanhar o negócio.",
             "muted",
         ))
         linha.addLayout(texto, 1)

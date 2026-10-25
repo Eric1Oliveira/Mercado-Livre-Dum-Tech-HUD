@@ -143,13 +143,13 @@ def criar(
     paths = paths or get_paths()
     bancos = _bancos(paths)
     if not bancos:
-        raise BackupError("Nao ha nenhum dado para copiar ainda.")
+        raise BackupError("Não há nenhum dado para copiar ainda.")
 
     destino = Path(destino)
     try:
         destino.mkdir(parents=True, exist_ok=True)
     except OSError as erro:
-        raise BackupError(f"Nao foi possivel usar a pasta {destino}: {erro}") from erro
+        raise BackupError(f"Não foi possível usar a pasta {destino}: {erro}") from erro
 
     momento = datetime.now()
     arquivo = _sem_colisao(destino / nome_do_arquivo(momento, automatico))
@@ -167,7 +167,7 @@ def criar(
             try:
                 _copia_consistente(banco, pasta / banco.name)
             except sqlite3.Error as erro:
-                raise BackupError(f"Nao foi possivel copiar {banco.name}: {erro}") from erro
+                raise BackupError(f"Não foi possível copiar {banco.name}: {erro}") from erro
 
         try:
             with zipfile.ZipFile(arquivo, "w", zipfile.ZIP_DEFLATED) as pacote:
@@ -179,7 +179,7 @@ def criar(
                     pacote.write(config, f"config/{config.name}")
         except OSError as erro:
             arquivo.unlink(missing_ok=True)
-            raise BackupError(f"Nao foi possivel gravar o backup: {erro}") from erro
+            raise BackupError(f"Não foi possível gravar o backup: {erro}") from erro
 
     return Backup(
         arquivo=arquivo,
@@ -217,14 +217,14 @@ def copiar_para_fora(copia: Backup, pasta: Path, manter: int = MANTER_FORA) -> P
     """
     pasta = Path(pasta)
     if not pasta:
-        raise BackupError("Nenhuma pasta escolhida para a copia de fora.")
+        raise BackupError("Nenhuma pasta escolhida para a cópia de fora.")
     try:
         pasta.mkdir(parents=True, exist_ok=True)
         destino = _sem_colisao(pasta / copia.arquivo.name)
         shutil.copy2(copia.arquivo, destino)
     except OSError as erro:
         raise BackupError(
-            f"Nao foi possivel copiar para {pasta}: {erro}. "
+            f"Não foi possível copiar para {pasta}: {erro}. "
             "O backup no computador foi feito normalmente."
         ) from erro
 
@@ -246,12 +246,12 @@ def ler_manifesto(arquivo: Path) -> Backup:
             dados = json.loads(pacote.read(MANIFESTO))
     except (OSError, KeyError, zipfile.BadZipFile, json.JSONDecodeError) as erro:
         raise BackupError(
-            f"'{arquivo.name}' nao e um backup do DumTech Hub."
+            f"'{arquivo.name}' não é um backup do DumTech Hub."
         ) from erro
 
     if int(dados.get("formato", 0)) > FORMATO:
         raise BackupError(
-            f"'{arquivo.name}' foi feito por uma versao mais nova do programa."
+            f"'{arquivo.name}' foi feito por uma versão mais nova do programa."
         )
     return Backup(
         arquivo=arquivo,
@@ -318,13 +318,13 @@ def restaurar(arquivo: Path, paths: DataPaths | None = None) -> list[str]:
                     pathlib.Path(f"{destino}{sobra}").unlink(missing_ok=True)
                 except OSError as erro:
                     raise BackupError(
-                        f"O banco '{banco}' ainda esta em uso. Feche o DumTech "
+                        f"O banco '{banco}' ainda está em uso. Feche o DumTech "
                         "Hub e abra de novo antes de restaurar."
                     ) from erro
             restaurados.append(banco)
 
     if not restaurados:
-        raise BackupError("O backup nao tem nenhum banco de dados dentro.")
+        raise BackupError("O backup não tem nenhum banco de dados dentro.")
     return sorted(restaurados)
 
 

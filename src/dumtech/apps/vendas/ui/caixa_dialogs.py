@@ -18,7 +18,7 @@ class AbrirCaixaDialog(FormDialog):
         self.repository = repository
         super().__init__(
             "Abrir caixa",
-            "O valor de abertura e o troco que ja esta na gaveta",
+            "O valor de abertura é o troco que já está na gaveta",
             parent,
             largura=460,
         )
@@ -56,11 +56,11 @@ class MovimentoCaixaDialog(FormDialog):
         self.valor = form.dinheiro(0.0)
         self.add_row("Valor", self.valor)
         self.motivo = form.texto(
-            "", "Ex.: deposito no banco" if sangria else "Ex.: troco extra"
+            "", "Ex.: depósito no banco" if sangria else "Ex.: troco extra"
         )
         self.add_row("Motivo" if sangria else "Motivo (opcional)", self.motivo)
         if sangria:
-            self.add_note("A sangria precisa de motivo: e assim que o dinheiro se explica.")
+            self.add_note("A sangria precisa de motivo: é assim que o dinheiro se explica.")
         self.valor.setFocus()
         self.valor.selectAll()
 
@@ -89,8 +89,8 @@ class FecharCaixaDialog(FormDialog):
         self.contado = form.dinheiro(0.0)
         self.contado.valueChanged.connect(self._recalcular)
         self.add_row("Dinheiro contado", self.contado)
-        self.observacoes = form.area("", "O que explica a diferenca (opcional)", 60)
-        self.add_row("Observacoes", self.observacoes)
+        self.observacoes = form.area("", "O que explica a diferença (opcional)", 60)
+        self.add_row("Observações", self.observacoes)
 
         self.add_note("")
         self._nota = self.extras.itemAt(0).widget()

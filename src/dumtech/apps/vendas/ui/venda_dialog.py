@@ -32,7 +32,7 @@ class VendaDialog(FormDialog):
         self.venda = venda or Venda(numero=repository.proximo_numero())
         self.editando = venda is not None
         super().__init__(
-            f"Venda {self.venda.numero}" if self.editando else "Lancar venda",
+            f"Venda {self.venda.numero}" if self.editando else "Lançar venda",
             "Itens vendidos, pagamento e total",
             parent,
             largura=680,
@@ -40,7 +40,7 @@ class VendaDialog(FormDialog):
 
         self.numero = form.texto(self.venda.numero, "Ex.: VEN-2026-0001")
         self.data = form.data(self.venda.data)
-        self.add_row("Numero", form.linha(self.numero, "Data", self.data))
+        self.add_row("Número", form.linha(self.numero, "Data", self.data))
 
         self.cliente = form.sugestao(self.venda.cliente, "Cliente (opcional)", clientes or [])
         self.add_row("Cliente", self.cliente)
@@ -50,7 +50,7 @@ class VendaDialog(FormDialog):
         self.forma.addItems(list(FORMAS))
         self.forma.setCurrentText(self.venda.resumo_pagamento)
         self.status = form.escolha(STATUS_OPCOES, self.venda.status)
-        self.add_row("Pagamento", form.linha(self.forma, "Situacao", self.status))
+        self.add_row("Pagamento", form.linha(self.forma, "Situação", self.status))
 
         self.itens = ItemsEditor()
         # o editor nao mostra a ligacao com o Estoque, mas nao pode perde-la
@@ -70,8 +70,8 @@ class VendaDialog(FormDialog):
         self.desconto.valueChanged.connect(self._atualizar_total)
         self.add_row("Desconto", self.desconto)
 
-        self.observacoes = form.area(self.venda.observacoes, "Anotacoes da venda", 60)
-        self.add_row("Observacoes", self.observacoes)
+        self.observacoes = form.area(self.venda.observacoes, "Anotações da venda", 60)
+        self.add_row("Observações", self.observacoes)
 
         self.add_note("")
         self._nota_total = self.extras.itemAt(0).widget()

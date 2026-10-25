@@ -66,7 +66,7 @@ class QrDoBalcaoTestCase(unittest.TestCase):
         dialogo = self._dialogo(Empresa(nome="Loja", cidade="Limeira"))
         dialogo.forma.setCurrentText(PIX)
         self.assertEqual(dialogo.payload_pix, "")
-        self.assertIn("Configuracoes", dialogo.recado_pix.text())
+        self.assertIn("Configurações", dialogo.recado_pix.text())
 
     def test_sem_empresa_nenhuma_nao_quebra(self) -> None:
         """O dialogo tambem roda fora do Hub (teste, script): nao pode explodir."""

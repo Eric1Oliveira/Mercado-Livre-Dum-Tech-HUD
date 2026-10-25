@@ -29,13 +29,13 @@ FILTRO_ABERTO = "aberto"
 
 
 class OrcamentosView(CrudView):
-    titulo = "Orcamentos"
+    titulo = "Orçamentos"
     nome_registro = "proposta"
     nome_plural = "propostas"
     genero = "f"
     rotulo_novo = "Nova proposta"
-    dica_pesquisa = "Pesquisar por numero, cliente ou observacao..."
-    colunas = ["Numero", "Data", "Cliente", "Situacao", "Total"]
+    dica_pesquisa = "Pesquisar por número, cliente ou observação..."
+    colunas = ["Número", "Data", "Cliente", "Situação", "Total"]
     larguras = {0: 145, 1: 115, 3: 230, 4: 140}
 
     def __init__(
@@ -73,7 +73,7 @@ class OrcamentosView(CrudView):
 
     def build_actions(self, layout: QHBoxLayout) -> None:
         self.botao_documento = Button("Documento", "file")
-        self.botao_documento.setToolTip("Ve a proposta em folha A4 e salva em PDF")
+        self.botao_documento.setToolTip("Vê a proposta em folha A4 e salva em PDF")
         self.botao_documento.clicked.connect(self._documento)
         layout.insertWidget(1, self.botao_documento)
 
@@ -93,13 +93,13 @@ class OrcamentosView(CrudView):
         layout.insertWidget(3, self.botao_aprovar)
 
         self.botao_recusar = Button("Recusar", "close", "danger")
-        self.botao_recusar.setToolTip("O cliente nao aceitou - com o motivo")
+        self.botao_recusar.setToolTip("O cliente não aceitou - com o motivo")
         self.botao_recusar.clicked.connect(self._recusar)
         layout.insertWidget(4, self.botao_recusar)
 
         self.botao_gerar = Button("Gerar", "swap", "success")
         self.botao_gerar.setToolTip(
-            "Abre a venda ou a ordem de servico com os itens desta proposta"
+            "Abre a venda ou a ordem de serviço com os itens desta proposta"
         )
         self.botao_gerar.clicked.connect(self._gerar)
         # entra no layout antes de decidir se aparece: sem pai, `setVisible`
@@ -133,13 +133,13 @@ class OrcamentosView(CrudView):
     def _situacao(orcamento: Orcamento) -> str:
         """O status sozinho nao diz ha quanto tempo a proposta esta parada."""
         if orcamento.status == RECUSADO and orcamento.motivo_recusa:
-            return f"Nao aprovada · {orcamento.motivo_label.lower()}"
+            return f"Não aprovada · {orcamento.motivo_label.lower()}"
         if orcamento.status == ENVIADO:
             dias = orcamento.dias_esperando
             if orcamento.vencido:
                 return f"Enviada · venceu {fmt.prazo_texto(orcamento.vale_ate)}"
             if dias:
-                return f"Enviada · esperando ha {fmt.dias(dias)}"
+                return f"Enviada · esperando há {fmt.dias(dias)}"
             return "Enviada hoje"
         if orcamento.status == APROVADO and orcamento.respondido_em:
             return f"Aprovada em {fmt.data(orcamento.respondido_em)}"
@@ -192,7 +192,7 @@ class OrcamentosView(CrudView):
         if orcamento is None:
             return
         validade = (fmt.data(orcamento.vale_ate) if orcamento.vale_ate
-                    else f"{fmt.dias(orcamento.validade_dias)} apos o envio")
+                    else f"{fmt.dias(orcamento.validade_dias)} após o envio")
         mandar(self, self.mensageiro, "proposta", {
             "cliente": orcamento.cliente,
             "numero": orcamento.numero,
@@ -231,7 +231,7 @@ class OrcamentosView(CrudView):
         try:
             numero = destino.abrir(pedido)
         except Exception as erro:  # noqa: BLE001 - a proposta nao pode ser afetada
-            self.mostrar_aviso(f"Nao foi possivel gerar: {erro}", "danger")
+            self.mostrar_aviso(f"Não foi possível gerar: {erro}", "danger")
             return
         self.mostrar_aviso(
             f"{destino.titulo} {numero} criada a partir de {orcamento.numero}. "
@@ -282,7 +282,7 @@ class OrcamentosView(CrudView):
             return
         self.refresh()
         self.mostrar_aviso(
-            f"Proposta {orcamento.numero} marcada como nao aprovada.", "success"
+            f"Proposta {orcamento.numero} marcada como não aprovada.", "success"
         )
         self.data_changed.emit()
 
@@ -294,7 +294,7 @@ class OrcamentosView(CrudView):
         self.refresh()
         self.mostrar_aviso(
             f"Proposta {copia.numero} criada a partir da {orcamento.numero}. "
-            "Ela nasce como rascunho, para voce ajustar antes de mandar.",
+            "Ela nasce como rascunho, para você ajustar antes de mandar.",
             "success",
         )
         self.data_changed.emit()

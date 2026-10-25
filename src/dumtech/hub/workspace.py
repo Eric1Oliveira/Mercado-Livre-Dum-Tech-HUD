@@ -90,13 +90,13 @@ class ContextBar(QFrame):
         self.selo_teste = Pill("", "accent")
         linha.addWidget(self.selo_teste, 0, Qt.AlignmentFlag.AlignVCenter)
         self.botao_comprar = Button("Comprar", "cart", "primary")
-        self.botao_comprar.setToolTip("Abre a loja com este modulo no carrinho")
+        self.botao_comprar.setToolTip("Abre a loja com este módulo no carrinho")
         self.botao_comprar.clicked.connect(self.comprar_requested.emit)
         linha.addWidget(self.botao_comprar)
         self.mostrar_teste(None)
 
         self.botao_fechar = Button("Fechar", "close", "ghost")
-        self.botao_fechar.setToolTip("Fecha o aplicativo e volta para o Inicio (Ctrl+W)")
+        self.botao_fechar.setToolTip("Fecha o aplicativo e volta para o Início (Ctrl+W)")
         self.botao_fechar.clicked.connect(self.close_requested.emit)
         linha.addWidget(self.botao_fechar)
 
@@ -118,8 +118,8 @@ class ContextBar(QFrame):
         em_teste = dias is not None
         if em_teste:
             self.selo_teste.setText(
-                "Teste gratis: ultimo dia" if dias <= 1
-                else f"Teste gratis  ·  faltam {fmt.contagem(dias, 'dia', 'dias')}")
+                "Teste grátis: último dia" if dias <= 1
+                else f"Teste grátis  ·  faltam {fmt.contagem(dias, 'dia', 'dias')}")
             self.selo_teste.set_tone("warning" if dias <= 2 else "accent")
         self.selo_teste.setVisible(em_teste)
         self.botao_comprar.setVisible(em_teste)

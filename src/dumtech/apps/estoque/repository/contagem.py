@@ -38,10 +38,10 @@ class ContagemMixin:
         """Anota quanto existe de verdade. Contar de novo substitui o valor."""
         contado = quantidade(contado)
         if contado < 0:
-            raise EstoqueError("A quantidade contada nao pode ser negativa.")
+            raise EstoqueError("A quantidade contada não pode ser negativa.")
         produto = self.obter(produto_id)
         if produto is None:
-            raise EstoqueError("Selecione um produto valido.")
+            raise EstoqueError("Selecione um produto válido.")
 
         self.db.execute(
             """
@@ -74,7 +74,7 @@ class ContagemMixin:
         """Transforma as divergencias em ajustes. Devolve quantos saldos mudaram."""
         itens = self.contagem()
         if not itens:
-            raise EstoqueError("A folha de contagem esta vazia.")
+            raise EstoqueError("A folha de contagem está vazia.")
 
         texto = observacao.strip() or "Ajuste da contagem de estoque"
         ajustados = 0

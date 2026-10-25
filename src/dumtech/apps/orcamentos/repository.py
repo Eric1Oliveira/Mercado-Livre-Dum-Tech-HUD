@@ -155,7 +155,7 @@ class OrcamentosRepository:
         """Copia tudo menos a historia: numero, datas e resposta comecam limpos."""
         origem = self.obter(orcamento_id)
         if origem is None:
-            raise OrcamentoError("Orcamento nao encontrado.")
+            raise OrcamentoError("Orçamento não encontrado.")
 
         copia = Orcamento(
             numero=self.proximo_numero(),
@@ -202,7 +202,7 @@ class OrcamentosRepository:
     def recusar(self, orcamento_id: int, motivo: str, quando: str = "") -> Orcamento:
         """Perder sem motivo nao vira licao nenhuma."""
         if motivo not in MOTIVOS_LABEL:
-            raise OrcamentoError("Escolha por que o orcamento nao foi aprovado.")
+            raise OrcamentoError("Escolha por que o orçamento não foi aprovado.")
 
         orcamento = self._exigir(orcamento_id)
         orcamento.status = RECUSADO
@@ -226,7 +226,7 @@ class OrcamentosRepository:
     def _exigir(self, orcamento_id: int) -> Orcamento:
         orcamento = self.obter(orcamento_id)
         if orcamento is None:
-            raise OrcamentoError("Orcamento nao encontrado.")
+            raise OrcamentoError("Orçamento não encontrado.")
         return orcamento
 
     def _gravar_itens(self, orcamento: Orcamento) -> None:
@@ -257,14 +257,14 @@ class OrcamentosRepository:
 
     def _validar(self, orcamento: Orcamento) -> None:
         if not orcamento.numero.strip():
-            raise OrcamentoError("Informe o numero do orcamento.")
+            raise OrcamentoError("Informe o número do orçamento.")
         if not orcamento.cliente.strip():
-            raise OrcamentoError("Informe o cliente do orcamento.")
+            raise OrcamentoError("Informe o cliente do orçamento.")
         if not orcamento.itens:
-            raise OrcamentoError("Adicione pelo menos um item ao orcamento.")
+            raise OrcamentoError("Adicione pelo menos um item ao orçamento.")
         for item in orcamento.itens:
             if not item.descricao.strip():
-                raise OrcamentoError("Todo item precisa de uma descricao.")
+                raise OrcamentoError("Todo item precisa de uma descrição.")
             if float(item.quantidade) <= 0:
                 raise OrcamentoError(
                     f"A quantidade de '{item.descricao}' precisa ser maior que zero."
@@ -274,15 +274,15 @@ class OrcamentosRepository:
                     f"O desconto de '{item.descricao}' passou do valor da linha."
                 )
         if dinheiro(orcamento.desconto) > orcamento.subtotal:
-            raise OrcamentoError("O desconto nao pode ser maior que o total dos itens.")
+            raise OrcamentoError("O desconto não pode ser maior que o total dos itens.")
         if int(orcamento.validade_dias or 0) < 0:
-            raise OrcamentoError("A validade nao pode ser negativa.")
+            raise OrcamentoError("A validade não pode ser negativa.")
         repetido = self.db.query_one(
             "SELECT id FROM orcamentos WHERE numero = ? AND id IS NOT ?",
             (orcamento.numero.strip(), orcamento.id),
         )
         if repetido is not None:
-            raise OrcamentoError(f"Ja existe um orcamento com o numero {orcamento.numero}.")
+            raise OrcamentoError(f"Já existe um orçamento com o número {orcamento.numero}.")
 
     # ------------------------------------------------------------------- funil
     def resumo(self, limite_listas: int = 6) -> ResumoOrcamentos:

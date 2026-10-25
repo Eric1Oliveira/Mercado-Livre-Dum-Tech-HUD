@@ -125,14 +125,14 @@ class EmpresaView(QWidget):
         coluna.setSpacing(Space.md)
 
         identidade = Card(padding=Space.lg)
-        identidade.body.addWidget(label("Identificacao", "section"))
+        identidade.body.addWidget(label("Identificação", "section"))
         identidade.body.addWidget(separator())
-        self.nome = form.texto("", "Como a loja e conhecida (aparece no topo)")
+        self.nome = form.texto("", "Como a loja é conhecida (aparece no topo)")
         self.nome.textChanged.connect(self._atualizar_previa)
         identidade.body.addWidget(form.campo("Nome fantasia", self.nome))
-        self.razao = form.texto("", "Razao social (opcional)")
+        self.razao = form.texto("", "Razão social (opcional)")
         self.razao.textChanged.connect(self._atualizar_previa)
-        identidade.body.addWidget(form.campo("Razao social", self.razao))
+        identidade.body.addWidget(form.campo("Razão social", self.razao))
         self.documento = form.texto("", "CNPJ ou CPF")
         self.documento.textChanged.connect(self._atualizar_previa)
         identidade.body.addWidget(form.campo("CNPJ / CPF", self.documento))
@@ -154,13 +154,13 @@ class EmpresaView(QWidget):
         coluna.addWidget(contato)
 
         endereco = Card(padding=Space.lg)
-        endereco.body.addWidget(label("Endereco", "section"))
+        endereco.body.addWidget(label("Endereço", "section"))
         endereco.body.addWidget(separator())
         self.endereco = form.texto("", "Rua, avenida...")
         self.numero = form.texto("", "N.")
         endereco.body.addWidget(
             form.linha(form.campo("Logradouro", self.endereco),
-                       form.campo("Numero", self.numero))
+                       form.campo("Número", self.numero))
         )
         self.bairro = form.texto("", "Bairro")
         self.cep = form.texto("", "00000-000")
@@ -181,8 +181,8 @@ class EmpresaView(QWidget):
         recebimento.body.addWidget(label("Recebimento", "section"))
         recebimento.body.addWidget(separator())
         self.pix_aviso = label(
-            "A chave Pix e as formas de pagamento ficam em Configuracoes > "
-            "Pagamentos, protegidas por um codigo enviado ao e-mail da licenca.",
+            "A chave Pix e as formas de pagamento ficam em Configurações > "
+            "Pagamentos, protegidas por um código enviado ao e-mail da licença.",
             "dim",
         )
         self.pix_aviso.setWordWrap(True)
@@ -212,12 +212,12 @@ class EmpresaView(QWidget):
         marca.addStretch(1)
         documento.body.addLayout(marca)
         documento.body.addWidget(
-            label("O logotipo sai no PDF da proposta e da ordem de servico.", "dim")
+            label("O logotipo sai no PDF da proposta e da ordem de serviço.", "dim")
         )
 
-        self.rodape = form.texto("", "Ex.: Obrigado pela preferencia!")
+        self.rodape = form.texto("", "Ex.: Obrigado pela preferência!")
         self.rodape.textChanged.connect(self._atualizar_previa)
-        documento.body.addWidget(form.campo("Frase no rodape", self.rodape))
+        documento.body.addWidget(form.campo("Frase no rodapé", self.rodape))
         coluna.addWidget(documento)
 
         coluna.addStretch(1)
@@ -350,7 +350,7 @@ class EmpresaView(QWidget):
             return False
         self.empresa = nova
         self._dizer(
-            "Dados salvos. Eles ja aparecem nos comprovantes e propostas.",
+            "Dados salvos. Eles já aparecem nos comprovantes e propostas.",
             "success",
         )
         self.alterada.emit()
@@ -368,5 +368,5 @@ def convite(empresa: Empresa) -> str:
         return ""
     return (
         "Seus comprovantes ainda saem sem o nome da sua empresa. "
-        "Preencha em Configuracoes para o cliente saber de quem e o papel."
+        "Preencha em Configurações para o cliente saber de quem é o papel."
     )

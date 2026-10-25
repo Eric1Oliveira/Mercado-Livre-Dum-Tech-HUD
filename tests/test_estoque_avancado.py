@@ -287,7 +287,9 @@ class MigracaoTestCase(unittest.TestCase):
         arquivo = self._banco_v1()
         db = open_database(arquivo)
         self.addCleanup(db.close)
-        self.assertEqual(db.schema_version, 2)
+        from dumtech.apps.estoque.database import MIGRATIONS
+
+        self.assertEqual(db.schema_version, MIGRATIONS[-1].version)  # v1 sobe ate a atual
 
         repo = EstoqueRepository(db)
         produto = repo.buscar_por_codigo("MOU-001")

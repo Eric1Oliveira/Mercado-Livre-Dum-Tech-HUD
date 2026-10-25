@@ -1,0 +1,33 @@
+{
+ "duracao": 24.9,
+ "passos": [
+  {
+   "t": 2.8,
+   "texto": "Abra Clientes"
+  },
+  {
+   "t": 4.9,
+   "texto": "Vá na lista de clientes"
+  },
+  {
+   "t": 6.6,
+   "texto": "Clique em Novo cliente"
+  },
+  {
+   "t": 8.5,
+   "texto": "Nome e WhatsApp"
+  },
+  {
+   "t": 12.5,
+   "texto": "Aniversário no formato dia/mês/ano"
+  },
+  {
+   "t": 14.2,
+   "texto": "Digite o CEP: o endereço aparece sozinho"
+  },
+  {
+   "t": 19.6,
+   "texto": "Salve: o cliente aparece em todos os módulos"
+  }
+ ]
+}

@@ -63,7 +63,7 @@ def entrada(ordem: Ordem, empresa=None) -> str:
         linhas.append(linha())
         linhas.append("O que veio junto:")
         linhas += ([f"  [X] {item}" for item in acessorios] or
-                   ["  Nenhum acessorio recebido"])
+                   ["  Nenhum acessório recebido"])
 
     if ordem.condicao:
         linhas.append("")
@@ -72,9 +72,9 @@ def entrada(ordem: Ordem, empresa=None) -> str:
 
     linhas.append(linha())
     if ordem.prazo:
-        linhas.append(lado_a_lado("Previsao", fmt.data(ordem.prazo)))
+        linhas.append(lado_a_lado("Previsão", fmt.data(ordem.prazo)))
     if ordem.tecnico:
-        linhas.append(lado_a_lado("Responsavel", ordem.tecnico))
+        linhas.append(lado_a_lado("Responsável", ordem.tecnico))
     if ordem.valor:
         linhas.append(lado_a_lado("Valor previsto", fmt.moeda(ordem.total)))
 
@@ -85,10 +85,10 @@ def entrada(ordem: Ordem, empresa=None) -> str:
     # cliente e ninguem aprovou ainda. Nao pode depender da etapa - a entrada
     # costuma ser impressa com a ordem ainda "aberta", antes de ir para
     # aprovacao, entao amarrar em AGUARDANDO tirava o aviso de quase todo mundo.
-    aviso = "Guarde este comprovante para retirar o servico."
+    aviso = "Guarde este comprovante para retirar o serviço."
     orcamento_pendente = bool(ordem.total) and not ordem.aprovada
     if orcamento_pendente and ordem.status in (ABERTA, AGUARDANDO):
-        aviso = "O servico so comeca depois da aprovacao do orcamento. " + aviso
+        aviso = "O serviço só começa depois da aprovação do orçamento. " + aviso
     linhas += ["", *quebrar(aviso)]
     linhas += _assinatura("Assinatura do cliente")
     linhas += [linha("="), *rodape_empresa(empresa), centro("Documento sem valor fiscal")]
@@ -113,7 +113,7 @@ def entrega(ordem: Ordem, empresa=None) -> str:
 
         linhas.append(linha())
         linhas.append(lado_a_lado("Materiais", fmt.moeda(ordem.total_pecas)))
-        linhas.append(lado_a_lado("Servicos", fmt.moeda(ordem.total_servicos)))
+        linhas.append(lado_a_lado("Serviços", fmt.moeda(ordem.total_servicos)))
 
     linhas.append(linha())
     if ordem.desconto:
@@ -124,7 +124,7 @@ def entrega(ordem: Ordem, empresa=None) -> str:
     if ordem.aprovado_em:
         linhas.append("")
         linhas += quebrar(
-            f"Orcamento aprovado por {ordem.aprovado_por} em "
+            f"Orçamento aprovado por {ordem.aprovado_por} em "
             f"{fmt.data(ordem.aprovado_em)}."
         )
 
@@ -133,17 +133,17 @@ def entrega(ordem: Ordem, empresa=None) -> str:
         linhas.append(lado_a_lado("Entregue em", fmt.data(ordem.entregue_em)))
     if ordem.garantia_ate:
         linhas.append(lado_a_lado(f"Garantia ({ordem.garantia_dias} dias)",
-                                  f"ate {fmt.data(ordem.garantia_ate)}"))
+                                  f"até {fmt.data(ordem.garantia_ate)}"))
         linhas += quebrar(
-            "A garantia cobre o servico executado e os materiais aplicados. "
-            "Nao cobre mau uso, dano acidental nem intervencao de terceiros."
+            "A garantia cobre o serviço executado e os materiais aplicados. "
+            "Não cobre mau uso, dano acidental nem intervenção de terceiros."
         )
     else:
-        linhas.append("Sem garantia para este servico.")
+        linhas.append("Sem garantia para este serviço.")
 
     if ordem.status == CANCELADA:
         linhas += ["", centro("*** ORDEM CANCELADA ***")]
 
-    linhas += _assinatura("Recebi o servico nas condicoes acima")
+    linhas += _assinatura("Recebi o serviço nas condições acima")
     linhas += [linha("="), *rodape_empresa(empresa), centro("Documento sem valor fiscal")]
     return "\n".join(linhas)

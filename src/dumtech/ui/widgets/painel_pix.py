@@ -45,8 +45,8 @@ from .qr import pixmap as qr_pixmap
 LADO = 190
 
 SEM_CHAVE = (
-    "Cadastre sua chave Pix em Configuracoes > Pagamentos para o QR Code "
-    "aparecer aqui. Voce pode receber em Pix mesmo assim."
+    "Cadastre sua chave Pix em Configurações > Pagamentos para o QR Code "
+    "aparecer aqui. Você pode receber em Pix mesmo assim."
 )
 
 
@@ -92,7 +92,7 @@ class PainelPix(Card):
         self.texto.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
         lado.addWidget(self.texto)
 
-        self.botao_copiar = Button("Copiar codigo", "file")
+        self.botao_copiar = Button("Copiar código", "file")
         self.botao_copiar.setAutoDefault(False)
         self.botao_copiar.clicked.connect(self.copiar)
         lado.addWidget(self.botao_copiar)
@@ -125,7 +125,7 @@ class PainelPix(Card):
                 valor=float(valor or 0),
             ))
         except PixError as erro:
-            self._indisponivel(f"{erro} Corrija em Configuracoes > Pagamentos.")
+            self._indisponivel(f"{erro} Corrija em Configurações > Pagamentos.")
             return
 
         self.imagem.setPixmap(qr_pixmap(self.payload, LADO))
@@ -136,7 +136,7 @@ class PainelPix(Card):
         # o operador ve para onde o dinheiro vai: chave trocada salta aos olhos
         self.recado.setText(
             f"Vai para a chave {destino_pix(chave)}. "
-            "Confira o recebimento no seu aplicativo do banco antes de lancar."
+            "Confira o recebimento no seu aplicativo do banco antes de lançar."
         )
 
     @property

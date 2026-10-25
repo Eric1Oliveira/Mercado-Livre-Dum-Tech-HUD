@@ -1,0 +1,33 @@
+{
+ "duracao": 23.2,
+ "passos": [
+  {
+   "t": 2.8,
+   "texto": "Abra Orçamentos"
+  },
+  {
+   "t": 4.8,
+   "texto": "Vá na lista de propostas"
+  },
+  {
+   "t": 6.7,
+   "texto": "Selecione a proposta"
+  },
+  {
+   "t": 8.0,
+   "texto": "Enviar marca que o cliente recebeu"
+  },
+  {
+   "t": 10.1,
+   "texto": "O cliente aceitou? Clique em Aprovar"
+  },
+  {
+   "t": 13.6,
+   "texto": "Gerar transforma a proposta em venda ou ordem, com os itens"
+  },
+  {
+   "t": 17.2,
+   "texto": "O Funil mostra quanto está em negociação"
+  }
+ ]
+}

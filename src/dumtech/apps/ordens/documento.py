@@ -18,8 +18,8 @@ from ...ui import format as fmt
 from .models import CANCELADA, Ordem
 
 GARANTIA_COBRE = (
-    "A garantia cobre o servico executado e os materiais aplicados nesta "
-    "ordem. Nao cobre mau uso, dano acidental nem intervencao de terceiros."
+    "A garantia cobre o serviço executado e os materiais aplicados nesta "
+    "ordem. Não cobre mau uso, dano acidental nem intervenção de terceiros."
 )
 
 
@@ -38,7 +38,7 @@ def entrega_a4(ordem: Ordem, empresa=None, paths=None) -> str:
     resumo = []
     if ordem.itens:
         resumo.append(("Materiais", fmt.moeda(ordem.total_pecas)))
-        resumo.append(("Servicos", fmt.moeda(ordem.total_servicos)))
+        resumo.append(("Serviços", fmt.moeda(ordem.total_servicos)))
     if ordem.desconto:
         resumo.append(("Desconto", f"-{fmt.moeda(ordem.desconto)}"))
 
@@ -50,31 +50,31 @@ def entrega_a4(ordem: Ordem, empresa=None, paths=None) -> str:
             ("Cliente", ordem.cliente),
             ("Telefone", fmt.telefone(ordem.telefone)),
             ("Item ou local", ordem.equipamento),
-            ("Responsavel", ordem.tecnico),
+            ("Responsável", ordem.tecnico),
         ]),
         doc.secao("O que foi pedido", ordem.defeito),
         doc.secao("O que foi feito", ordem.diagnostico or ordem.servico),
         doc.tabela(
-            ["Descricao", "Tipo", "Qtd.", "Valor unit.", "Total"],
+            ["Descrição", "Tipo", "Qtd.", "Valor unit.", "Total"],
             itens,
             alinhamentos=[doc.ESQUERDA, doc.ESQUERDA, doc.DIREITA, doc.DIREITA,
                           doc.DIREITA],
             larguras=["42%", "14%", "10%", "16%", "18%"],
         ),
-        doc.totais(resumo, ("Total do servico", fmt.moeda(ordem.total))),
+        doc.totais(resumo, ("Total do serviço", fmt.moeda(ordem.total))),
         _garantia(ordem),
-        doc.secao("Observacoes", ordem.observacoes),
+        doc.secao("Observações", ordem.observacoes),
         doc.destaque("Ordem cancelada") if ordem.status == CANCELADA else "",
-        doc.assinatura("Recebi o servico nas condicoes acima"),
+        doc.assinatura("Recebi o serviço nas condições acima"),
         doc.rodape(empresa, "Documento sem valor fiscal"),
     ])
 
 
 def _garantia(ordem: Ordem) -> str:
     if not ordem.garantia_ate:
-        return doc.secao("Garantia", "Este servico foi entregue sem garantia.")
+        return doc.secao("Garantia", "Este serviço foi entregue sem garantia.")
     return doc.secao(
-        f"Garantia de {fmt.dias(ordem.garantia_dias)} - ate "
+        f"Garantia de {fmt.dias(ordem.garantia_dias)} - até "
         f"{fmt.data(ordem.garantia_ate)}",
         GARANTIA_COBRE,
     )

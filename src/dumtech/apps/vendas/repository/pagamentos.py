@@ -52,12 +52,12 @@ class PagamentosMixin:
                 raise VendaError("Toda linha de pagamento precisa de uma forma.")
             if not pagamento.em_dinheiro and pagamento.recebido > pagamento.valor + CENTAVO:
                 raise VendaError(
-                    f"{pagamento.forma} nao da troco: o valor recebido nao pode "
+                    f"{pagamento.forma} não dá troco: o valor recebido não pode "
                     "passar do valor pago."
                 )
             if pagamento.em_dinheiro and pagamento.recebido + CENTAVO < pagamento.valor:
                 raise VendaError(
-                    "O dinheiro recebido nao cobre o valor lancado em dinheiro."
+                    "O dinheiro recebido não cobre o valor lançado em dinheiro."
                 )
 
         pago = dinheiro(sum(p.valor for p in linhas))
@@ -67,7 +67,7 @@ class PagamentosMixin:
         if pago > total + CENTAVO:
             raise VendaError(
                 f"O pagamento passou do total em {fmt.moeda(pago - total)}. "
-                "Troco sai do campo Recebido, nao do valor da forma."
+                "Troco sai do campo Recebido, não do valor da forma."
             )
 
     # ------------------------------------------------------------------ escrita
@@ -119,9 +119,9 @@ class PagamentosMixin:
         """Cliente voltou para pagar a venda a prazo."""
         venda = self.obter(venda_id)
         if venda is None:
-            raise VendaError("Venda nao encontrada.")
+            raise VendaError("Venda não encontrada.")
         if venda.status != PENDENTE:
-            raise VendaError(f"A venda {venda.numero} nao esta pendente.")
+            raise VendaError(f"A venda {venda.numero} não está pendente.")
 
         self.conferir_pagamento(venda.total, pagamentos)
         venda.pagamentos = [p for p in pagamentos if dinheiro(p.valor) > 0]

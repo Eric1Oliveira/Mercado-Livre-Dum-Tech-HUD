@@ -160,7 +160,7 @@ class TesteNaTelaTestCase(unittest.TestCase):
         self.assertTrue(barra.botao_comprar.isVisible())
         self.assertIn("5 dias", barra.selo_teste.text())
         barra.mostrar_teste(1)
-        self.assertIn("ultimo dia", barra.selo_teste.text())
+        self.assertIn("último dia", barra.selo_teste.text())
 
     def test_comprar_abre_a_loja_com_o_modulo_no_carrinho(self) -> None:
         from dumtech.core.loja import url_compra

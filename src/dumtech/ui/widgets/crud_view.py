@@ -224,7 +224,7 @@ class CrudView(QWidget):
             f"Excluir '{self.descricao(registro)}'?",
             chave=confirmacoes.EXCLUIR,
             rotulo_ok="Excluir",
-            detalhe="Esta acao nao pode ser desfeita.",
+            detalhe="Esta ação não pode ser desfeita.",
         ):
             return
         try:
@@ -232,7 +232,7 @@ class CrudView(QWidget):
         except RegraError as erro:
             # o aplicativo pode recusar a exclusao (ex.: o registro tem
             # historico); isso e um aviso na tela, nao um travamento
-            QMessageBox.warning(self, "Nao foi possivel excluir", str(erro))
+            QMessageBox.warning(self, "Não foi possível excluir", str(erro))
             return
         self.refresh()
         self.data_changed.emit()

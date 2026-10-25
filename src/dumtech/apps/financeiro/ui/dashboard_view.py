@@ -18,6 +18,9 @@ from ..models import CENTAVO
 from ..repository import FinanceiroRepository
 
 
+NOTA_CATEGORIAS = "despesas pagas no mês"
+
+
 class DashboardView(QWidget):
     def __init__(self, repository: FinanceiroRepository, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -30,7 +33,7 @@ class DashboardView(QWidget):
         titulos = QVBoxLayout()
         titulos.setSpacing(2)
         titulos.addWidget(label("Painel", "title"))
-        titulos.addWidget(label("Contas a receber, a pagar e o resultado do mes",
+        titulos.addWidget(label("Contas a receber, a pagar e o resultado do mês",
                                 "subtitle"))
         raiz.addLayout(titulos)
 
@@ -46,24 +49,24 @@ class DashboardView(QWidget):
 
         desenhos = QHBoxLayout()
         desenhos.setSpacing(Space.lg)
-        self.grafico_categorias = GraficoRosca(titulo_centro="Pago no mes")
+        self.grafico_categorias = GraficoRosca(titulo_centro="Pago no mês")
         self.painel_categorias = ChartPanel(
-            "Para onde o dinheiro foi", self.grafico_categorias, "despesas pagas no mes"
+            "Categoria de despesas", self.grafico_categorias, NOTA_CATEGORIAS
         )
         desenhos.addWidget(self.painel_categorias, 3)
 
         self.grafico_contas = GraficoBarras(largura_rotulo=130)
-        self.painel_contas = ChartPanel("Onde o dinheiro esta", self.grafico_contas)
+        self.painel_contas = ChartPanel("Onde o dinheiro está", self.grafico_contas)
         desenhos.addWidget(self.painel_contas, 2)
         raiz.addLayout(desenhos, 3)
 
         listas = QHBoxLayout()
         listas.setSpacing(Space.lg)
-        # a unica lista do painel: e a que vira telefonema hoje
+        # a única lista do painel: é a que vira telefonema hoje
         self.painel_atrasados = ListPanel("Vencidos", "Nada vencido. Contas em dia.")
         listas.addWidget(self.painel_atrasados, 1)
-        self.painel_proximos = ListPanel("Proximos vencimentos",
-                                         "Nenhum vencimento a vista.")
+        self.painel_proximos = ListPanel("Próximos vencimentos",
+                                         "Nenhum vencimento à vista.")
         listas.addWidget(self.painel_proximos, 1)
         raiz.addLayout(listas, 2)
 
@@ -94,6 +97,12 @@ class DashboardView(QWidget):
             [(nome, valor, fmt.moeda(valor)) for nome, valor in categorias]
         ))
         self.grafico_categorias.set_total(fmt.moeda(resumo.pago_mes))
+        # fixa e variavel na mesma linha: o quanto do mes ja estava comprometido
+        self.painel_categorias.set_nota(
+            f"fixas {fmt.moeda(resumo.pago_fixas_mes)}  ·  "
+            f"variáveis {fmt.moeda(resumo.pago_variaveis_mes)}"
+            if resumo.pago_mes > CENTAVO else NOTA_CATEGORIAS
+        )
 
         self.grafico_contas.set_fatias(fatias_de(
             [(conta.nome, conta.saldo, fmt.moeda(conta.saldo))
@@ -133,7 +142,7 @@ class DashboardView(QWidget):
         saldo = resumo.saldo_mes
         sinal = "+" if saldo >= 0 else "-"
         return (
-            f"no mes: {sinal} {fmt.moeda(abs(saldo))}"
+            f"no mês: {sinal} {fmt.moeda(abs(saldo))}"
             f"  ({fmt.moeda(resumo.recebido_mes)} entrou, "
             f"{fmt.moeda(resumo.pago_mes)} saiu)"
         )

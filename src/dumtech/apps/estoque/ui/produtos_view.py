@@ -1,9 +1,16 @@
-"""Tela de produtos: cadastrar, pesquisar e movimentar sem sair da lista."""
+"""Tela de produtos: cadastrar, pesquisar e movimentar sem sair da lista.
+
+Com alguma foto cadastrada, cada produto ganha a miniatura ao lado do nome - e
+quem ainda nao tem, um quadro vazio discreto (da para ver o que falta). Loja
+que nao usa foto ve a lista de sempre.
+"""
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QKeySequence, QShortcut
+import logging
+
+from PySide6.QtCore import QSize, Qt
+from PySide6.QtGui import QIcon, QKeySequence, QPixmap, QShortcut
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -19,9 +26,15 @@ from ....ui.theme import palette_for
 from ....ui.widgets.buttons import Button
 from ....ui.widgets.common import menu_arredondado
 from ....ui.widgets.crud_view import CrudView
+from ....ui.widgets.foto import miniatura, miniatura_vazia
 from ....ui.widgets.table import DIREITA
 from ..models import TIPO_ENTRADA, TIPO_SAIDA, Produto, quantidade_texto
 from ..repository import EstoqueRepository
+
+logger = logging.getLogger(__name__)
+
+#: foto ao lado do nome (a linha da tabela tem 40)
+MINIATURA = 28
 
 
 class ProdutosView(CrudView):
@@ -31,16 +44,21 @@ class ProdutosView(CrudView):
     nome_registro = "produto"
     nome_plural = "produtos"
     rotulo_novo = "Novo produto"
-    dica_pesquisa = "Pesquisar por codigo, nome, categoria, local ou codigo de barras..."
+    dica_pesquisa = "Pesquisar por código, nome, categoria, local ou código de barras..."
     colunas = [
-        "Codigo", "Produto", "Categoria", "Local",
-        "Qtd.", "Custo", "Venda", "Margem", "Situacao",
+        "Código", "Produto", "Categoria", "Local",
+        "Qtd.", "Custo", "Venda", "Margem", "Situação",
     ]
     larguras = {0: 110, 3: 100, 4: 110, 5: 105, 6: 105, 7: 85, 8: 120}
 
     def __init__(self, repository: EstoqueRepository, parent: QWidget | None = None) -> None:
         self.repository = repository
+        #: produto_id -> (versao, desenho): so redesenha a foto que mudou
+        self._fotos: dict[int, tuple[str, QPixmap | None]] = {}
+        #: quadro vazio; None quando a loja nao tem foto nenhuma
+        self._sem_foto: QPixmap | None = None
         super().__init__(parent)
+        self.tabela.setIconSize(QSize(MINIATURA, MINIATURA))
         self._montar_bipe()
         self._montar_atalhos()
 
@@ -64,14 +82,14 @@ class ProdutosView(CrudView):
         self.botao_entrada.clicked.connect(lambda: self._movimentar(TIPO_ENTRADA))
         layout.insertWidget(1, self.botao_entrada)
 
-        self.botao_saida = Button("Saida", "out", "danger")
-        self.botao_saida.setToolTip("Registra uma saida do produto selecionado (S)")
+        self.botao_saida = Button("Saída", "out", "danger")
+        self.botao_saida.setToolTip("Registra uma saída do produto selecionado (S)")
         self.botao_saida.clicked.connect(lambda: self._movimentar(TIPO_SAIDA))
         layout.insertWidget(2, self.botao_saida)
 
         self.botao_ativar = Button("Inativar", "close")
         self.botao_ativar.setToolTip(
-            "Tira o produto das listas mantendo todo o historico dele"
+            "Tira o produto das listas mantendo todo o histórico dele"
         )
         self.botao_ativar.clicked.connect(self._alternar_ativo)
         layout.addWidget(self.botao_ativar)
@@ -91,7 +109,7 @@ class ProdutosView(CrudView):
         menu.addAction("Exportar produtos...").triggered.connect(
             lambda: planilha.exportar(self, self.repository)
         )
-        menu.addAction("Exportar movimentacoes...").triggered.connect(
+        menu.addAction("Exportar movimentações...").triggered.connect(
             lambda: planilha.exportar(self, self.repository, movimentacoes=True)
         )
         return menu
@@ -109,7 +127,7 @@ class ProdutosView(CrudView):
         caixa.setSpacing(10)
         self.bipe = QLineEdit()
         self.bipe.setPlaceholderText(
-            "Bipe o codigo de barras ou digite o codigo e tecle Enter..."
+            "Bipe o código de barras ou digite o código e tecle Enter..."
         )
         self.bipe.setClearButtonEnabled(True)
         self._acao_bipe = self.bipe.addAction(
@@ -120,7 +138,7 @@ class ProdutosView(CrudView):
         caixa.addWidget(self.bipe, 1)
 
         self.tipo_bipe = QComboBox()
-        self.tipo_bipe.addItem("Bipar da saida", TIPO_SAIDA)
+        self.tipo_bipe.addItem("Bipar da saída", TIPO_SAIDA)
         self.tipo_bipe.addItem("Bipar da entrada", TIPO_ENTRADA)
         self.tipo_bipe.setToolTip("O que fazer com o produto lido")
         caixa.addWidget(self.tipo_bipe)
@@ -140,12 +158,35 @@ class ProdutosView(CrudView):
     # ------------------------------------------------------------------- dados
     def carregar(self) -> list[Produto]:
         self._preencher_categorias()
+        self._carregar_fotos()
         return self.repository.listar(
             busca=self.busca.text(),
             categoria=self.filtro_categoria.currentData() or "",
             apenas_baixo=self.somente_baixo.isChecked(),
             incluir_inativos=self.mostrar_inativos.isChecked(),
         )
+
+    def _carregar_fotos(self) -> None:
+        try:
+            atuais = self.repository.miniaturas()
+        except Exception:  # noqa: BLE001 - sem foto, a lista aparece igual
+            logger.exception("Nao foi possivel ler as fotos dos produtos")
+            atuais = {}
+        fotos = {}
+        for produto_id, (versao, dados) in atuais.items():
+            guardada = self._fotos.get(produto_id)
+            if guardada is not None and guardada[0] == versao:
+                fotos[produto_id] = guardada
+            else:
+                fotos[produto_id] = (versao, miniatura(dados, MINIATURA))
+        self._fotos = fotos
+        self._sem_foto = miniatura_vazia(MINIATURA, palette_for(self)) if fotos else None
+
+    def _icone(self, produto: Produto) -> QIcon | None:
+        if self._sem_foto is None:
+            return None
+        foto = self._fotos.get(produto.id, ("", None))[1]
+        return QIcon(foto if foto is not None else self._sem_foto)
 
     def montar_linha(self, produto: Produto) -> list:
         if not produto.ativo:
@@ -158,9 +199,13 @@ class ProdutosView(CrudView):
             situacao, tom = "Normal", "success"
 
         margem = produto.margem
+        nome = self.tabela.cell(produto.nome, bold=True)
+        icone = self._icone(produto)
+        if icone is not None:
+            nome.setIcon(icone)
         return [
             self.tabela.cell(produto.codigo, data=produto.id),
-            self.tabela.cell(produto.nome, bold=True),
+            nome,
             self.tabela.cell(produto.categoria or "-"),
             self.tabela.cell(produto.localizacao or "-"),
             self.tabela.cell(
@@ -223,10 +268,10 @@ class ProdutosView(CrudView):
         from .movimento_dialog import MovimentoDialog
 
         if not produto.ativo:
-            self.mostrar_aviso(f"'{produto.nome}' esta inativo. Reative para movimentar.")
+            self.mostrar_aviso(f"'{produto.nome}' está inativo. Reative para movimentar.")
             return
         if tipo == TIPO_SAIDA and produto.quantidade <= 0:
-            self.mostrar_aviso(f"'{produto.nome}' esta sem estoque.")
+            self.mostrar_aviso(f"'{produto.nome}' está sem estoque.")
             return
 
         dialogo = MovimentoDialog(self.repository, produto, tipo, self)
@@ -269,3 +314,9 @@ class ProdutosView(CrudView):
     def apply_theme(self, palette) -> None:
         super().apply_theme(palette)
         self._acao_bipe.setIcon(icons.icon("tag", palette.accent, 16))
+        if self._sem_foto is not None:  # o quadro vazio tem a cor do tema
+            self._sem_foto = miniatura_vazia(MINIATURA, palette)
+            for linha, produto in enumerate(self._registros):
+                celula = self.tabela.item(linha, 1)
+                if celula is not None and produto.id not in self._fotos:
+                    celula.setIcon(QIcon(self._sem_foto))

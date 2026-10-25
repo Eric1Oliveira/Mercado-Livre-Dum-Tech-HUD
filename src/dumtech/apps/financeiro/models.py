@@ -19,7 +19,7 @@ CAIXA = "caixa"
 BANCO = "banco"
 CARTAO = "cartao"
 
-CONTA_LABEL = {CAIXA: "Caixa", BANCO: "Banco", CARTAO: "Cartao"}
+CONTA_LABEL = {CAIXA: "Caixa", BANCO: "Banco", CARTAO: "Cartão"}
 CONTA_ICONE = {CAIXA: "money", BANCO: "home", CARTAO: "tag"}
 CONTA_OPCOES = [(rotulo, chave) for chave, rotulo in CONTA_LABEL.items()]
 
@@ -33,7 +33,7 @@ SEMANAL = "semanal"
 QUINZENAL = "quinzenal"
 ANUAL = "anual"
 
-FREQUENCIAS = ((MENSAL, "Todo mes"), (SEMANAL, "Toda semana"),
+FREQUENCIAS = ((MENSAL, "Todo mês"), (SEMANAL, "Toda semana"),
                (QUINZENAL, "A cada 15 dias"), (ANUAL, "Todo ano"))
 FREQUENCIA_LABEL = dict(FREQUENCIAS)
 
@@ -183,6 +183,8 @@ class Lancamento:
     parcela: int = 0
     parcelas: int = 0
     serie: str = ""
+    #: despesa que se repete todo mes (aluguel, internet); so vale para despesa
+    fixa: bool = False
     #: quanto ja foi baixado (somado na leitura, nao gravado)
     baixado: float = 0.0
 
@@ -260,6 +262,7 @@ class Lancamento:
         dados["parcela"] = int(dados.get("parcela") or 0)
         dados["parcelas"] = int(dados.get("parcelas") or 0)
         dados["serie"] = dados.get("serie") or ""
+        dados["fixa"] = bool(dados.get("fixa") or 0)
         lancamento = cls(**dados)
         if "baixado" in campos:
             lancamento.baixado = round(float(row["baixado"] or 0), 2)
@@ -327,6 +330,9 @@ class ResumoFinanceiro:
     vencidos_quantidade: int = 0
     recebido_mes: float = 0.0
     pago_mes: float = 0.0
+    #: o pago no mes separado entre o que e fixo e o que varia
+    pago_fixas_mes: float = 0.0
+    pago_variaveis_mes: float = 0.0
     saldo_contas: float = 0.0
     proximos: list[Lancamento] = field(default_factory=list)
     atrasados: list[Lancamento] = field(default_factory=list)

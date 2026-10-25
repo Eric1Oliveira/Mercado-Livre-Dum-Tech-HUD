@@ -131,7 +131,7 @@ class FunilView(QWidget):
         )
         paineis.addWidget(self.painel_esperando, 3)
         self.painel_vencendo = ListPanel(
-            "Vence nos proximos 7 dias", "Nenhuma proposta perto do vencimento."
+            "Vence nos próximos 7 dias", "Nenhuma proposta perto do vencimento."
         )
         paineis.addWidget(self.painel_vencendo, 3)
         raiz.addLayout(paineis, 1)
@@ -141,10 +141,10 @@ class FunilView(QWidget):
     # ------------------------------------------------------------------ pedacos
     def _cartoes(self) -> FaixaDeNumeros:
         linha = FaixaDeNumeros()
-        self.card_conversao = StatCard("Taxa de conversao", "0%", "chart", "success")
+        self.card_conversao = StatCard("Taxa de conversão", "0%", "chart", "success")
         self.card_aberto = StatCard("Em aberto", "R$ 0,00", "file", "accent")
-        self.card_aprovado = StatCard("Aprovado no mes", "R$ 0,00", "check", "success")
-        self.card_ticket = StatCard("Ticket medio", "R$ 0,00", "money", "warning")
+        self.card_aprovado = StatCard("Aprovado no mês", "R$ 0,00", "check", "success")
+        self.card_ticket = StatCard("Ticket médio", "R$ 0,00", "money", "warning")
         for cartao in (self.card_conversao, self.card_aberto, self.card_aprovado,
                        self.card_ticket):
             linha.add(cartao)
@@ -167,7 +167,7 @@ class FunilView(QWidget):
         return card
 
     def _card_motivos(self) -> Card:
-        card, self._motivos = self._card("Por que voce perde")
+        card, self._motivos = self._card("Por que você perde")
         return card
 
     # ------------------------------------------------------------------- dados
@@ -222,7 +222,7 @@ class FunilView(QWidget):
             return "sem data de envio"
         if dias == 0:
             return "enviada hoje"
-        return f"parada ha {fmt.dias(dias)}"
+        return f"parada há {fmt.dias(dias)}"
 
     def _preencher_etapas(self, resumo) -> None:
         self._limpar(self._etapas)

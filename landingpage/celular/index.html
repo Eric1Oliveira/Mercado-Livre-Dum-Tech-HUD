@@ -2,7 +2,7 @@
 <html lang="pt-BR" data-tema="auto">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <!-- O codigo do QR chega depois do # e vira um acesso guardado so neste
      aparelho: nenhum script de fora, e nenhum endereco sai pelo Referer. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; worker-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://kpiyhhmtteojqxhhmcyr.supabase.co http://127.0.0.1:* http://localhost:*; object-src 'none'; base-uri 'none'; form-action 'none'; manifest-src 'self'">
@@ -22,13 +22,16 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../css/celular.css">
+<link rel="stylesheet" href="../css/celular.css?v=7">
 <!-- antes da tela aparecer: no escuro, nao pode piscar branco -->
 <script src="../js/tema.js"></script>
-<link rel="modulepreload" href="../js/celular-tela.js">
-<link rel="modulepreload" href="../js/celular.js">
+<link rel="modulepreload" href="../js/celular-tela.js?v=7">
+<link rel="modulepreload" href="../js/celular-graficos.js?v=7">
+<link rel="modulepreload" href="../js/celular.js?v=7">
 <link rel="modulepreload" href="../js/config.js">
 <link rel="modulepreload" href="../js/dados.js">
+<!-- sem zoom no celular: o iPhone ignora o meta, o script resolve -->
+<script src="../js/sem-zoom.js"></script>
 </head>
 <body>
 
@@ -82,6 +85,6 @@
   </section>
 </template>
 
-<script type="module" src="../js/celular-tela.js"></script>
+<script type="module" src="../js/celular-tela.js?v=7"></script>
 </body>
 </html>

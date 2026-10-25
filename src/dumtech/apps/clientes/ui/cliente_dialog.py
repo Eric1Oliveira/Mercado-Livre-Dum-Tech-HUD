@@ -30,7 +30,7 @@ class ClienteDialog(FormDialog):
             largura=640,
         )
 
-        self.nome = form.texto(self.contato.nome, "Ex.: Joao da Silva")
+        self.nome = form.texto(self.contato.nome, "Ex.: João da Silva")
         self.add_row("Nome", self.nome)
 
         self.documento = form.texto(self.contato.documento_formatado, "CPF ou CNPJ")
@@ -58,10 +58,10 @@ class ClienteDialog(FormDialog):
         self.form.addRow("", self.dica_cep)
 
         self.endereco = form.texto(self.contato.endereco, "Rua, avenida...")
-        self.numero = form.texto(self.contato.numero, "Numero")
-        self.add_row("Endereco", form.linha(self.endereco, "Numero", self.numero))
+        self.numero = form.texto(self.contato.numero, "Número")
+        self.add_row("Endereço", form.linha(self.endereco, "Número", self.numero))
 
-        self.complemento = form.texto(self.contato.complemento, "Apto, sala, ponto de referencia")
+        self.complemento = form.texto(self.contato.complemento, "Apto, sala, ponto de referência")
         self.add_row("Complemento", self.complemento)
 
         self.cidade = form.combo_sugestao(self.contato.cidade, store.cidades(), "Cidade")
@@ -69,18 +69,18 @@ class ClienteDialog(FormDialog):
         self.uf.setMaximumWidth(90)
         self.add_row("Cidade", form.linha(self.cidade, "UF", self.uf))
 
-        self.observacoes = form.area(self.contato.observacoes, "Anotacoes gerais sobre o cliente")
-        self.add_row("Observacoes", self.observacoes)
+        self.observacoes = form.area(self.contato.observacoes, "Anotações gerais sobre o cliente")
+        self.add_row("Observações", self.observacoes)
 
         if self.editando:
-            self.ativo = QCheckBox("Cliente ativo (aparece nas listas e nas sugestoes)")
+            self.ativo = QCheckBox("Cliente ativo (aparece nas listas e nas sugestões)")
             self.ativo.setChecked(self.contato.ativo)
             self.add_row("", self.ativo)
 
         self.add_note(
-            "Digite o CEP e o endereco se preenche sozinho. O CPF/CNPJ e conferido "
-            "pelo digito verificador, e o aniversario (dd/mm/aaaa) alimenta a lista "
-            "de aniversariantes do mes no painel."
+            "Digite o CEP e o endereço se preenche sozinho. O CPF/CNPJ é conferido "
+            "pelo dígito verificador, e o aniversário (dd/mm/aaaa) alimenta a lista "
+            "de aniversariantes do mês no painel."
         )
         self._documento_mudou()
         self.nome.setFocus()
@@ -111,7 +111,7 @@ class ClienteDialog(FormDialog):
         if procurado == getattr(self, "_cep_buscado", ""):
             return                      # ja perguntamos por este
         self._cep_buscado = procurado
-        self.dica_cep.setText("Procurando o endereco...")
+        self.dica_cep.setText("Procurando o endereço...")
 
         tasks.executar(self, lambda: nucleo_cep.buscar(procurado),
                        self._preencher_endereco,
@@ -121,8 +121,8 @@ class ClienteDialog(FormDialog):
         """Escreve nos campos o que o CEP respondeu (None = nao achou)."""
         if endereco is None:
             self.dica_cep.setText(
-                "Nao achei este CEP (sem internet ou CEP inexistente) - "
-                "pode escrever o endereco na mao."
+                "Não achei este CEP (sem internet ou CEP inexistente) - "
+                "pode escrever o endereço na mão."
             )
             return
         if endereco.logradouro:
@@ -152,7 +152,7 @@ class ClienteDialog(FormDialog):
             self.dica_documento.setText(f"{tipo} reconhecido")
         else:
             self.dica_documento.setText(
-                "Ainda nao parece um CPF (11 digitos) nem um CNPJ (14 digitos)"
+                "Ainda não parece um CPF (11 dígitos) nem um CNPJ (14 dígitos)"
             )
 
     # ------------------------------------------------------------------ salvar

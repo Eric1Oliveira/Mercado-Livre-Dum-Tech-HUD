@@ -26,9 +26,9 @@ class ItensMixin:
             conn.execute("DELETE FROM os_itens WHERE ordem_id = ?", (ordem.id,))
             for item in ordem.itens:
                 if not item.descricao.strip():
-                    raise OrdemError("Todo item precisa de uma descricao.")
+                    raise OrdemError("Todo item precisa de uma descrição.")
                 if item.tipo not in (PECA, SERVICO):
-                    raise OrdemError("O item precisa ser peca ou servico.")
+                    raise OrdemError("O item precisa ser peça ou serviço.")
                 if quantidade(item.quantidade) <= 0:
                     raise OrdemError(
                         f"A quantidade de '{item.descricao}' precisa ser maior que zero."

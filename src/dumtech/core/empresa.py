@@ -115,7 +115,7 @@ class Empresa:
     # ------------------------------------------------------------------ escrita
     def validar(self) -> None:
         if self.documento and not documento_valido(self.documento):
-            raise EmpresaError("O CNPJ ou CPF informado nao e valido.")
+            raise EmpresaError("O CNPJ ou CPF informado não é válido.")
         if self.uf and len(self.uf.strip()) != 2:
             raise EmpresaError("A UF tem duas letras (ex.: SP).")
 
@@ -163,14 +163,14 @@ def guardar_logo(origem: Path, paths: DataPaths | None = None) -> str:
             "Escolha uma imagem PNG ou JPG."
         )
     if not origem.exists():
-        raise EmpresaError("Nao encontrei essa imagem.")
+        raise EmpresaError("Não encontrei essa imagem.")
 
     paths = (paths or get_paths()).ensure()
     destino = paths.config_dir / LOGO
     try:
         shutil.copyfile(origem, destino)
     except OSError as erro:
-        raise EmpresaError(f"Nao foi possivel usar essa imagem: {erro}") from erro
+        raise EmpresaError(f"Não foi possível usar essa imagem: {erro}") from erro
     return LOGO
 
 

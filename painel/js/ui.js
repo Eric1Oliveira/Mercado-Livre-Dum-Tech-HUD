@@ -3,7 +3,8 @@
 // Tudo aqui monta DOM e devolve o nó — nenhuma tela escreve innerHTML com dado
 // do banco, senão um nome de cliente com "<" viraria marcação.
 
-import { iniciais, situacao as rotuloSituacao } from "./formato.js";
+import { iniciais, numero, situacao as rotuloSituacao } from "./formato.js";
+import { linkWhatsApp } from "./mensagens.js";
 import { modulo } from "./modulos.js";
 
 /** el("div", {clase: "x", texto: "oi"}, [filhos]) */
@@ -129,6 +130,32 @@ export function tabela(colunas, linhas, montar, { aoClicar = null, vazioTexto = 
   return el("div", { classe: "tabela-rolagem" }, [
     el("table", {}, [el("thead", {}, [cabeca]), corpo]),
   ]);
+}
+
+/**
+ * Filtro em botões, cada um com a sua contagem:
+ *   chips([{ valor: "", texto: "Todos", conta: 12 }, ...], atual, (valor) => ...)
+ */
+export function chips(opcoes, atual, aoEscolher, rotulo = "Filtrar") {
+  return el("div", { classe: "chips", role: "group", "aria-label": rotulo },
+    opcoes.map((o) => el("button", {
+      type: "button", classe: "chip", "aria-pressed": o.valor === atual ? "true" : "false",
+      onclick: () => aoEscolher(o.valor),
+    }, [o.texto, o.conta === undefined ? null : el("span", { classe: "chip-conta", texto: numero(o.conta) })])));
+}
+
+/** Abre o WhatsApp do cliente com o recado pronto (sem número válido, nada). */
+export function botaoWhatsApp(telefone, texto, rotulo = "WhatsApp") {
+  const url = linkWhatsApp(telefone, texto);
+  if (!url) return null;
+  return el("button", {
+    type: "button", classe: "botao botao-fantasma botao-mini", texto: rotulo,
+    title: "Abre o WhatsApp com o recado pronto; você revisa antes de mandar",
+    onclick: (evento) => {
+      evento.stopPropagation(); // a linha da tabela abre a ficha; o botão, não
+      window.open(url, "_blank", "noopener");
+    },
+  });
 }
 
 // ------------------------------------------------------------------ recados --

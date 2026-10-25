@@ -210,23 +210,26 @@ function editar(combo, produtos, idsIniciais, vendidos) {
     }, { feito: "Kit salvo. A loja já mostra a mudança." });
   };
 
+  // vendido ou nao, quem comprou nao perde nada: os modulos ficam nas licencas
+  // (o banco so solta a marca de "veio do kit"), e o pedido guarda o nome dele
+  const tirarDeLinha = (e) => agir(e.target, async () => {
+    await atualizar("combos", { id: `eq.${combo.id}` }, { ativo: false });
+    fecharGaveta();
+    await recarregar();
+  }, { feito: "Kit fora de linha. Quem comprou não perde nada." });
+
   const excluir = (e) => {
-    if (vendidos > 0) {
-      if (!confirmar(`Este kit já foi vendido ${vendidos} vez(es). Ele não pode sumir do histórico, ` +
-                     "mas pode sair de linha (deixa de aparecer na loja). Tirar de linha?")) return;
-      return agir(e.target, async () => {
-        await atualizar("combos", { id: `eq.${combo.id}` }, { ativo: false });
-        fecharGaveta();
-        await recarregar();
-      }, { feito: "Kit fora de linha. Quem comprou não perde nada." });
-    }
-    if (!confirmar(`Apagar o kit “${combo.nome}”? Ele nunca foi vendido.`)) return;
+    const aviso = vendidos > 0
+      ? `O kit “${combo.nome}” já foi vendido ${vendidos} vez(es). Quem comprou não perde nada: os módulos ` +
+        "continuam nas licenças e os pedidos guardam o nome do kit.\n\nExcluir mesmo assim? Ele some da loja e do painel."
+      : `Excluir o kit “${combo.nome}”? Ele nunca foi vendido.`;
+    if (!confirmar(aviso)) return;
     agir(e.target, async () => {
       await apagar("combo_produtos", { combo_id: `eq.${combo.id}` });
-      await apagar("combos", { id: `eq.${combo.id}` });
+      await apagar("combos", { id: `eq.${combo.id}` }, { conferir: true });
       fecharGaveta();
       await recarregar();
-    }, { feito: "Kit apagado." });
+    }, { feito: "Kit excluído." });
   };
 
   abrirGaveta({
@@ -242,8 +245,9 @@ function editar(combo, produtos, idsIniciais, vendidos) {
           [ativo, el("span", { texto: "À venda (aparece na loja)" })]),
         el("div", { classe: "acoes-linha", estilo: "margin-top:14px" }, [
           el("button", { classe: "botao botao-primario", texto: novo ? "Criar kit" : "Salvar", onclick: salvar }),
-          novo ? "" : el("button", { classe: "botao botao-perigo", texto: vendidos ? "Tirar de linha" : "Apagar",
-                                     onclick: excluir }),
+          novo || !vendidos || !combo.ativo ? "" : el("button", { classe: "botao botao-fantasma", texto: "Tirar de linha",
+                                                                  onclick: tirarDeLinha }),
+          novo ? "" : el("button", { classe: "botao botao-perigo", texto: "Excluir", onclick: excluir }),
           el("button", { classe: "botao botao-fantasma", texto: "Cancelar", onclick: fecharGaveta }),
         ]),
       ]),

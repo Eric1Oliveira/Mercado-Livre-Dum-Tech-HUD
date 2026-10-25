@@ -20,7 +20,7 @@ class ClientesView(CrudView):
     nome_plural = "clientes"
     rotulo_novo = "Novo cliente"
     dica_pesquisa = "Pesquisar por nome, documento, telefone, bairro, cidade ou segmento..."
-    colunas = ["Nome", "Documento", "Telefone", "Cidade", "Segmento", "Cadastrado", "Situacao"]
+    colunas = ["Nome", "Documento", "Telefone", "Cidade", "Segmento", "Cadastrado", "Situação"]
     larguras = {1: 165, 2: 145, 4: 140, 5: 120, 6: 110}
 
     def __init__(self, store: ContactsStore, parent: QWidget | None = None,
@@ -47,17 +47,17 @@ class ClientesView(CrudView):
 
     def build_actions(self, layout: QHBoxLayout) -> None:
         self.botao_ficha = Button("Ver ficha", "file", "primary")
-        self.botao_ficha.setToolTip("Abre a ficha do cliente com as anotacoes (duplo clique)")
+        self.botao_ficha.setToolTip("Abre a ficha do cliente com as anotações (duplo clique)")
         self.botao_ficha.clicked.connect(self.abrir_ficha)
         layout.insertWidget(1, self.botao_ficha)
 
         self.botao_whatsapp = Button("WhatsApp", "chat")
-        self.botao_whatsapp.setToolTip("Manda os parabens no aniversario do cliente")
+        self.botao_whatsapp.setToolTip("Manda os parabéns no aniversário do cliente")
         self.botao_whatsapp.clicked.connect(self._whatsapp)
         layout.insertWidget(2, self.botao_whatsapp)
 
         self.botao_ativar = Button("Inativar", "close")
-        self.botao_ativar.setToolTip("Tira o cliente das listas e das sugestoes")
+        self.botao_ativar.setToolTip("Tira o cliente das listas e das sugestões")
         self.botao_ativar.clicked.connect(self._alternar_ativo)
         layout.addWidget(self.botao_ativar)
 
@@ -145,7 +145,7 @@ class ClientesView(CrudView):
             return
         if contato.ativo:
             self.store.inativar(contato.id)
-            recado = f"'{contato.nome}' saiu das listas e das sugestoes."
+            recado = f"'{contato.nome}' saiu das listas e das sugestões."
         else:
             self.store.reativar(contato.id)
             recado = f"'{contato.nome}' voltou para as listas."

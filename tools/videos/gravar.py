@@ -2,6 +2,7 @@
 
     .venv\\Scripts\\python tools\\videos\\gravar.py              -> todos
     .venv\\Scripts\\python tools\\videos\\gravar.py hub vendas   -> so estes
+    .venv\\Scripts\\python tools\\videos\\gravar.py --loja mercado -> outra loja (ver LOJAS)
 
 Saida: build\videos\<nome>.mp4 (Hub gravado em 1280x720, entregue em 1920x1080, H.264).
 
@@ -23,6 +24,16 @@ RAIZ = Path(__file__).resolve().parents[2]
 SAIDA = RAIZ / "build" / "videos"
 LARGURA, ALTURA = 1280, 720
 
+#: loja -> (modulo da semente, modulo dos roteiros, subpasta de build\videos).
+#: Se a semente tiver MODULOS, o video so libera esses na licenca local.
+LOJAS = {
+    "conecta": ("semente", "roteiros", ""),
+    # um video curto por tarefa, leve para o site (catalogo "Passo a passo")
+    "passo": ("semente", "roteiros_passo", "passo-a-passo"),
+    "mercado": ("semente_mercado", "roteiros_mercado", "mercado-e-cia"),
+    "beauty": ("semente_beauty", "roteiros_beauty", "beauty-e-cia"),
+}
+
 
 def achar_ffmpeg() -> str:
     if os.environ.get("FFMPEG"):
@@ -36,19 +47,24 @@ def achar_ffmpeg() -> str:
         sys.exit("Falta o ffmpeg: instale (winget install ffmpeg) ou `pip install imageio-ffmpeg`.")
 
 
-def gravar_um(nome: str, ffmpeg: str) -> Path:
+def gravar_um(loja: str, nome: str, ffmpeg: str) -> Path:
     """Um video = um processo novo (Hub limpo, dados de demonstracao frescos)."""
-    SAIDA.mkdir(parents=True, exist_ok=True)
-    destino = SAIDA / f"{nome}.mp4"
+    saida = SAIDA / LOJAS[loja][2]
+    saida.mkdir(parents=True, exist_ok=True)
+    destino = saida / f"{nome}.mp4"
     env = {**os.environ, "DUMTECH_DATA_DIR": tempfile.mkdtemp(prefix="dumtech-video-"),
            "QT_QPA_PLATFORM": "offscreen", "DUMTECH_LICENCA_LOCAL": "1", "FFMPEG": ffmpeg,
            "PYTHONPATH": os.pathsep.join([str(RAIZ / "src"), str(Path(__file__).parent)])}
-    subprocess.run([sys.executable, str(Path(__file__)), "--dentro", nome, str(destino)], env=env, check=True)
+    if loja == "passo":
+        env["VIDEO_WEB"] = "1"
+    subprocess.run([sys.executable, str(Path(__file__)), "--dentro", loja, nome, str(destino)], env=env, check=True)
     return destino
 
 
-def dentro(nome: str, destino: str) -> None:
+def dentro(loja: str, nome: str, destino: str) -> None:
     """Roda DENTRO do processo filho: monta o Hub e toca o roteiro."""
+    import importlib
+
     from PySide6.QtWidgets import QApplication
 
     app = QApplication([])
@@ -57,17 +73,20 @@ def dentro(nome: str, destino: str) -> None:
     from dumtech.hub.main_window import HubWindow
     from dumtech.ui.theme import MODO_CLARO, ThemeManager, carregar_fontes
 
-    import roteiros
-    import semente
+    semente = importlib.import_module(LOJAS[loja][0])
+    roteiros = importlib.import_module(LOJAS[loja][1])
     from gravador import Diretor, Gravador, rodar
 
     carregar_fontes()
     ajustes = Settings()
     ajustes.set("conta", "concluido", True)
     ajustes.set("empresa", "nome", semente.EMPRESA)
-    ajustes.set("empresa", "cidade", "Santo André")
+    ajustes.set("empresa", "cidade", getattr(semente, "CIDADE", "Santo André"))
     ajustes.save()
     semente.semear(get_paths())
+    if getattr(semente, "MODULOS", None):
+        from dumtech.core.licensing import LOCAL_KEY, LicenseService, LocalLicenseGateway, machine_id
+        LicenseService().save(LocalLicenseGateway(tuple(semente.MODULOS)).fetch(LOCAL_KEY, machine_id()))
 
     tema = ThemeManager(app, MODO_CLARO)
     hub = HubWindow(settings=ajustes, theme=tema)
@@ -85,18 +104,28 @@ def dentro(nome: str, destino: str) -> None:
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "--dentro":
-        dentro(sys.argv[2], sys.argv[3])
+        dentro(sys.argv[2], sys.argv[3], sys.argv[4])
         sys.exit(0)
     sys.path.insert(0, str(Path(__file__).parent))
-    import roteiros
+    import importlib
 
-    pedidos = sys.argv[1:] or list(roteiros.ROTEIROS)
+    args = sys.argv[1:]
+    loja = "conecta"
+    if "--loja" in args:
+        i = args.index("--loja")
+        loja = args[i + 1] if i + 1 < len(args) else ""
+        del args[i:i + 2]
+    if loja not in LOJAS:
+        sys.exit(f"loja desconhecida: {loja!r} (tem: {', '.join(LOJAS)})")
+    roteiros = importlib.import_module(LOJAS[loja][1])
+
+    pedidos = args or list(roteiros.ROTEIROS)
     ffmpeg = achar_ffmpeg()
     falharam = []
     for nome in pedidos:
         print(f"gravando {nome}...", flush=True)
         try:
-            print("  ->", gravar_um(nome, ffmpeg), flush=True)
+            print("  ->", gravar_um(loja, nome, ffmpeg), flush=True)
         except subprocess.CalledProcessError:
             falharam.append(nome)
     if falharam:

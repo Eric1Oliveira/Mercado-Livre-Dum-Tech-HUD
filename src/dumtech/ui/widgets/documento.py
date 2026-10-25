@@ -129,7 +129,7 @@ class DocumentoDialog(QDialog):
         linha.setSpacing(Space.sm)
 
         if self.texto_bobina:
-            self.botao_formato = Button("Ver versao de bobina", "file", "ghost")
+            self.botao_formato = Button("Ver versão de bobina", "file", "ghost")
             self.botao_formato.clicked.connect(self._trocar_formato)
             linha.addWidget(self.botao_formato)
 
@@ -164,7 +164,7 @@ class DocumentoDialog(QDialog):
         folha = self.paginas.currentIndex() == BOBINA
         self.paginas.setCurrentIndex(FOLHA if folha else BOBINA)
         self.botao_formato.setText(
-            "Ver versao de bobina" if folha else "Ver a folha A4"
+            "Ver versão de bobina" if folha else "Ver a folha A4"
         )
 
     def caminho_sugerido(self) -> Path:
@@ -187,7 +187,7 @@ class DocumentoDialog(QDialog):
         try:
             self.salvo = doc.salvar_pdf(self.html, destino, self.empresa, self.paths)
         except OSError as erro:
-            self._dizer(f"Nao foi possivel gravar o PDF: {erro}", "danger")
+            self._dizer(f"Não foi possível gravar o PDF: {erro}", "danger")
             return False
         self.botao_abrir.setVisible(True)
         self._dizer(f"PDF gravado em {self.salvo}.", "success")

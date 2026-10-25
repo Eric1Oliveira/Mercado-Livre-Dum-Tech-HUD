@@ -33,12 +33,12 @@ class MovimentoDialog(FormDialog):
 
         entrada = tipo == TIPO_ENTRADA
         super().__init__(
-            "Entrada de estoque" if entrada else "Saida de estoque",
+            "Entrada de estoque" if entrada else "Saída de estoque",
             f"{produto.codigo}  -  {produto.nome}",
             parent,
             largura=520,
         )
-        self.botao_salvar.setText("  Registrar entrada" if entrada else "  Registrar saida")
+        self.botao_salvar.setText("  Registrar entrada" if entrada else "  Registrar saída")
         self.botao_salvar.set_icon_name("in" if entrada else "out")
 
         saldo = quantidade_texto(produto.quantidade, produto.unidade, com_unidade=True)
@@ -53,21 +53,21 @@ class MovimentoDialog(FormDialog):
 
         if entrada:
             self.custo = form.dinheiro(produto.preco_custo)
-            self.add_row("Custo unitario", self.custo)
+            self.add_row("Custo unitário", self.custo)
             self.fornecedor = form.sugestao(
-                produto.fornecedor, "Quem vendeu para voce", repository.fornecedores()
+                produto.fornecedor, "Quem vendeu para você", repository.fornecedores()
             )
             self.documento = form.texto("", "Ex.: NF 1234")
             self.add_row("Fornecedor", form.linha(self.fornecedor, "Documento", self.documento))
             self.add_note(
-                "Informar o custo mantem o custo medio do produto atualizado. "
-                f"Custo medio de hoje: {fmt.moeda(produto.preco_custo)}."
+                "Informar o custo mantém o custo médio do produto atualizado. "
+                f"Custo médio de hoje: {fmt.moeda(produto.preco_custo)}."
             )
 
         self.observacao = form.texto(
-            "", "Compra do fornecedor" if entrada else "Venda no balcao"
+            "", "Compra do fornecedor" if entrada else "Venda no balcão"
         )
-        self.add_row("Observacao", self.observacao)
+        self.add_row("Observação", self.observacao)
 
         self.quantidade.setFocus()
         self.quantidade.selectAll()

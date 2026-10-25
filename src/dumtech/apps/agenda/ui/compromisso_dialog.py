@@ -39,16 +39,16 @@ class CompromissoDialog(FormDialog):
         self._conflito_aceito = False
         super().__init__(
             "Editar compromisso" if self.editando else "Novo compromisso",
-            "Data, horario e com quem e o atendimento",
+            "Data, horário e com quem é o atendimento",
             parent,
             largura=620,
         )
 
         self.titulo = form.sugestao(
-            self.compromisso.titulo, "Ex.: Visita tecnica",
+            self.compromisso.titulo, "Ex.: Visita técnica",
             self.repository.titulos(),
         )
-        self.add_row("Titulo", self.titulo)
+        self.add_row("Título", self.titulo)
 
         self.tipo = form.escolha(TIPO_OPCOES, self.compromisso.tipo)
         self.tipo.currentIndexChanged.connect(self._tipo_mudou)
@@ -71,7 +71,7 @@ class CompromissoDialog(FormDialog):
             indice = self.duracao.count() - 1
         self.duracao.setCurrentIndex(indice)
         self.duracao.currentIndexChanged.connect(self._conferir_conflito)
-        self.add_row("Inicio", form.linha(self.inicio, "Duracao", self.duracao))
+        self.add_row("Início", form.linha(self.inicio, "Duração", self.duracao))
 
         self.local = form.sugestao(
             self.compromisso.local, "Ex.: Loja, casa do cliente, online",
@@ -80,12 +80,12 @@ class CompromissoDialog(FormDialog):
         self.add_row("Local", self.local)
 
         self.status = form.escolha(STATUS_OPCOES, self.compromisso.status)
-        self.add_row("Situacao", self.status)
+        self.add_row("Situação", self.status)
 
         # repetir so no cadastro: mexer nisso depois seria refazer a serie
         if not self.editando:
             self.repeticao = QComboBox()
-            self.repeticao.addItem("Nao se repete", SEM_REPETICAO)
+            self.repeticao.addItem("Não se repete", SEM_REPETICAO)
             for chave, rotulo in REPETICOES:
                 self.repeticao.addItem(rotulo, chave)
             self.repeticao.currentIndexChanged.connect(self._repeticao_mudou)
@@ -94,9 +94,9 @@ class CompromissoDialog(FormDialog):
             self.add_row("Repetir", form.linha(self.repeticao, self.vezes))
 
         self.observacoes = form.area(
-            self.compromisso.observacoes, "Anotacoes do atendimento", 60
+            self.compromisso.observacoes, "Anotações do atendimento", 60
         )
-        self.add_row("Observacoes", self.observacoes)
+        self.add_row("Observações", self.observacoes)
 
         self.add_note("")
         self._nota = self.extras.itemAt(self.extras.count() - 1).widget()
@@ -120,7 +120,7 @@ class CompromissoDialog(FormDialog):
         if bloqueio:
             self.cliente.clear()
             if not self.titulo.text().strip():
-                self.titulo.setPlaceholderText("Ex.: Almoco, folga, feriado")
+                self.titulo.setPlaceholderText("Ex.: Almoço, folga, feriado")
         self._conferir_conflito()
 
     def _repeticao_mudou(self) -> None:
@@ -144,8 +144,8 @@ class CompromissoDialog(FormDialog):
         conflitos = self.repository.conflitos(self._montar())
         if not conflitos:
             self._nota.setText(
-                f"{fmt.contagem(self.vezes.value(), 'data')} nesta serie."
-                if self.em_serie else "Horario livre."
+                f"{fmt.contagem(self.vezes.value(), 'data')} nesta série."
+                if self.em_serie else "Horário livre."
             )
             self._nota.setProperty("tone", "muted")
         else:
@@ -153,8 +153,8 @@ class CompromissoDialog(FormDialog):
                 f"{c.titulo} ({c.horario})" for c in conflitos[:3]
             )
             self._nota.setText(
-                f"Ja existe algo neste horario: {nomes}. "
-                "Salvar de novo confirma a marcacao em cima."
+                f"Já existe algo neste horário: {nomes}. "
+                "Salvar de novo confirma a marcação em cima."
             )
             self._nota.setProperty("tone", "warning")
         repolish(self._nota)

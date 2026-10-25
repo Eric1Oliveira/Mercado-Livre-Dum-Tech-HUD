@@ -24,7 +24,7 @@ class VendasWindow(AppWindow):
 
     def build_views(self) -> None:
         self.balcao_view = self.add_view(
-            "Balcao", "cart", BalcaoView(self.repository, self.clientes,
+            "Balcão", "cart", BalcaoView(self.repository, self.clientes,
                        contas=self.context.contas, empresa=self.empresa)
         )
         self.dashboard_view = self.add_view("Painel", "dashboard", DashboardView(self.repository))

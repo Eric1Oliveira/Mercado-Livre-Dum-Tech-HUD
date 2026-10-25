@@ -55,6 +55,18 @@ class EstoqueRepository(ProdutosMixin, MovimentacoesMixin, ContagemMixin, Planil
                     default=0.0,
                 )
             ),
+            sem_estoque=int(
+                self.db.scalar(
+                    "SELECT COUNT(*) FROM produtos WHERE ativo = 1 AND quantidade <= 0"
+                )
+            ),
+            valor_venda=float(
+                self.db.scalar(
+                    "SELECT COALESCE(SUM(MAX(quantidade, 0) * preco_venda), 0) FROM produtos "
+                    "WHERE ativo = 1",
+                    default=0.0,
+                )
+            ),
             ultimas=self.listar_movimentacoes(limite=limite_listas),
             baixos=self.a_comprar(limite=limite_listas),
             a_comprar=self.a_comprar(limite=limite_listas),

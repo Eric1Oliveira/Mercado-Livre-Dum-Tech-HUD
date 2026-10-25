@@ -320,7 +320,7 @@ class LocalLicenseGateway:
     def fetch(self, key: str, machine: str) -> License:
         return License(
             key=key or LOCAL_KEY,
-            customer="Instalacao local",
+            customer="Instalação local",
             entitlements=self._entitlements,
             machine=machine,
             activated_at=_now(),
@@ -337,7 +337,7 @@ class LocalLicenseGateway:
         return None
 
     def iniciar_teste(self, key: str, machine: str, produto: str) -> dict:
-        raise LicenseError("A instalacao local ja libera todos os modulos.", "local")
+        raise LicenseError("A instalação local já libera todos os módulos.", "local")
 
 
 class SupabaseLicenseGateway:
@@ -402,7 +402,7 @@ class SupabaseLicenseGateway:
         if not resposta.get("ok"):
             # a funcao usa a MESMA regra do banco: recusa dela e recusa de verdade
             raise LicenseError(
-                str(resposta.get("mensagem") or "Nao foi possivel validar a licenca."),
+                str(resposta.get("mensagem") or "Não foi possível validar a licença."),
                 str(resposta.get("erro") or "erro"),
             )
         return resposta
@@ -416,10 +416,10 @@ class SupabaseLicenseGateway:
             raise LicenseError(str(erro), "servidor") from erro
 
         if not isinstance(resposta, dict):
-            raise LicenseError("Resposta inesperada do servidor de licencas.", "servidor")
+            raise LicenseError("Resposta inesperada do servidor de licenças.", "servidor")
         if not resposta.get("ok"):
             raise LicenseError(
-                str(resposta.get("mensagem") or "Nao foi possivel validar a licenca."),
+                str(resposta.get("mensagem") or "Não foi possível validar a licença."),
                 str(resposta.get("erro") or "erro"),
             )
         return resposta
@@ -539,7 +539,7 @@ class LicenseService:
         """
         atual = self.current
         if not atual.key or not atual.ativa:
-            raise LicenseError("Ative a sua licenca para testar outros modulos.", "sem_licenca")
+            raise LicenseError("Ative a sua licença para testar outros módulos.", "sem_licenca")
         self.gateway.iniciar_teste(atual.key, atual.machine or machine_id(), app_id)
         return self.verify()
 
@@ -547,7 +547,7 @@ class LicenseService:
         """Reconsulta a licenca - usado quando o cliente compra outro aplicativo."""
         atual = self.current
         if not atual.key:
-            raise LicenseError("Nenhuma licenca ativada neste computador.", "sem_licenca")
+            raise LicenseError("Nenhuma licença ativada neste computador.", "sem_licenca")
         licenca = self.gateway.verify(atual.key, atual.machine or machine_id())
         return self.save(
             replace(licenca, activated_at=atual.activated_at or _now(), last_check=_now())
@@ -652,7 +652,7 @@ class LicenseService:
         if not licenca.assinado:
             if ASSINATURA_OBRIGATORIA and licenca.key:
                 return sem_modulos(licenca, "sem_assinatura",
-                                   "Conecte este computador a internet para confirmar a licenca com a DumTech.")
+                                   "Conecte este computador a internet para confirmar a licença com a DumTech.")
             return licenca
 
         dados = assinatura.abrir(licenca.assinado)
@@ -679,6 +679,6 @@ class LicenseService:
         )
         if assinatura.vencida(dados):
             return sem_modulos(conferida, "conferencia_vencida",
-                               "Faz tempo que este computador nao confere a licenca. "
-                               "Conecte-o a internet para continuar usando os modulos.")
+                               "Faz tempo que este computador não confere a licença. "
+                               "Conecte-o a internet para continuar usando os módulos.")
         return conferida

@@ -63,16 +63,16 @@ def proposta(orcamento: Orcamento, empresa=None) -> str:
 
     linhas.append(linha())
     if orcamento.vale_ate:
-        linhas.append(lado_a_lado("Proposta valida ate", fmt.data(orcamento.vale_ate)))
+        linhas.append(lado_a_lado("Proposta válida até", fmt.data(orcamento.vale_ate)))
     elif orcamento.validade_dias:
         linhas.append(
-            lado_a_lado("Validade", f"{orcamento.validade_dias} dias apos o envio")
+            lado_a_lado("Validade", f"{orcamento.validade_dias} dias após o envio")
         )
 
     if orcamento.status == APROVADO:
         linhas.append(centro("*** APROVADA ***"))
     elif orcamento.status == RECUSADO:
-        linhas.append(centro("*** NAO APROVADA ***"))
+        linhas.append(centro("*** NÃO APROVADA ***"))
 
     if orcamento.observacoes:
         linhas.append(linha())

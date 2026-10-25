@@ -33,7 +33,7 @@ class ItemsEditor(QWidget):
 
         entrada = QHBoxLayout()
         entrada.setSpacing(8)
-        self.campo_descricao = texto(dica="Descricao do item")
+        self.campo_descricao = texto(dica="Descrição do item")
         entrada.addWidget(self.campo_descricao, 3)
         self.campo_quantidade = inteiro(1, minimo=1)
         self.campo_quantidade.setMinimumWidth(80)

@@ -42,6 +42,18 @@ export function quando(valor, hoje = new Date()) {
   return `em ${dias} dias`;
 }
 
+/** "agora", "há 12 min", "há 3 h" - passado de um dia, fala como `quando`. */
+export function relativo(valor, agora = new Date()) {
+  if (!valor) return "nunca";
+  const alvo = new Date(valor);
+  if (Number.isNaN(alvo.getTime())) return "nunca";
+  const minutos = Math.floor((agora - alvo) / 60000);
+  if (minutos < 1) return "agora";
+  if (minutos < 60) return `há ${minutos} min`;
+  if (minutos < 24 * 60) return `há ${Math.floor(minutos / 60)} h`;
+  return quando(valor, agora);
+}
+
 /** 1 cliente / 2 clientes - sem "1 cliente(s)". */
 export function contagem(quantos, singular, plural = "") {
   const n = Number(quantos || 0);

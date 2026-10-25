@@ -207,9 +207,9 @@ class AgendaRepository:
         """Gera ocorrencias de verdade, para cada uma poder ser remarcada."""
         vezes = int(vezes)
         if vezes < 2:
-            raise AgendaError("Uma repeticao precisa de pelo menos 2 datas.")
+            raise AgendaError("Uma repetição precisa de pelo menos 2 datas.")
         if vezes > MAXIMO_REPETICOES:
-            raise AgendaError(f"No maximo {MAXIMO_REPETICOES} repeticoes de uma vez.")
+            raise AgendaError(f"No máximo {MAXIMO_REPETICOES} repetições de uma vez.")
 
         inicio = base.inicio_dt
         if inicio is None:
@@ -237,7 +237,7 @@ class AgendaRepository:
     def remarcar(self, compromisso_id: int, novo_inicio: str) -> Compromisso:
         compromisso = self.obter(compromisso_id)
         if compromisso is None:
-            raise AgendaError("Compromisso nao encontrado.")
+            raise AgendaError("Compromisso não encontrado.")
         compromisso.inicio = novo_inicio
         return self.salvar(compromisso)
 
@@ -256,11 +256,11 @@ class AgendaRepository:
 
     def _validar(self, compromisso: Compromisso) -> None:
         if not compromisso.titulo.strip():
-            raise AgendaError("Informe o titulo do compromisso.")
+            raise AgendaError("Informe o título do compromisso.")
         if compromisso.inicio_dt is None:
             raise AgendaError("Informe a data e a hora do compromisso.")
         if int(compromisso.duracao_min or 0) <= 0:
-            raise AgendaError("A duracao precisa ser maior que zero.")
+            raise AgendaError("A duração precisa ser maior que zero.")
         if compromisso.tipo not in TIPO_LABEL:
             raise AgendaError("Escolha o tipo do compromisso.")
 
@@ -332,6 +332,10 @@ class AgendaRepository:
             do_dia=do_dia[:limite_listas],
             proximos=proximos[:limite_listas],
             atrasados_lista=atrasados[:limite_listas],
+            por_dia_semana=[
+                len([c for c in da_semana if c.dia == primeiro + timedelta(days=passo)])
+                for passo in range(7)
+            ],
         )
 
     def abertos(self) -> list[Compromisso]:

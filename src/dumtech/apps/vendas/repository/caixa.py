@@ -64,10 +64,10 @@ class CaixaMixin:
     # ------------------------------------------------------------------ abertura
     def abrir_caixa(self, valor_abertura: float = 0.0) -> Caixa:
         if self.caixa_aberto() is not None:
-            raise VendaError("Ja existe um caixa aberto. Feche o atual antes de abrir outro.")
+            raise VendaError("Já existe um caixa aberto. Feche o atual antes de abrir outro.")
         valor_abertura = dinheiro(valor_abertura)
         if valor_abertura < 0:
-            raise VendaError("O valor de abertura nao pode ser negativo.")
+            raise VendaError("O valor de abertura não pode ser negativo.")
         momento = agora()
         cursor = self.db.execute(
             "INSERT INTO caixas (aberto_em, valor_abertura, status) VALUES (?, ?, ?)",
@@ -83,10 +83,10 @@ class CaixaMixin:
     # ---------------------------------------------------------------- movimentos
     def registrar_movimento(self, tipo: str, valor: float, motivo: str = "") -> MovimentoCaixa:
         if tipo not in (TIPO_SANGRIA, TIPO_SUPRIMENTO):
-            raise VendaError("Movimento de caixa invalido.")
+            raise VendaError("Movimento de caixa inválido.")
         caixa = self.caixa_aberto()
         if caixa is None:
-            raise VendaError("Abra o caixa antes de lancar sangria ou suprimento.")
+            raise VendaError("Abra o caixa antes de lançar sangria ou suprimento.")
 
         valor = dinheiro(valor)
         if valor <= 0:
@@ -165,12 +165,12 @@ class CaixaMixin:
         """Fecha o caixa e grava a diferenca entre o contado e o esperado."""
         caixa = self.caixa_aberto()
         if caixa is None:
-            raise VendaError("Nao ha caixa aberto para fechar.")
+            raise VendaError("Não há caixa aberto para fechar.")
 
         conferencia = self.conferencia(caixa.id)
         contado = dinheiro(contado)
         if contado < 0:
-            raise VendaError("O valor contado nao pode ser negativo.")
+            raise VendaError("O valor contado não pode ser negativo.")
         diferenca = dinheiro(contado - conferencia.esperado)
 
         self.db.execute(

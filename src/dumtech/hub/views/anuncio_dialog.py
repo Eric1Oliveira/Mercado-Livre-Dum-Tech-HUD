@@ -51,7 +51,7 @@ class AnuncioDialog(QDialog):
         etiqueta.addWidget(Pill(comunicado.rotulo.upper() or "NOVIDADE", "accent"))
         etiqueta.addStretch(1)
         marca.addLayout(etiqueta)
-        marca.addWidget(label("DumTech para voce", "dim"))
+        marca.addWidget(label("DumTech para você", "dim"))
         topo.addLayout(marca, 1)
         raiz.addLayout(topo)
 
@@ -69,7 +69,7 @@ class AnuncioDialog(QDialog):
 
         botoes = QHBoxLayout()
         botoes.setSpacing(Space.sm)
-        depois = Button("Agora nao", "", "ghost")
+        depois = Button("Agora não", "", "ghost")
         depois.setAutoDefault(False)
         depois.clicked.connect(self.reject)
         botoes.addWidget(depois)

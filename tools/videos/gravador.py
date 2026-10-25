@@ -87,18 +87,23 @@ def _ease(t: float) -> float:
 class Gravador:
     """Fotografa `janela` + o que estiver por cima e manda para o ffmpeg."""
 
-    def __init__(self, janela: QWidget, saida: str, ffmpeg: str, fps: int = 25) -> None:
+    def __init__(self, janela: QWidget, saida: str, ffmpeg: str, fps: int = 25, web: bool | None = None) -> None:
         self.janela = janela
         self.fps = fps
+        self.saida = saida
         self.largura, self.altura = janela.width(), janela.height()
+        # web (catalogo "Passo a passo" do site): tamanho nativo e compressao forte para tela de
+        # programa (quase tudo parado) - fica com uma fracao do peso, sem perder a leitura
+        self.web = bool(os.environ.get("VIDEO_WEB")) if web is None else web
+        codec = (["-preset", "slow", "-crf", "30", "-tune", "stillimage", "-g", "250"] if self.web else
+                 # grava no tamanho de um notebook (tudo maior na tela) e entrega em Full HD
+                 ["-vf", "scale=1920:1080:flags=lanczos", "-preset", "medium", "-crf", "19"])
         self.proc = subprocess.Popen(
             [ffmpeg, "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "bgra",
              "-s", f"{self.largura}x{self.altura}", "-r", str(fps), "-i", "-",
-             # grava no tamanho de um notebook (tudo maior na tela) e entrega em Full HD
-             "-vf", "scale=1920:1080:flags=lanczos",
-             "-c:v", "libx264", "-preset", "medium", "-crf", "19", "-pix_fmt", "yuv420p",
-             "-movflags", "+faststart", saida],
+             "-c:v", "libx264", *codec, "-pix_fmt", "yuv420p", "-movflags", "+faststart", saida],
             stdin=subprocess.PIPE)
+        self.passos: list[tuple[float, str]] = []   # (segundo, legenda): vira a lista de passos do site
         self.escritos = 0
         self.inicio = time.monotonic()
         self.ultimo: bytes | None = None
@@ -130,6 +135,12 @@ class Gravador:
         self._tick()
         self.proc.stdin.close()
         self.proc.wait()
+        if self.web:                                  # os passos com o tempo de cada um, ao lado do .mp4
+            import json
+            with open(os.path.splitext(self.saida)[0] + ".passos.json", "w", encoding="utf-8") as arquivo:
+                json.dump({"duracao": round(self.agora(), 1),
+                           "passos": [{"t": t, "texto": texto} for t, texto in self.passos]},
+                          arquivo, ensure_ascii=False, indent=1)
 
     def _tick(self) -> None:
         devidos = int(self.agora() * self.fps) + 1
@@ -159,6 +170,8 @@ class Gravador:
         if texto != self.legenda:
             self.legenda = texto
             self._legenda_t = self.agora()
+            if texto:
+                self.passos.append((round(self._legenda_t, 1), texto))
 
     # --------------------------------------------------------------- quadro --
     def _quadro(self) -> bytes:
@@ -181,17 +194,15 @@ class Gravador:
 
     def _por_cima(self, p: QPainter) -> None:
         """Dialogos, menus e listas de sugestao: sao janelas proprias."""
-        origem = self.janela.mapToGlobal(QPoint(0, 0))
-        for w in QApplication.topLevelWidgets():
-            if w is self.janela or not w.isVisible() or w.width() < 8:
-                continue
-            if w.windowType() == Qt.WindowType.ToolTip:  # dica de mouse parado: so polui o video
-                continue
-            pos = w.mapToGlobal(QPoint(0, 0)) - origem
+        janelas = [w for w in QApplication.topLevelWidgets()
+                   if w is not self.janela and w.isVisible() and w.width() >= 8
+                   and w.windowType() != Qt.WindowType.ToolTip]  # dica de mouse parado: so polui o video
+        # o dialogo antes: a lista aberta de um campo dele vem por cima dele
+        for w in sorted(janelas, key=lambda j: not isinstance(j, QDialog)):
+            caixa, _ = self.lugar_da_janela(w)
             if isinstance(w, QDialog):
                 # o dialogo fica no meio da janela, com o fundo escurecido - e
                 # encolhido se for mais alto que a tela (a do video e de notebook)
-                caixa, _ = self.lugar_do_dialogo(w)
                 p.fillRect(0, 0, self.largura, self.altura, QColor(15, 12, 30, 110))
                 sombra = QPainterPath()
                 sombra.addRoundedRect(caixa.adjusted(-2, 6, 2, 12), 16, 16)
@@ -203,7 +214,23 @@ class Gravador:
                 p.drawPixmap(caixa.toRect(), w.grab())
                 p.restore()
             else:
-                p.drawPixmap(pos, w.grab())
+                p.drawPixmap(caixa.toRect(), w.grab())
+
+    def lugar_da_janela(self, w: QWidget) -> tuple[QRectF, float]:
+        """Onde uma janela propria aparece no video. O dialogo vai para o meio; a lista de
+        sugestao, a lista do combo e o menu de um dialogo vao junto com ele (senao ficariam
+        soltos onde o dialogo esta de verdade, longe do campo)."""
+        if isinstance(w, QDialog):
+            return self.lugar_do_dialogo(w)
+        dono = w.parentWidget() or w.focusProxy()  # a lista do autocompletar nao tem pai, so focusProxy
+        dono = dono.window() if dono is not None else None
+        if isinstance(dono, QDialog) and dono.isVisible():
+            caixa, escala = self.lugar_do_dialogo(dono)
+            rel = w.mapToGlobal(QPoint(0, 0)) - dono.mapToGlobal(QPoint(0, 0))
+            return QRectF(caixa.x() + rel.x() * escala, caixa.y() + rel.y() * escala,
+                          w.width() * escala, w.height() * escala), escala
+        pos = w.mapToGlobal(QPoint(0, 0)) - self.janela.mapToGlobal(QPoint(0, 0))
+        return QRectF(pos.x(), pos.y(), w.width(), w.height()), 1.0
 
     def lugar_do_dialogo(self, w: QWidget) -> tuple[QRectF, float]:
         """Onde o dialogo aparece no video (e em que escala)."""
@@ -456,14 +483,14 @@ class Diretor:
     def centro(self, w: QWidget, ancora: QPoint | None = None) -> QPointF:
         origem = self.g.janela.mapToGlobal(QPoint(0, 0))
         ponto = ancora if ancora is not None else w.rect().center()
-        pos = w.mapToGlobal(ponto) - origem
-        dialogo = w.window()
-        if isinstance(dialogo, QDialog):
-            # o gravador desenha o dialogo centralizado (e as vezes menor): o cursor segue
-            caixa, escala = self.g.lugar_do_dialogo(dialogo)
-            dentro = w.mapTo(dialogo, ponto)
-            return QPointF(caixa.x() + dentro.x() * escala, caixa.y() + dentro.y() * escala)
-        return QPointF(pos)
+        janela = w.window()
+        if janela is self.g.janela:
+            return QPointF(w.mapToGlobal(ponto) - origem)
+        # dialogo (e a lista ou o menu de um dialogo): o gravador desenha em outro lugar,
+        # as vezes menor - o cursor segue o desenho
+        caixa, escala = self.g.lugar_da_janela(janela)
+        dentro = w.mapTo(janela, ponto)
+        return QPointF(caixa.x() + dentro.x() * escala, caixa.y() + dentro.y() * escala)
 
     def rotulo(self, texto: str) -> QLabel:
         """Um texto visivel na tela (para clicar num cartao, por exemplo)."""
@@ -486,7 +513,15 @@ class Diretor:
         self.g.marcar_clique()
         botao = Qt.MouseButton.RightButton if direito else Qt.MouseButton.LeftButton
         ponto = ancora if ancora is not None else w.rect().center()
-        QTimer.singleShot(0, lambda: QTest.mouseClick(w, botao, Qt.KeyboardModifier.NoModifier, ponto))
+
+        def clica() -> None:
+            # clicar fora de uma lista aberta fecha a lista; o QTest entrega o clique direto
+            # no widget e ela ficaria parada no video - fecha aqui, como o mouse de verdade
+            for janela in QApplication.topLevelWidgets():
+                if janela.isVisible() and janela.windowType() == Qt.WindowType.Popup and janela is not w.window():
+                    janela.hide()
+            QTest.mouseClick(w, botao, Qt.KeyboardModifier.NoModifier, ponto)
+        QTimer.singleShot(0, clica)
         yield espera
 
     def digitar(self, w: QWidget, texto: str, por_segundo: float = 16, limpar: bool = True, espera: int = 350):

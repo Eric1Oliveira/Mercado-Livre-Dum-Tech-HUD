@@ -27,7 +27,7 @@ from ....ui.widgets.table import DIREITA, DataTable
 from ..models import EstoqueError, Produto, quantidade_texto
 from ..repository import EstoqueRepository
 
-COLUNAS = ["Codigo", "Produto", "Sistema", "Contado", "Diferenca"]
+COLUNAS = ["Código", "Produto", "Sistema", "Contado", "Diferença"]
 
 
 class ContagemView(QWidget):
@@ -72,7 +72,7 @@ class ContagemView(QWidget):
         linha.setSpacing(Space.md)
 
         self.bipe = QLineEdit()
-        self.bipe.setPlaceholderText("Bipe o codigo de barras ou digite o codigo...")
+        self.bipe.setPlaceholderText("Bipe o código de barras ou digite o código...")
         self._acao_bipe = self.bipe.addAction(
             icons.icon("tag", palette_for(self).accent, 16),
             QLineEdit.ActionPosition.LeadingPosition,
@@ -152,7 +152,7 @@ class ContagemView(QWidget):
         contados, divergentes = len(itens), sum(1 for i in itens if not i.confere)
         if contados:
             plural = "produto contado" if contados == 1 else "produtos contados"
-            self.resumo.setText(f"{contados} {plural}   ·   {divergentes} com diferenca")
+            self.resumo.setText(f"{contados} {plural}   ·   {divergentes} com diferença")
         else:
             self.resumo.setText("")
         self._atualizar_acoes()
@@ -225,7 +225,7 @@ class ContagemView(QWidget):
         resposta = QMessageBox.question(
             self,
             "Cancelar contagem",
-            "Descartar a folha de contagem? Nenhum saldo sera alterado.",
+            "Descartar a folha de contagem? Nenhum saldo será alterado.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
@@ -240,7 +240,7 @@ class ContagemView(QWidget):
         if divergentes == 0:
             self.repository.cancelar_contagem()
             self.refresh()
-            self._dizer("Tudo conferia: nenhum ajuste foi necessario.", "success")
+            self._dizer("Tudo conferia: nenhum ajuste foi necessário.", "success")
             self.data_changed.emit()
             return
 
@@ -249,7 +249,7 @@ class ContagemView(QWidget):
             self,
             "Aplicar ajustes",
             f"Corrigir {divergentes} {plural} para a quantidade contada?\n"
-            "Cada correcao entra no historico como um ajuste.",
+            "Cada correção entra no histórico como um ajuste.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.Yes,
         )

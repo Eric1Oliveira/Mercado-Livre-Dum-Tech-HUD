@@ -127,7 +127,7 @@ class PropostaTestCase(unittest.TestCase):
         self.assertNotIn("Casa do Parafuso", html)
 
     def test_validade_em_dias_quando_nao_ha_data(self) -> None:
-        self.assertIn("15 dias apos o envio", _proposta(validade_dias=15))
+        self.assertIn("15 dias após o envio", _proposta(validade_dias=15))
 
 
 class EntregaTestCase(unittest.TestCase):
@@ -135,7 +135,7 @@ class EntregaTestCase(unittest.TestCase):
         html = _entrega()
         self.assertIn("Placa oxidada", html)
         self.assertIn("GARANTIA DE 90 DIAS", html.upper())
-        self.assertIn("Recebi o servico", html)
+        self.assertIn("Recebi o serviço", html)
 
     def test_telefone_sai_formatado(self) -> None:
         """O banco guarda so digitos; o papel do cliente nao pode mostrar isso."""

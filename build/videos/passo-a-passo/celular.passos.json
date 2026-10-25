@@ -1,0 +1,17 @@
+{
+ "duracao": 13.7,
+ "passos": [
+  {
+   "t": 2.9,
+   "texto": "Abra o menu da empresa, no canto de cima"
+  },
+  {
+   "t": 4.6,
+   "texto": "Escolha Ver no celular"
+  },
+  {
+   "t": 7.2,
+   "texto": "Aponte a câmera do celular para o QR Code"
+  }
+ ]
+}

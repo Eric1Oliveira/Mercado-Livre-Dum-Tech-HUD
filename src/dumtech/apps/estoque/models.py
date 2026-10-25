@@ -13,7 +13,7 @@ TIPO_AJUSTE = "ajuste"
 
 TIPOS_LABEL = {
     TIPO_ENTRADA: "Entrada",
-    TIPO_SAIDA: "Saida",
+    TIPO_SAIDA: "Saída",
     TIPO_AJUSTE: "Ajuste",
 }
 
@@ -33,7 +33,7 @@ UNIDADES: dict[str, Unidade] = {
         # contaveis: nao existe meia caixa
         Unidade("UN", "Unidade", 0),
         Unidade("CX", "Caixa", 0),
-        Unidade("PC", "Peca", 0),
+        Unidade("PC", "Peça", 0),
         Unidade("PAR", "Par", 0),
         # de medida: aceitam fracao
         Unidade("KG", "Quilo", 3),
@@ -41,7 +41,7 @@ UNIDADES: dict[str, Unidade] = {
         Unidade("L", "Litro", 3),
         Unidade("M", "Metro", 3),
         Unidade("M2", "Metro quadrado", 3),
-        Unidade("M3", "Metro cubico", 3),
+        Unidade("M3", "Metro cúbico", 3),
     )
 }
 UNIDADE_PADRAO = "UN"
@@ -273,6 +273,10 @@ class Resumo:
     total_itens: float = 0.0
     produtos_baixo: int = 0
     valor_custo: float = 0.0
+    #: zerados (ou negativos) - nao da para vender
+    sem_estoque: int = 0
+    #: o estoque a preco de venda: quanto ele vira se sair todo
+    valor_venda: float = 0.0
     ultimas: list[Movimentacao] = field(default_factory=list)
     baixos: list[Produto] = field(default_factory=list)
     a_comprar: list[Produto] = field(default_factory=list)

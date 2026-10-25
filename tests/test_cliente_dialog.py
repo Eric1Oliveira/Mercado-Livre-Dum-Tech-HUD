@@ -95,7 +95,7 @@ class ClienteDialogTestCase(unittest.TestCase):
     def test_cep_nao_encontrado_so_avisa(self) -> None:
         dialogo = self._dialogo()
         dialogo._preencher_endereco(None)
-        self.assertIn("Nao achei", dialogo.dica_cep.text())
+        self.assertIn("Não achei", dialogo.dica_cep.text())
         self.assertEqual(dialogo.endereco.text(), "")
 
 

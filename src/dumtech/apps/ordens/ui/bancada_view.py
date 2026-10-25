@@ -59,8 +59,8 @@ FAIXA = 3
 #: identifica o que esta sendo arrastado - so o proprio quadro aceita
 MIME = "application/x-dumtech-ordem"
 #: a dica que ensina o arrasto - o quadro nao tem manual
-DICA = ("Escolha uma ordem para ver as acoes  ·  arraste o cartao para outra "
-        "etapa  ·  botao direito abre o menu")
+DICA = ("Escolha uma ordem para ver as ações  ·  arraste o cartão para outra "
+        "etapa  ·  botão direito abre o menu")
 
 
 class OrdemCard(QWidget):
@@ -85,7 +85,7 @@ class OrdemCard(QWidget):
         corpo = QVBoxLayout(self)
         corpo.setContentsMargins(Space.md, Space.sm, Space.md, Space.sm)
         corpo.setSpacing(1)
-        corpo.addWidget(label(ordem.assunto or "Ordem sem descricao", "cardTitle"))
+        corpo.addWidget(label(ordem.assunto or "Ordem sem descrição", "cardTitle"))
         corpo.addWidget(label(ordem.cliente or "Sem cliente", "muted"))
 
         rodape = QHBoxLayout()
@@ -103,11 +103,11 @@ class OrdemCard(QWidget):
         """
         if self.ordem.status == CONCLUIDA:
             dias = self.ordem.dias_em_aberto
-            return "pronta hoje" if dias == 0 else f"pronta ha {fmt.dias(dias)}"
+            return "pronta hoje" if dias == 0 else f"pronta há {fmt.dias(dias)}"
         if self.ordem.prazo:
             return fmt.prazo_texto(self.ordem.prazo)
         dias = self.ordem.dias_em_aberto
-        return "entrou hoje" if dias == 0 else f"ha {fmt.dias(dias)}"
+        return "entrou hoje" if dias == 0 else f"há {fmt.dias(dias)}"
 
     def _tom_prazo(self) -> str:
         return "danger" if self.ordem.atrasada else "dim"
@@ -316,8 +316,8 @@ class BancadaView(QWidget):
 
     VAZIOS = {
         "aberta": "Nada na fila.",
-        "aguardando": "Nenhum orcamento esperando o cliente.",
-        "andamento": "Nada em execucao agora.",
+        "aguardando": "Nenhum orçamento esperando o cliente.",
+        "andamento": "Nada em execução agora.",
         "concluida": "Nada pronto para entregar.",
     }
 
@@ -379,7 +379,7 @@ class BancadaView(QWidget):
         self.botao_ficha.clicked.connect(self._abrir)
         linha.addWidget(self.botao_ficha)
 
-        self.botao_avancar = Button("Avancar etapa", "check", "success")
+        self.botao_avancar = Button("Avançar etapa", "check", "success")
         self.botao_avancar.setMinimumHeight(38)
         self.botao_avancar.clicked.connect(self._avancar)
         linha.addWidget(self.botao_avancar)
@@ -403,7 +403,7 @@ class BancadaView(QWidget):
                 self._cartoes.append(cartao)
 
         if not total:
-            self.subtitulo.setText("Nenhum servico em andamento no momento")
+            self.subtitulo.setText("Nenhum serviço em andamento no momento")
         else:
             texto = fmt.contagem(total, "servico") + " em andamento"
             if atrasadas:
@@ -434,7 +434,7 @@ class BancadaView(QWidget):
         self.botao_ficha.setEnabled(ordem is not None)
         self.botao_avancar.setEnabled(ordem is not None)
         if ordem is None:
-            self.botao_avancar.setText("  Avancar etapa")
+            self.botao_avancar.setText("  Avançar etapa")
             self._dizer(DICA)
         else:
             self.botao_avancar.setText(f"  {self._proximo_rotulo(ordem)}")
@@ -444,11 +444,11 @@ class BancadaView(QWidget):
     @staticmethod
     def _proximo_rotulo(ordem: Ordem) -> str:
         return {
-            "aberta": "Mandar para aprovacao",
-            "aguardando": "Registrar aprovacao",
-            "andamento": "Marcar como concluida",
+            "aberta": "Mandar para aprovação",
+            "aguardando": "Registrar aprovação",
+            "andamento": "Marcar como concluída",
             "concluida": "Entregar ao cliente",
-        }.get(ordem.status, "Avancar etapa")
+        }.get(ordem.status, "Avançar etapa")
 
     def _dizer(self, texto: str, tom: str = "muted") -> None:
         self.aviso.setText(texto)
@@ -482,7 +482,7 @@ class BancadaView(QWidget):
         self.selecionada = ordem_id
         self.refresh()
         self._dizer(
-            f"{ordem.numero}: agora esta em "
+            f"{ordem.numero}: agora está em "
             f"'{STATUS_LABEL.get(status, status)}'.", "success",
         )
         self.data_changed.emit()
@@ -528,7 +528,7 @@ class BancadaView(QWidget):
             self, "Excluir ordem",
             f"Excluir a ordem {ordem.numero}{f' - {ordem.assunto}' if ordem.assunto else ''}?",
             chave=confirmacoes.EXCLUIR, rotulo_ok="Excluir",
-            detalhe="O historico da ordem vai junto e nao volta.",
+            detalhe="O histórico da ordem vai junto e não volta.",
         ):
             return
         try:
@@ -538,7 +538,7 @@ class BancadaView(QWidget):
             return
         self.selecionada = None
         self.refresh()
-        self._dizer(f"{ordem.numero} excluida.", "muted")
+        self._dizer(f"{ordem.numero} excluída.", "muted")
         self.data_changed.emit()
 
     # ------------------------------------------------------------------- acoes
@@ -576,6 +576,6 @@ class BancadaView(QWidget):
 
         atual = self.repository.obter(ordem.id)
         self.refresh()
-        self._dizer(f"{ordem.numero}: agora esta em '{atual.status_label}'."
+        self._dizer(f"{ordem.numero}: agora está em '{atual.status_label}'."
                     + getattr(dialogo, "recado_financeiro", ""), "success")
         self.data_changed.emit()

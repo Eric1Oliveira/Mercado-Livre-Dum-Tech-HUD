@@ -1,0 +1,25 @@
+{
+ "duracao": 17.9,
+ "passos": [
+  {
+   "t": 2.8,
+   "texto": "Abra Clientes"
+  },
+  {
+   "t": 4.9,
+   "texto": "Vá na lista de clientes"
+  },
+  {
+   "t": 6.7,
+   "texto": "Procure pelo nome, telefone ou cidade"
+  },
+  {
+   "t": 9.4,
+   "texto": "Selecione o cliente"
+  },
+  {
+   "t": 10.6,
+   "texto": "Ver ficha mostra compras, propostas e agenda"
+  }
+ ]
+}

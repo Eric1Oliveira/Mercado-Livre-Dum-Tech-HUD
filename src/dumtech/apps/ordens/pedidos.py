@@ -25,7 +25,7 @@ from .repository import OrdensRepository
 class DestinoOrdens:
     """Implementacao de `core.pedidos.Destino` em cima do banco das Ordens."""
 
-    titulo = "Ordem de servico"
+    titulo = "Ordem de Serviço"
     app_id = "ordens"
 
     def __init__(self, database) -> None:
@@ -42,7 +42,7 @@ class DestinoOrdens:
             numero=self.repository.proximo_numero(),
             cliente=pedido.cliente,
             equipamento=primeiro,
-            defeito=pedido.observacoes or f"Servico contratado na proposta "
+            defeito=pedido.observacoes or f"Serviço contratado na proposta "
                                           f"{pedido.origem}".strip(),
             # ja em servico: aprovacao existe (aprovado_em), a fila nao
             status=ANDAMENTO,

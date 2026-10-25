@@ -32,7 +32,7 @@ class DashboardView(QWidget):
         titulos = QVBoxLayout()
         titulos.setSpacing(2)
         titulos.addWidget(label("Painel", "title"))
-        titulos.addWidget(label("Situacao atual do seu estoque", "subtitle"))
+        titulos.addWidget(label("Situação atual do seu estoque", "subtitle"))
         raiz.addLayout(titulos)
 
         cartoes = FaixaDeNumeros()
@@ -46,22 +46,22 @@ class DashboardView(QWidget):
         desenhos = QHBoxLayout()
         desenhos.setSpacing(Space.lg)
         self.grafico_comprar = GraficoBarras(largura_rotulo=170)
-        self.grafico_comprar.vazio = "Nenhum produto no minimo. Estoque em dia."
+        self.grafico_comprar.vazio = "Nenhum produto no estoque mínimo. Estoque em dia."
         self.painel_comprar = ChartPanel(
-            "O que precisa comprar", self.grafico_comprar, "quanto falta ate o maximo"
+            "O que precisa comprar", self.grafico_comprar, "quanto falta até o estoque máximo"
         )
         desenhos.addWidget(self.painel_comprar, 1)
 
         self.grafico_valor = GraficoBarras(largura_rotulo=170)
         self.grafico_valor.vazio = "Sem produtos com saldo para valorizar."
         self.painel_valor = ChartPanel(
-            "Onde o dinheiro esta parado", self.grafico_valor
+            "Onde o dinheiro está parado", self.grafico_valor
         )
         desenhos.addWidget(self.painel_valor, 1)
         raiz.addLayout(desenhos, 3)
 
         self.painel_movimentacoes = ListPanel(
-            "Ultimas movimentacoes", "Nenhuma movimentacao registrada ainda."
+            "Últimas movimentações", "Nenhuma movimentação registrada ainda."
         )
         raiz.addWidget(self.painel_movimentacoes, 2)
 
@@ -75,13 +75,13 @@ class DashboardView(QWidget):
             f"{quantidade_texto(resumo.total_itens)} itens somando todas as unidades",
         )
         self.card_valor.set_value(
-            fmt.moeda(resumo.valor_custo), "Pelo custo medio dos produtos ativos"
+            fmt.moeda(resumo.valor_custo), "Pelo custo médio dos produtos ativos"
         )
         self.card_baixo.set_value(
             fmt.numero(resumo.produtos_baixo),
-            "Nenhum produto no minimo"
+            "Nenhum produto no estoque mínimo"
             if not resumo.produtos_baixo
-            else "Produtos no minimo ou abaixo dele",
+            else "Produtos no estoque mínimo ou abaixo dele",
         )
 
         # o que comprar: a barra mede QUANTO comprar, nao o saldo que sobrou

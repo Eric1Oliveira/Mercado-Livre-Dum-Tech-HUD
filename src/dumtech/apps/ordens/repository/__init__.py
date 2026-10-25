@@ -61,6 +61,7 @@ class OrdensRepository(OrdensMixin, EtapasMixin, ItensMixin):
             tempo_medio=round(sum(tempos) / len(tempos), 1) if tempos else 0.0,
             fila=(abertas + andamento)[:limite_listas],
             prontas=por_status(CONCLUIDA)[:limite_listas],
+            prontas_total=len(por_status(CONCLUIDA)),
             aguardando_lista=aguardando[:limite_listas],
         )
 

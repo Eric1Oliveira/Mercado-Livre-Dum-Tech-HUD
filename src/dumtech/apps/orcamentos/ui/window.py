@@ -22,7 +22,7 @@ class OrcamentosWindow(AppWindow):
     def build_views(self) -> None:
         self.funil_view = self.add_view("Funil", "chart", FunilView(self.repository))
         self.orcamentos_view = self.add_view(
-            "Orcamentos", "file", OrcamentosView(self.repository, self.clientes,
+            "Orçamentos", "file", OrcamentosView(self.repository, self.clientes,
                                                  empresa=self.empresa,
                                                  paths=self.context.paths,
                                                  mensageiro=self.mensagens,

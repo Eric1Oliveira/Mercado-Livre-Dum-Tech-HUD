@@ -14,14 +14,22 @@
 
 import { CONFIG } from "./config.js";
 import {
-  ERROS, codigoDoEndereco, destaqueDaTela, estaAntigo, haQuanto, linkDaLoja, moduloDoCodigo,
-  montarTela, nomeDoAparelho,
-} from "./celular.js";
+  ERROS, aberturaDaTela, alertasDaTela, cartoesVisiveis, codigoDoEndereco, estaAntigo, formatar,
+  haQuanto, hojePorExtenso, linkDaLoja, linkWhatsApp, moduloDoCodigo, montarTela, nomeDoAparelho,
+  textoDaVariacao,
+} from "./celular.js?v=7";
+import { criar as criarGrafico, medidor, pintarTudo } from "./celular-graficos.js?v=7";
 
 const CHAVE = "dumtech.celular.acesso";
 const CHAVE_PC = "dumtech.celular.computador";
 //: o ultimo resumo que chegou, para a tela abrir cheia em vez de vazia
 const CHAVE_CACHE = "dumtech.celular.ultimo";
+//: a aba do destaque que o dono escolheu (Hoje, 7 dias, 30 dias)
+const CHAVE_PERIODO = "dumtech.celular.periodo";
+//: lista com mais linhas que isto abre fechada, com "Ver todas"
+const LINHAS_FECHADA = 4;
+//: "Precisa de você" com mais itens que isto mostra os primeiros e um "ver mais"
+const ALERTAS_FECHADO = 5;
 //: resumo guardado maior que isto nao cabe no aparelho - abre sem cache
 const CACHE_MAXIMO = 400000;
 //: de quanto em quanto tempo le, com a tela na frente do dono
@@ -171,24 +179,225 @@ function estado({ titulo, texto, passos = false, botao = "", acao = null, tom = 
   marcarQuando("", "mudo");
 }
 
-/** O numero do dia: grande, sem moldura, o assunto da tela. */
-function destaque(c) {
-  const no = el("section", "destaque");
-  if (c.tom) no.dataset.tom = c.tom;
-  no.append(el("span", "destaque-rotulo", c.rotulo), el("strong", "destaque-valor", c.valor));
-  if (c.detalhe) no.append(el("span", "destaque-detalhe", c.detalhe));
+// ------------------------------------------------------------ icones ---
+const NS = "http://www.w3.org/2000/svg";
+const ICONES = {
+  perigo: "M12 9v4 M12 17h.01 M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z",
+  aviso: "M12 7v5l3 2 M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z",
+  ok: "M20 12v9H4v-9 M2 7h20v5H2z M12 21V7 M12 7H7.5a2.5 2.5 0 1 1 0-5C11 2 12 7 12 7z M12 7h4.5a2.5 2.5 0 1 0 0-5C13 2 12 7 12 7z",
+  seta: "M9 18l6-6-6-6",
+  tudoBem: "M20 6 9 17l-5-5",
+  conversa: "M21 11.5a8.4 8.4 0 0 1-12.2 7.5L3 21l2-5.6A8.4 8.4 0 1 1 21 11.5z",
+};
+
+function traco(caminho, classe = "") {
+  const desenho = document.createElementNS(NS, "svg");
+  desenho.setAttribute("viewBox", "0 0 24 24");
+  desenho.setAttribute("aria-hidden", "true");
+  if (classe) desenho.setAttribute("class", classe);
+  const path = document.createElementNS(NS, "path");
+  path.setAttribute("d", caminho);
+  desenho.append(path);
+  return desenho;
+}
+
+/** Valor comprido não cabe no cartão de meia largura: a letra encolhe, o número não se corta. */
+function tamanhoDoValor(texto, cabe = 10) {
+  const n = String(texto ?? "").length;
+  return n > cabe + 3 ? "longo" : n > cabe ? "medio" : "";
+}
+
+/** "▲ 18%  vs. sábado passado até 15:18" - a seta e o sinal dizem, a cor confirma. */
+function variacao(v) {
+  const t = textoDaVariacao(v);
+  if (!t) return null;
+  const linha = el("span", "variacao");
+  const selo = el("span", "delta", `${t.seta} ${t.numero}`);
+  if (t.tom) selo.dataset.tom = t.tom;
+  linha.append(selo);
+  if (t.comparado) linha.append(el("span", "variacao-texto", t.comparado));
+  return linha;
+}
+
+// -------------------------------------------------------------- abertura ---
+//: o numero do destaque da ultima vez, para animar quando ele muda (venda nova)
+let anterior = null;
+//: listas que o dono abriu ("Ver todas") - continuam abertas quando os numeros mudam
+const abertas = new Set();
+let alertasAbertos = false;
+
+/**
+ * O destaque de uma seção: o número, a comparação, o detalhe, o gráfico e,
+ * se houver mais de um período, as abas. `principal` é o que abre a tela.
+ */
+function blocoDeDestaque(s, principal) {
+  const periodos = s.destaque.periodos;
+  const no = el("section", principal ? "abertura" : "secao-destaque");
+  if (s.destaque.tom) no.dataset.tom = s.destaque.tom;
+  if (principal) no.append(el("p", "abertura-data", hojePorExtenso()));
+  const corpo = el("div", "destaque-corpo");
+  no.append(corpo);
+
+  const escolher = (indice, animar) => {
+    const p = periodos[indice];
+    corpo.replaceChildren();
+    corpo.append(el("span", "destaque-rotulo", p.rotulo));
+    const valor = el("strong", "destaque-valor", p.valor);
+    const tamanho = tamanhoDoValor(p.valor, 11);
+    if (tamanho) valor.dataset.tamanho = tamanho;
+    corpo.append(valor);
+    const v = variacao(p.variacao);
+    if (v) corpo.append(v);
+    if (p.detalhe) corpo.append(el("p", "destaque-detalhe", p.detalhe));
+    const grafico = criarGrafico(p.grafico, { semTitulo: true });
+    if (grafico) corpo.append(grafico);
+    if (animar) requestAnimationFrame(() => pintarTudo(corpo, { animar: true }));
+
+    // chegou venda nova: o numero corre ate o valor novo (so no principal)
+    const chave = `${s.app}:${p.nome}`;
+    if (principal && anterior?.chave === chave && typeof p.numero === "number"
+        && typeof anterior.numero === "number" && anterior.numero !== p.numero) {
+      contar(valor, anterior.numero, p.numero, p.valor, s.destaque.formato);
+    }
+    if (principal) anterior = { chave, numero: p.numero };
+    abas.forEach((b, i) => b.setAttribute("aria-selected", String(i === indice)));
+  };
+
+  const abas = [];
+  if (periodos.length > 1) {
+    const grupo = el("div", "periodos");
+    grupo.setAttribute("role", "tablist");
+    grupo.setAttribute("aria-label", "Período");
+    periodos.forEach((p, i) => {
+      const b = el("button", "periodo", p.nome);
+      b.type = "button";
+      b.setAttribute("role", "tab");
+      b.addEventListener("click", () => {
+        guardar(`${CHAVE_PERIODO}.${s.app}`, p.nome);
+        escolher(i, true);
+      });
+      abas.push(b);
+      grupo.append(b);
+    });
+    no.append(grupo);
+  }
+  const salvo = guardado(`${CHAVE_PERIODO}.${s.app}`);
+  escolher(Math.max(0, periodos.findIndex((p) => p.nome === salvo)), false);
   return no;
 }
 
+/** Hub antigo: o primeiro cartão do módulo de maior peso, grande. */
+function aberturaSimples(c) {
+  const no = el("section", "abertura");
+  if (c.tom) no.dataset.tom = c.tom;
+  no.append(el("p", "abertura-data", hojePorExtenso()));
+  const corpo = el("div", "destaque-corpo");
+  const valor = el("strong", "destaque-valor", c.valor);
+  const tamanho = tamanhoDoValor(c.valor, 11);
+  if (tamanho) valor.dataset.tamanho = tamanho;
+  corpo.append(el("span", "destaque-rotulo", c.rotulo), valor);
+  if (c.detalhe) corpo.append(el("p", "destaque-detalhe", c.detalhe));
+  no.append(corpo);
+  return no;
+}
+
+/** O número anda do valor antigo até o novo - a venda nova se vê chegando. */
+function contar(no, de, para, final, formato) {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const inicio = performance.now();
+  const duracao = 750;
+  no.classList.remove("mudou");
+  void no.offsetWidth; // reinicia o brilho se duas vendas chegarem coladas
+  if (para > de) no.classList.add("mudou");
+  const passo = (agora) => {
+    const t = Math.min(1, (agora - inicio) / duracao);
+    const suave = 1 - (1 - t) ** 3;
+    no.textContent = t < 1 ? formatar(de + (para - de) * suave, formato) : final;
+    if (t < 1) requestAnimationFrame(passo);
+  };
+  no.textContent = formatar(de, formato);
+  requestAnimationFrame(passo);
+}
+
+// ------------------------------------------------------ precisa de você ---
+function atencao(alertas) {
+  const no = el("section", "atencao");
+  const topo = el("header", "atencao-topo");
+  topo.append(el("h2", "", "Precisa de você"));
+  if (alertas.length) {
+    const contagem = el("span", "atencao-contagem", String(alertas.length));
+    contagem.dataset.tom = alertas[0].tom; // ja vem do pior para o melhor
+    topo.append(contagem);
+  }
+  no.append(topo);
+  if (!alertas.length) {
+    no.dataset.vazio = "sim";
+    const ok = el("p", "atencao-vazio");
+    ok.append(traco(ICONES.tudoBem), el("span", "", "Tudo em dia. Nada atrasado, nada acabando."));
+    no.append(ok);
+    return no;
+  }
+  const lista = el("ul", "atencao-lista");
+  alertas.forEach((a, i) => {
+    const li = el("li");
+    li.hidden = i >= ALERTAS_FECHADO && !alertasAbertos;
+    const link = el("a");
+    link.href = `#sec-${a.app.toLowerCase()}`;
+    link.dataset.tom = a.tom;
+    const textos = el("span", "atencao-textos");
+    textos.append(el("span", "atencao-texto", a.texto),
+                  el("span", "atencao-modulo", a.detalhe ? `${a.modulo} · ${a.detalhe}` : a.modulo));
+    link.append(traco(ICONES[a.tom], "atencao-icone"), textos);
+    if (a.valor) link.append(el("span", "atencao-valor", a.valor));
+    link.append(traco(ICONES.seta, "atencao-seta"));
+    li.append(link);
+    lista.append(li);
+  });
+  no.append(lista);
+  if (alertas.length > ALERTAS_FECHADO && !alertasAbertos) {
+    const mais = el("button", "ver-mais", `Ver mais ${alertas.length - ALERTAS_FECHADO}`);
+    mais.type = "button";
+    mais.addEventListener("click", () => {
+      alertasAbertos = true;
+      lista.querySelectorAll("li[hidden]").forEach((li) => { li.hidden = false; });
+      mais.remove();
+    });
+    no.append(mais);
+  }
+  return no;
+}
+
+// ---------------------------------------------------------------- blocos ---
 function cartao(c) {
   const no = el("div", "cartao");
   if (c.tom) no.dataset.tom = c.tom;
-  no.append(el("span", "cartao-rotulo", c.rotulo), el("strong", "cartao-valor", c.valor));
+  if (c.largo) no.dataset.largo = "sim";
+  const valor = el("strong", "cartao-valor", c.valor);
+  const tamanho = tamanhoDoValor(c.valor);
+  if (tamanho) valor.dataset.tamanho = tamanho;
+  no.append(el("span", "cartao-rotulo", c.rotulo), valor);
+  const v = variacao(c.variacao);
+  if (v) no.append(v);
   if (c.detalhe) no.append(el("span", "cartao-detalhe", c.detalhe));
+  const barra = medidor(c.medidor, c.tom);
+  if (barra) no.append(barra);
   return no;
 }
 
-function lista(l) {
+/**
+ * Quais linhas aparecem com a lista fechada. Na lista do tempo (a agenda de
+ * hoje) o que importa é o que ainda vem: o que já passou é o primeiro a sair.
+ */
+function linhasAbertas(linhas) {
+  const ordem = linhas.map((linha, i) => i);
+  if (linhas.some((x) => x.estado)) {
+    const passou = (i) => linhas[i].estado === "passou";
+    ordem.sort((a, b) => Number(passou(a)) - Number(passou(b)) || (passou(a) ? b - a : a - b));
+  }
+  return new Set(ordem.slice(0, LINHAS_FECHADA));
+}
+
+function lista(l, chave) {
   const bloco = el("div", "lista");
   bloco.append(el("h3", "lista-titulo", l.titulo));
   if (!l.linhas?.length) {
@@ -197,36 +406,79 @@ function lista(l) {
     return bloco;
   }
   const ul = el("ul");
-  for (const linha of l.linhas) {
+  const comHora = l.linhas.some((x) => x.hora);
+  if (comHora) ul.dataset.tempo = "sim";
+  const fechada = l.linhas.length > LINHAS_FECHADA && !abertas.has(chave);
+  const visiveis = fechada ? linhasAbertas(l.linhas) : null;
+  l.linhas.forEach((linha, i) => {
     const li = el("li");
     if (linha.tom) li.dataset.tom = linha.tom;
+    if (linha.estado) li.dataset.estado = linha.estado;
+    li.hidden = fechada && !visiveis.has(i);
+    if (comHora) li.append(el("span", "linha-hora", linha.hora || ""));
     const textos = el("div", "linha-textos");
-    textos.append(el("span", "linha-texto", linha.texto));
+    const titulo = el("span", "linha-texto", linha.texto);
+    textos.append(titulo);
+    if (linha.estado === "agora") titulo.append(el("span", "selo-agora", "agora"));
     if (linha.detalhe) textos.append(el("span", "linha-detalhe", linha.detalhe));
+    const barra = medidor(linha.medidor, linha.tom);
+    if (barra) textos.append(barra);
+    const link = linkWhatsApp(linha.acao);
+    if (link) {
+      const botao = el("a", "acao-whatsapp");
+      botao.href = link;
+      botao.target = "_blank";
+      botao.rel = "noopener";
+      botao.append(traco(ICONES.conversa), el("span", "", linha.acao.rotulo || "WhatsApp"));
+      textos.append(botao);
+    }
     li.append(textos);
     if (linha.valor) li.append(el("span", "linha-valor", linha.valor));
     ul.append(li);
-  }
+  });
   bloco.append(ul);
+  if (fechada) {
+    const mais = el("button", "ver-mais", `Ver todas (${l.linhas.length})`);
+    mais.type = "button";
+    mais.addEventListener("click", () => {
+      abertas.add(chave);
+      ul.querySelectorAll("li[hidden]").forEach((li) => { li.hidden = false; });
+      mais.remove();
+    });
+    bloco.append(mais);
+  }
   return bloco;
 }
 
-function secao(s, modulo, pular) {
+function secao(s, modulo, aberturaDaSecao) {
   const no = el("section", "secao");
   no.id = `sec-${String(s.app).toLowerCase()}`;
   const topo = el("header", "secao-topo");
   if (modulo) topo.append(icone(modulo.icone, modulo.cor));
   topo.append(el("h2", "", s.titulo));
   no.append(topo);
-  // o cartao que virou destaque la em cima nao se repete aqui
-  const cartoes = (s.cartoes ?? []).filter((c) => c !== pular);
+  // o destaque que abriu a tela la em cima nao se repete aqui
+  const temDestaque = (s.destaque?.periodos ?? []).some((p) => p?.valor);
+  if (temDestaque && !aberturaDaSecao) no.append(blocoDeDestaque(s, false));
+  const cartoes = cartoesVisiveis(s, aberturaDaSecao?.cartao ?? null);
   if (cartoes.length) {
     const grade = el("div", "cartoes");
-    cartoes.forEach((c) => grade.append(cartao(c)));
+    // numero impar de cartoes de meia largura: o primeiro (o mais importante)
+    // leva a linha inteira - senao sobra um buraco no fim da grade
+    const meios = cartoes.filter((c) => !c.largo);
+    cartoes.forEach((c) => {
+      const bloco = cartao(c);
+      if (c === meios[0] && meios.length % 2 === 1) bloco.dataset.largo = "sim";
+      grade.append(bloco);
+    });
     no.append(grade);
   }
+  for (const g of s.graficos ?? []) {
+    const figura = criarGrafico(g);
+    if (figura) no.append(figura);
+  }
   for (const l of s.listas ?? []) {
-    const bloco = lista(l);
+    const bloco = lista(l, `${s.app}:${l.titulo}`);
     if (bloco) no.append(bloco);
   }
   return no;
@@ -241,8 +493,13 @@ function desenhar() {
   atualizarQuando(t.atualizadoEm);
 
   const partes = [];
-  const emDestaque = t.computadores.length ? destaqueDaTela(t) : null;
-  if (emDestaque) partes.push(destaque(emDestaque));
+  if (!t.computadores.length) {
+    partes.push(aviso("O computador ainda não mandou os números",
+      "Deixe o DumTech Hub aberto no computador: em até 1 minuto eles aparecem aqui."));
+  } else if (estaAntigo(t.atualizadoEm)) {
+    partes.push(aviso("O computador pode estar desligado",
+      `Estes números são de ${haQuanto(t.atualizadoEm)}. Abra o Hub no computador para atualizar.`));
+  }
 
   if (t.computadores.length > 1) {
     const chips = el("div", "chips");
@@ -259,16 +516,15 @@ function desenhar() {
     partes.push(chips);
   }
 
-  if (!t.computadores.length) {
-    partes.push(aviso("O computador ainda não mandou os números",
-      "Deixe o DumTech Hub aberto no computador: em até 1 minuto eles aparecem aqui."));
-  } else if (estaAntigo(t.atualizadoEm)) {
-    partes.push(aviso("O computador pode estar desligado",
-      `Estes números são de ${haQuanto(t.atualizadoEm)}. Abra o Hub no computador para atualizar.`));
-  }
+  // o numero que abre a tela e, logo abaixo, o que precisa do dono hoje
+  const inicio = t.computadores.length ? aberturaDaTela(t) : null;
+  if (inicio?.destaque) partes.push(blocoDeDestaque(inicio.secao, true));
+  else if (inicio?.cartao) partes.push(aberturaSimples(inicio.cartao));
+  // so o Hub que conhece alertas (formato 2) pode dizer "tudo em dia"
+  if (t.formato >= 2 && t.secoes.length) partes.push(atencao(alertasDaTela(t)));
 
   for (const s of t.secoes) {
-    partes.push(secao(s, moduloDoCodigo(s.app), s === t.secoes[0] ? emDestaque : null));
+    partes.push(secao(s, moduloDoCodigo(s.app), inicio && s === inicio.secao ? inicio : null));
   }
 
   // comprou agora: o celular ja sabe (a licenca vem na hora), o numero vem
@@ -288,6 +544,7 @@ function desenhar() {
 
   // a entrada e da primeira vez: um numero que muda nao pode fazer a tela
   // inteira piscar de novo
+  const primeira = !jaEntrou;
   if (!jaEntrou) {
     jaEntrou = true;
     partes.forEach((no, i) => {
@@ -298,6 +555,8 @@ function desenhar() {
 
   tela.replaceChildren(...partes);
   tela.setAttribute("aria-busy", "false");
+  // os graficos precisam da largura de verdade: desenham depois de entrar
+  pintarTudo(tela, { animar: primeira });
   montarModulos(t.secoes);
 }
 
@@ -419,7 +678,10 @@ navModulos.addEventListener("scroll", () => {
 }, { passive: true });
 
 addEventListener("scroll", aoRolar, { passive: true });
-addEventListener("resize", () => { medirBarra(); medirSecoes(); acompanhar(); bordasDoMenu(); });
+addEventListener("resize", () => {
+  medirBarra(); medirSecoes(); acompanhar(); bordasDoMenu();
+  pintarTudo(tela); // girou o aparelho: o grafico redesenha na largura nova
+});
 if (typeof ResizeObserver === "function") new ResizeObserver(medirBarra).observe(barra);
 medirBarra();
 

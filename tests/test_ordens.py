@@ -111,7 +111,7 @@ class EsteiraTestCase(OrdensBase):
         ordem = self._ordem()
         with self.assertRaises(OrdemError) as erro:
             self.repo.entregar(ordem.id)
-        self.assertIn("nao esta concluida", str(erro.exception))
+        self.assertIn("não está concluída", str(erro.exception))
 
     def test_entrega_encerra_a_esteira(self) -> None:
         ordem = self._ate_concluir(self._ordem())
@@ -306,11 +306,11 @@ class ComprovanteTestCase(OrdensBase):
     def test_entrada_de_item_sem_acessorio_diz_isso_em_vez_de_ficar_em_branco(self) -> None:
         """Ficou com o item do cliente: o papel registra que nada veio junto."""
         texto = entrada(self._ordem())
-        self.assertIn("Nenhum acessorio recebido", texto)
+        self.assertIn("Nenhum acessório recebido", texto)
 
     def test_orcamento_pendente_avisa_que_o_servico_espera_aprovacao(self) -> None:
         texto = entrada(self._ordem(valor=300.0))
-        self.assertIn("aprovacao do orcamento", " ".join(texto.split()))
+        self.assertIn("aprovação do orçamento", " ".join(texto.split()))
 
     def test_servico_ja_aprovado_no_balcao_nao_fala_de_aprovacao(self) -> None:
         """Lava-jato, lavanderia, chaveiro: cobra e faz. Nao ha o que aprovar.
@@ -356,13 +356,13 @@ class ComprovanteTestCase(OrdensBase):
         self.assertIn("Garantia (90 dias)", texto)
         # a bobina quebra em 40 colunas, entao a frase da garantia e conferida
         # sem as quebras - senao o teste prende o texto no comprimento de hoje
-        self.assertIn("Nao cobre mau uso", " ".join(texto.split()))
+        self.assertIn("Não cobre mau uso", " ".join(texto.split()))
         self.assertTrue(all(len(linha) <= 40 for linha in texto.splitlines()))
 
     def test_entrega_sem_garantia_diz_que_nao_tem(self) -> None:
         ordem = self._ate_concluir(self._ordem(garantia_dias=0))
         texto = entrega(self.repo.entregar(ordem.id))
-        self.assertIn("Sem garantia para este servico", texto)
+        self.assertIn("Sem garantia para este serviço", texto)
 
 
 class MigracaoTestCase(unittest.TestCase):

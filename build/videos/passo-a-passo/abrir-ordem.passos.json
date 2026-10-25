@@ -1,0 +1,29 @@
+{
+ "duracao": 37.2,
+ "passos": [
+  {
+   "t": 2.8,
+   "texto": "Abra Ordens: a Bancada mostra cada serviço"
+  },
+  {
+   "t": 5.1,
+   "texto": "Clique em Nova ordem"
+  },
+  {
+   "t": 6.7,
+   "texto": "Cliente, telefone, defeito e aparelho"
+  },
+  {
+   "t": 16.8,
+   "texto": "Adicione a peça como Material (sai do estoque na entrega)"
+  },
+  {
+   "t": 23.7,
+   "texto": "E o serviço"
+  },
+  {
+   "t": 31.6,
+   "texto": "Salve: a ordem entra na Bancada"
+  }
+ ]
+}

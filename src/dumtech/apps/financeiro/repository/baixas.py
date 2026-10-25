@@ -62,21 +62,21 @@ class BaixasMixin:
         """Registra um pagamento/recebimento. Sem `valor`, quita o que falta."""
         lancamento = self.obter(lancamento_id)
         if lancamento is None:
-            raise FinanceiroError("Lancamento nao encontrado.")
+            raise FinanceiroError("Lançamento não encontrado.")
 
         valor = dinheiro(valor) or lancamento.em_aberto
         if valor <= 0:
             raise FinanceiroError("O valor da baixa precisa ser maior que zero.")
         if maior_que(valor, lancamento.em_aberto):
             raise FinanceiroError(
-                f"Faltam apenas {fmt.moeda(lancamento.em_aberto)} neste lancamento."
+                f"Faltam apenas {fmt.moeda(lancamento.em_aberto)} neste lançamento."
             )
 
         data = data or hoje_iso()
         if ler_data(data) is None:
-            raise FinanceiroError("Data da baixa invalida.")
+            raise FinanceiroError("Data da baixa inválida.")
         if conta_id and self.obter_conta(conta_id) is None:
-            raise FinanceiroError("Conta nao encontrada.")
+            raise FinanceiroError("Conta não encontrada.")
 
         momento = agora()
         with self.db.transaction() as conn:
@@ -118,7 +118,7 @@ class BaixasMixin:
         """Desfaz UMA baixa; as outras do mesmo lancamento continuam valendo."""
         row = self.db.query_one("SELECT * FROM baixas WHERE id = ?", (baixa_id,))
         if row is None:
-            raise FinanceiroError("Baixa nao encontrada.")
+            raise FinanceiroError("Baixa não encontrada.")
         lancamento = self.obter(row["lancamento_id"])
         with self.db.transaction() as conn:
             conn.execute("DELETE FROM baixas WHERE id = ?", (baixa_id,))
@@ -128,7 +128,7 @@ class BaixasMixin:
     def estornar_tudo(self, lancamento_id: int) -> None:
         lancamento = self.obter(lancamento_id)
         if lancamento is None:
-            raise FinanceiroError("Lancamento nao encontrado.")
+            raise FinanceiroError("Lançamento não encontrado.")
         with self.db.transaction() as conn:
             conn.execute("DELETE FROM baixas WHERE lancamento_id = ?", (lancamento_id,))
             conn.execute(
@@ -139,7 +139,7 @@ class BaixasMixin:
         """O botao de um clique: quita tudo, ou desfaz tudo se ja estava pago."""
         lancamento = self.obter(lancamento_id)
         if lancamento is None:
-            raise FinanceiroError("Lancamento nao encontrado.")
+            raise FinanceiroError("Lançamento não encontrado.")
         if lancamento.pago:
             self.estornar_tudo(lancamento_id)
         else:

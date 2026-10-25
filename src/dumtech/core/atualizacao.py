@@ -106,20 +106,20 @@ def motivo_da_recusa(pacote: Any) -> str:
     tempo todo; o endereco e que nao batia.
     """
     if not isinstance(pacote, dict):
-        return "o servidor nao mandou manifesto"
+        return "o servidor não mandou manifesto"
     dados = assinatura.abrir(pacote)
     if not dados:
-        return "a assinatura da DumTech nao confere"
+        return "a assinatura da DumTech não confere"
     if dados.get("uso") != USO:
-        return f"o manifesto e de outro uso ({dados.get('uso')!r})"
+        return f"o manifesto é de outro uso ({dados.get('uso')!r})"
     if not str(dados.get("versao") or ""):
-        return "o manifesto veio sem numero de versao"
+        return "o manifesto veio sem número de versão"
     bruta = str(dados.get("url") or "")
     if not endereco_confiavel(bruta):
         return (
-            f"o endereco {bruta!r} nao e o desta instalacao "
-            f"({url_base()!r}). Este Hub foi compilado com outro endereco de "
-            "loja: instale a versao nova uma vez pelo site e o botao volta a "
+            f"o endereço {bruta!r} não é o desta instalação "
+            f"({url_base()!r}). Este Hub foi compilado com outro endereço de "
+            "loja: instale a versão nova uma vez pelo site e o botão volta a "
             "funcionar sozinho."
         )
     return "motivo desconhecido"
@@ -235,9 +235,9 @@ class AtualizacaoService:
         """Baixa e confere. Devolve o caminho do instalador pronto para rodar."""
         if not aviso.automatica or not aviso.sha256:
             raise AtualizacaoError(
-                "Esta atualizacao precisa ser baixada no site.", "sem_assinatura")
+                "Esta atualização precisa ser baixada no site.", "sem_assinatura")
         if not endereco_confiavel(aviso.url):
-            raise AtualizacaoError("Endereco de atualizacao invalido.", "endereco")
+            raise AtualizacaoError("Endereço de atualização inválido.", "endereco")
 
         destino = pasta_de_download(self.paths) / f"DumTech-Hub-Setup-{aviso.versao}.exe"
         if destino.exists() and self._conferir(destino) == aviso.sha256:
@@ -251,7 +251,7 @@ class AtualizacaoService:
             with urllib.request.urlopen(pedido, timeout=30) as resposta:
                 total = int(resposta.headers.get("Content-Length") or aviso.tamanho or 0)
                 if total and total > TAMANHO_MAXIMO:
-                    raise AtualizacaoError("O arquivo da atualizacao e grande demais.", "tamanho")
+                    raise AtualizacaoError("O arquivo da atualização é grande demais.", "tamanho")
                 with tempfile.NamedTemporaryFile(
                     dir=destino.parent, prefix="baixando-", suffix=".part", delete=False
                 ) as arquivo:
@@ -264,7 +264,7 @@ class AtualizacaoService:
                             break
                         baixado += len(pedaco)
                         if baixado > TAMANHO_MAXIMO:
-                            raise AtualizacaoError("O arquivo da atualizacao e grande demais.", "tamanho")
+                            raise AtualizacaoError("O arquivo da atualização é grande demais.", "tamanho")
                         arquivo.write(pedaco)
                         conta.update(pedaco)
                         if progresso is not None:
@@ -277,13 +277,13 @@ class AtualizacaoService:
             if temporario is not None:
                 temporario.unlink(missing_ok=True)
             raise AtualizacaoError(
-                "Nao foi possivel baixar a atualizacao. Confira a internet e tente de novo.",
+                "Não foi possível baixar a atualização. Confira a internet e tente de novo.",
                 "download") from erro
 
         if conta.hexdigest() != aviso.sha256:
             temporario.unlink(missing_ok=True)
             raise AtualizacaoError(
-                "O arquivo baixado nao e o oficial - nada foi instalado.",
+                "O arquivo baixado não é o oficial - nada foi instalado.",
                 "impressao_digital")
 
         destino.unlink(missing_ok=True)
@@ -317,7 +317,7 @@ class AtualizacaoService:
             )
         except OSError as erro:
             raise AtualizacaoError(
-                f"O Windows nao deixou abrir o instalador: {erro}", "windows") from erro
+                f"O Windows não deixou abrir o instalador: {erro}", "windows") from erro
 
     def limpar(self, manter: str = "") -> None:
         """Apaga instaladores velhos (e restos de download interrompido)."""

@@ -51,7 +51,7 @@ class AppRegistry:
                 module = importlib.import_module(path)
                 manifest = getattr(module, "MANIFEST")
                 if not hasattr(module, "create_window"):
-                    raise AttributeError("modulo sem create_window()")
+                    raise AttributeError("módulo sem create_window()")
                 entries.append(AppEntry(manifest=manifest, module=module))
             except Exception as exc:  # aplicativo com defeito nao derruba o Hub
                 logger.exception("Falha ao carregar aplicativo %s", path)

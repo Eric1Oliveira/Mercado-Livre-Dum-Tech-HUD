@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime, timedelta
 from sqlite3 import Row
 
 from ...core.errors import RegraError
@@ -15,7 +15,7 @@ CANCELADA = "cancelada"
 DEVOLVIDA = "devolvida"
 
 STATUS_LABEL = {
-    CONCLUIDA: "Concluida",
+    CONCLUIDA: "Concluída",
     PENDENTE: "Pendente",
     CANCELADA: "Cancelada",
     DEVOLVIDA: "Devolvida",
@@ -347,3 +347,102 @@ class ResumoVendas:
     caixa: Caixa | None = None
     ultimas: list[Venda] = field(default_factory=list)
     por_forma: list[tuple[str, float]] = field(default_factory=list)
+
+
+@dataclass
+class DiaDeVenda:
+    """Um dia do historico: o total e o total ate a hora de agora."""
+
+    total: float = 0.0
+    #: o mesmo dia so ate o relogio de hoje - e o que torna a comparacao justa.
+    #: Calculado nos dias que se comparam com hoje; nos outros, e o total.
+    ate_agora: float = 0.0
+    vendas: int = 0
+
+
+@dataclass
+class MaisVendido:
+    descricao: str
+    quantidade: float
+    valor: float
+    unidade: str = "UN"
+    casas: int = 0
+
+
+@dataclass
+class IndicadoresVendas:
+    """Numero com contexto: o ritmo do dia, a tendencia e o que mais sai.
+
+    A comparacao e sempre justa: hoje (ate agora) contra o mesmo dia da semana
+    passada ATE A MESMA HORA; uma janela de dias contra a janela anterior com o
+    dia correspondente cortado no mesmo horario; o mes contra o mesmo pedaco
+    do mes passado. Canceladas nao contam (como no resumo).
+    """
+
+    agora: datetime
+    #: "AAAA-MM-DD" -> o dia (so dias com venda)
+    dias: dict[str, DiaDeVenda] = field(default_factory=dict)
+    #: vendido em cada hora (0-23): hoje e o mesmo dia da semana passada
+    horas_hoje: list[float] = field(default_factory=lambda: [0.0] * 24)
+    horas_base: list[float] = field(default_factory=lambda: [0.0] * 24)
+    mes: float = 0.0
+    vendas_mes: int = 0
+    #: do dia 1 ate o mesmo dia, no mes passado
+    mes_anterior: float = 0.0
+    vendas_mes_anterior: int = 0
+    pendentes: float = 0.0
+    vendas_pendentes: int = 0
+    mais_vendidos: list[MaisVendido] = field(default_factory=list)
+    #: como pagaram no mes, da forma mais usada para a menos usada
+    por_forma: list[tuple[str, float]] = field(default_factory=list)
+
+    @property
+    def hoje(self) -> date:
+        return self.agora.date()
+
+    @property
+    def base(self) -> date:
+        """O dia de comparacao do "hoje": o mesmo dia da semana passada."""
+        return self.hoje - timedelta(days=7)
+
+    def dia(self, quando: date) -> DiaDeVenda:
+        return self.dias.get(quando.isoformat(), DiaDeVenda())
+
+    @property
+    def total_hoje(self) -> float:
+        return self.dia(self.hoje).total
+
+    @property
+    def vendas_hoje(self) -> int:
+        return self.dia(self.hoje).vendas
+
+    @property
+    def base_ate_agora(self) -> float:
+        return self.dia(self.base).ate_agora
+
+    def janela(self, dias: int) -> float:
+        """Vendido nos `dias` que terminam hoje (hoje conta ate agora)."""
+        return round(sum(self.dia(self.hoje - timedelta(days=n)).total for n in range(dias)), 2)
+
+    def janela_anterior(self, dias: int) -> float:
+        """A janela de mesmo tamanho logo antes - com o dia que corresponde a
+        hoje cortado no mesmo horario, senao hoje (pela metade) sempre perde."""
+        fim = self.hoje - timedelta(days=dias)
+        cheios = sum(self.dia(fim - timedelta(days=n)).total for n in range(1, dias))
+        return round(cheios + self.dia(fim).ate_agora, 2)
+
+    @staticmethod
+    def _ticket(total: float, vendas: int) -> float:
+        return round(total / vendas, 2) if vendas else 0.0
+
+    @property
+    def ticket_hoje(self) -> float:
+        return self._ticket(self.total_hoje, self.vendas_hoje)
+
+    @property
+    def ticket_mes(self) -> float:
+        return self._ticket(self.mes, self.vendas_mes)
+
+    @property
+    def ticket_mes_anterior(self) -> float:
+        return self._ticket(self.mes_anterior, self.vendas_mes_anterior)

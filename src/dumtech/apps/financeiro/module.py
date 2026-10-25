@@ -8,11 +8,11 @@ MANIFEST = AppManifest(
     app_id="financeiro",
     name="DumTech Financeiro",
     short_name="Financeiro",
-    description="Fluxo de caixa: projecao, parcelamento, baixa parcial e contas.",
+    description="Fluxo de caixa: projeção, parcelamento, baixa parcial e contas.",
     version="2.0.0",
     icon="money",
     accent="#2E9E6B",
-    category="Gestao",
+    category="Gestão",
 )
 
 
@@ -60,9 +60,9 @@ def avisos(paths, config):
         encontrados.append(Aviso(
             app_id=MANIFEST.app_id, tipo="conta_vencendo",
             titulo=f"{fmt.contagem(len(proximos), 'conta')} "
-                   f"vence{'m' if len(proximos) > 1 else ''} em ate "
+                   f"vence{'m' if len(proximos) > 1 else ''} em até "
                    f"{fmt.dias(prazo)}",
-            detalhe=f"{fmt.moeda(total)} - a proxima: {primeiro.descricao}, "
+            detalhe=f"{fmt.moeda(total)} - a próxima: {primeiro.descricao}, "
                     f"{fmt.data(primeiro.vencimento)}",
             tom="warning", urgencia=60, icone="money", quantidade=len(proximos),
         ))
@@ -95,30 +95,7 @@ def indicadores(paths):
 
 
 def celular(paths):
-    """No celular: o que vence, o que atrasou e o saldo."""
-    from ...core import celular as c
-    from ...ui import format as fmt
-    from .database import open_database
-    from .repository import FinanceiroRepository
+    """No celular: o saldo e o dia em que ele acaba, o que atrasou e o que vence."""
+    from .celular import secao
 
-    banco = open_database(paths.app_db(MANIFEST.app_id))
-    try:
-        r = FinanceiroRepository(banco).resumo(limite_listas=c.LIMITE_LISTA)
-    finally:
-        banco.close()
-
-    def conta(item):
-        return c.linha(item.descricao_completa,
-                       f"{'Receber' if item.e_receita else 'Pagar'} · vence {fmt.data(item.vencimento)}",
-                       fmt.moeda(item.em_aberto), "ok" if item.e_receita else "")
-    return c.secao(MANIFEST.app_id, "Financeiro", peso=80, cartoes=[
-        c.cartao("Saldo nas contas", fmt.moeda(r.saldo_contas)),
-        c.cartao("A receber no mês", fmt.moeda(r.a_receber_mes), f"{fmt.moeda(r.recebido_mes)} já recebido", "ok"),
-        c.cartao("A pagar no mês", fmt.moeda(r.a_pagar_mes), f"{fmt.moeda(r.pago_mes)} já pago"),
-        c.cartao("Atrasado", fmt.moeda(r.vencidos_valor),
-                 fmt.contagem(r.vencidos_quantidade, "conta", "contas"),
-                 "perigo" if r.vencidos_quantidade else ""),
-    ], listas=[
-        c.lista("Atrasadas", [conta(item) for item in r.atrasados], "Nada atrasado."),
-        c.lista("Próximos vencimentos", [conta(item) for item in r.proximos], "Nada vencendo."),
-    ])
+    return secao(paths, MANIFEST)

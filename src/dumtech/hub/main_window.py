@@ -36,6 +36,7 @@ from ..core import celular as nucleo_celular
 from ..core import confirmacoes, eventos
 from ..core.avisos import Config as AvisosConfig
 from ..core import comunicados as comunicados_core
+from ..core import novidades as novidades_core
 from ..core.comunicados import ComunicadosService
 from ..core.config import Settings
 from ..core.conta import Conta, ContaService
@@ -83,6 +84,7 @@ from .views.config_view import ConfigView
 from .views.empresa_view import EmpresaView
 from .views.home_view import HomeView
 from .views.mensagens_view import MensagensView
+from .views.novidades_dialog import NovidadesDialog
 from .views.pagamentos_view import PagamentosView
 from .views.license_view import LicenseView
 from .workspace import Workspace
@@ -177,7 +179,11 @@ class HubWindow(QMainWindow):
 
         self._build_shortcuts()
         self.refresh_rail()
-        self._go(PAGINA_BOAS_VINDAS if self._primeiro_acesso() else PAGINA_INICIO)
+        primeiro_acesso = self._primeiro_acesso()
+        if primeiro_acesso:
+            # quem acabou de instalar nao tem "antes": nada mudou para ele
+            novidades_core.marcar_vista(self.settings, __version__)
+        self._go(PAGINA_BOAS_VINDAS if primeiro_acesso else PAGINA_INICIO)
 
         # a partir daqui o Hub fica sabendo quando um modulo mexe no dado do
         # outro - e quem estava aberto do outro lado recarrega sozinho
@@ -231,7 +237,7 @@ class HubWindow(QMainWindow):
         linha.addWidget(self.marca)
         linha.addSpacing(Space.xxl + 4)
 
-        self.item_inicio = NavTab("Inicio")
+        self.item_inicio = NavTab("Início")
         self.item_inicio.clicked.connect(lambda: self._go(PAGINA_INICIO))
         linha.addWidget(self.item_inicio)
         linha.addSpacing(2)
@@ -242,7 +248,7 @@ class HubWindow(QMainWindow):
         # o botao de atualizar mora ANTES da busca: e o unico recado do topo
         # que pede acao, e some assim que o cliente atualiza
         self.botao_atualizar = Button("Atualizar", "in", "primary")
-        self.botao_atualizar.setToolTip("Ha uma versao nova do DumTech Hub")
+        self.botao_atualizar.setToolTip("Há uma versão nova do DumTech Hub")
         self.botao_atualizar.setVisible(False)
         self.botao_atualizar.clicked.connect(self.abrir_atualizacao)
         linha.addWidget(self.botao_atualizar, 0, Qt.AlignmentFlag.AlignVCenter)
@@ -260,7 +266,7 @@ class HubWindow(QMainWindow):
         linha.addSpacing(Space.sm + 2)
 
         self.perfil = ProfileButton()
-        self.perfil.setToolTip("Empresa, licenca e configuracoes")
+        self.perfil.setToolTip("Empresa, licença e configurações")
         self.perfil.clicked.connect(self._abrir_menu_perfil)
         linha.addWidget(self.perfil, 0, Qt.AlignmentFlag.AlignVCenter)
 
@@ -284,8 +290,8 @@ class HubWindow(QMainWindow):
             return item
 
         acao("Minha empresa", "home", lambda: self._ir_para_config(self.empresa_view))
-        self.item_licenca = acao("Licenca", "key", lambda: self._go(PAGINA_LICENCA), True)
-        self.item_config = acao("Configuracoes", "wrench",
+        self.item_licenca = acao("Licença", "key", lambda: self._go(PAGINA_LICENCA), True)
+        self.item_config = acao("Configurações", "wrench",
                                 lambda: self._go(PAGINA_CONFIG), True)
         acao("Backup", "shield", lambda: self._ir_para_config(self.backup_view))
         acao("Ver no celular", "phone", self.abrir_celular)
@@ -293,7 +299,7 @@ class HubWindow(QMainWindow):
         self.menu_perfil.addSeparator()
         self.acao_tema = acao("Tema claro", "sun", self._toggle_theme)
         self.menu_perfil.addSeparator()
-        self.rotulo_versao = self.menu_perfil.addAction(f"DumTech Hub  ·  versao {__version__}")
+        self.rotulo_versao = self.menu_perfil.addAction(f"DumTech Hub  ·  versão {__version__}")
         self.rotulo_versao.setEnabled(False)
 
     def _abrir_menu_perfil(self) -> None:
@@ -316,7 +322,7 @@ class HubWindow(QMainWindow):
         preenchida = empresa is not None and empresa.preenchida
         total = len(self.registry.available())
         sub = (fmt.contagem(total, "sistema ativo", "sistemas ativos")
-               if total else "Ative a sua licenca")
+               if total else "Ative a sua licença")
         logo = None
         if preenchida:
             caminho = empresa.caminho_logo(get_paths())
@@ -513,7 +519,7 @@ class HubWindow(QMainWindow):
         self.config_view.add_secao("Pagamentos", "money", self.pagamentos_view)
         self.avisos_view = AvisosView(self.config_avisos, self.registry)
         self.avisos_view.alterada.connect(self.home_view.refresh)
-        self.config_view.add_secao("Avisos do Inicio", "alert", self.avisos_view)
+        self.config_view.add_secao("Avisos do Início", "alert", self.avisos_view)
         self.config_view.add_secao("Mensagens", "chat", self.mensagens_view)
         self.config_view.add_secao("Backup", "shield", self.backup_view)
         self.about_view = AboutView()
@@ -588,15 +594,15 @@ class HubWindow(QMainWindow):
 
         escuro = self.theme_manager.palette.is_dark if self.theme_manager else True
         comandos += [
-            Command("Inicio", "Hub", "home", run=lambda: self._go(PAGINA_INICIO)),
-            Command("Licenca", "Hub", "key", run=lambda: self._go(PAGINA_LICENCA)),
-            Command("Configuracoes", "Hub", "wrench",
+            Command("Início", "Hub", "home", run=lambda: self._go(PAGINA_INICIO)),
+            Command("Licença", "Hub", "key", run=lambda: self._go(PAGINA_LICENCA)),
+            Command("Configurações", "Hub", "wrench",
                     run=lambda: self._go(PAGINA_CONFIG)),
             Command("Minha empresa", "Hub", "home",
                     run=lambda: self._ir_para_config(self.empresa_view)),
             Command("Pagamentos e chave Pix", "Hub", "money",
                     run=lambda: self._ir_para_config(self.pagamentos_view)),
-            Command("Avisos do Inicio", "Hub", "alert",
+            Command("Avisos do Início", "Hub", "alert",
                     run=lambda: self._ir_para_config(self.avisos_view)),
             Command("Mensagens de WhatsApp", "Hub", "chat",
                     run=lambda: self._ir_para_config(self.mensagens_view)),
@@ -656,7 +662,7 @@ class HubWindow(QMainWindow):
         nome = entrada.manifest.short_name if entrada else app_id
         if perguntar and not confirmar(
             self, f"Fechar {nome}",
-            f"Fechar o {nome}? O que estiver digitado e nao salvo se perde.",
+            f"Fechar o {nome}? O que estiver digitado e não salvo se perde.",
             chave=confirmacoes.FECHAR_MODULO,
             rotulo_ok="Fechar", perigoso=False,
         ):
@@ -1239,6 +1245,8 @@ class HubWindow(QMainWindow):
             return
         if self.stack.currentIndex() != PAGINA_INICIO or not self.isActiveWindow():
             return
+        if self._contar_novidades():
+            return  # um pop-up por abertura: o anuncio fica para a proxima
         item = comunicados_core.para_anunciar(
             self.comunicados_service.listar(), self.settings)
         if item is None:
@@ -1252,6 +1260,21 @@ class HubWindow(QMainWindow):
                 self.abrir_anuncio(item.link)
             else:
                 self.abrir_loja()
+
+    def _contar_novidades(self) -> bool:
+        """Depois de atualizar: o que mudou - so no que esta pessoa usa.
+
+        Mesma hora boa do anuncio (quem chama ja conferiu). Sem nada que diga
+        respeito aos modulos dela, a versao conta como vista em silencio.
+        """
+        modulos = {e.app_id: e.manifest for e in self.registry.available()}
+        itens = novidades_core.pendentes(self.settings, __version__, modulos)
+        novidades_core.marcar_vista(self.settings, __version__)
+        if not itens:
+            return False
+        self._anunciou = True
+        NovidadesDialog(itens, __version__, modulos, self).exec()
+        return True
 
     def _preparar_proximo(self) -> None:
         """Monta, um por vez, os aplicativos que a pessoa ainda nao abriu.

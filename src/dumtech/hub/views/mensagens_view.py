@@ -52,7 +52,7 @@ class MensagensView(QWidget):
         raiz.setContentsMargins(0, 0, 0, 0)
         raiz.setSpacing(Space.lg)
         raiz.addWidget(
-            label("O WhatsApp abre com o texto pronto - quem envia e voce.",
+            label("O WhatsApp abre com o texto pronto - quem envia é você.",
                   "subtitle")
         )
 
@@ -191,7 +191,7 @@ class MensagensView(QWidget):
         if sobrando:
             nomes = ", ".join("{" + campo + "}" for campo in sobrando)
             self.alerta.setText(
-                f"{nomes} nao existe nesta mensagem e vai sair em branco."
+                f"{nomes} não existe nesta mensagem e vai sair em branco."
             )
         else:
             self.alerta.setText("")

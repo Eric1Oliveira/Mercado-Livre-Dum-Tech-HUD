@@ -3,9 +3,15 @@
    Plus Jakarta Sans), desenhado para uma pergunta só: "como está o meu dia?"
 
    A LEITURA, DE CIMA PARA BAIXO
-     1. O número do dia, grande, sem moldura — é a primeira coisa que existe.
-     2. O que precisa de atenção (atrasos, vencimentos), com cor.
-     3. O resto, por módulo, em cartões calmos.
+     1. O número do dia, grande, sem moldura, com a comparação justa ("+18%
+        vs. sábado passado até 15:18") e o caminho até ele — o ritmo do dia.
+     2. "Precisa de você": o que cada módulo pede hoje, escrito como tarefa.
+     3. O resto, por módulo: números com contexto, gráficos e listas curtas.
+
+   OS GRÁFICOS FALAM UMA LÍNGUA SÓ
+     Violeta é o dado (hoje, a série que importa). Cinza é o contexto (a
+     semana passada, os outros dias). Verde, âmbar e vermelho só onde o
+     número É um estado — e sempre com seta, ícone ou texto junto.
 
    Feito para uma mão só, na luz do balcão ou no sol da rua: alvo de toque de
    44 px, nada que peça zoom, e tema claro/escuro à mão.
@@ -49,6 +55,23 @@
   --e1: 4px;  --e2: 8px;  --e3: 12px; --e4: 16px;
   --e5: 20px; --e6: 24px; --e7: 32px;
 
+  /* dados — validados (contraste e daltonismo) contra as duas superfícies */
+  --dado: #7353f6;
+  --dado-forte: #5b3fe0;
+  --dado-lavado: rgb(115 83 246 / .11);
+  --dado-trilho: #ebe7fd;
+  --contexto: #a9a9bd;
+  --contexto-forte: #8a8aa2;
+  --contexto-linha: #8a8aa2;
+  --grade: color-mix(in srgb, var(--tinta) 8%, transparent);
+  --eixo: color-mix(in srgb, var(--tinta) 22%, transparent);
+  --etapa-1: #ad9cfb;
+  --etapa-2: #8b72f8;
+  --etapa-3: #6a4bee;
+  --etapa-4: #4628bd;
+  --dica-fundo: #15151d;
+  --dica-tinta: #f3f3f8;
+
   color-scheme: light;
 }
 
@@ -74,6 +97,20 @@
     --perigo-fraco: #2e171b;
     --sombra: 0 1px 2px rgba(0, 0, 0, .4);
     --sombra-barra: 0 1px 0 var(--fio);
+    --dado: #9a83ff;
+    --dado-forte: #b3a2ff;
+    --dado-lavado: rgb(154 131 255 / .15);
+    --dado-trilho: #2a2447;
+    --contexto: #55556b;
+    --contexto-forte: #6e6e86;
+    --contexto-linha: #74748c;
+    --etapa-1: #4a3d93;
+    --etapa-2: #6551c9;
+    --etapa-3: #8f7aff;
+    --etapa-4: #c5baff;
+    --dica-fundo: #f3f3f8;
+    --dica-tinta: #15151d;
+    --periodo-ativo: #2b2b38;
     color-scheme: dark;
   }
 }
@@ -99,15 +136,33 @@
   --perigo-fraco: #2e171b;
   --sombra: 0 1px 2px rgba(0, 0, 0, .4);
   --sombra-barra: 0 1px 0 var(--fio);
+  --dado: #9a83ff;
+  --dado-forte: #b3a2ff;
+  --dado-lavado: rgb(154 131 255 / .15);
+  --dado-trilho: #2a2447;
+  --contexto: #55556b;
+  --contexto-forte: #6e6e86;
+  --contexto-linha: #74748c;
+  --etapa-1: #4a3d93;
+  --etapa-2: #6551c9;
+  --etapa-3: #8f7aff;
+  --etapa-4: #c5baff;
+  --dica-fundo: #f3f3f8;
+  --dica-tinta: #15151d;
+  --periodo-ativo: #2b2b38;
   color-scheme: dark;
 }
 
 /* ------------------------------------------------------------------ base --- */
 * { box-sizing: border-box; }
+/* escondido é escondido, mesmo em quem tem display próprio (linha de lista) */
+[hidden] { display: none !important; }
 
 html {
   -webkit-text-size-adjust: 100%;
   scroll-behavior: smooth;
+  /* sem o toque duplo que aproxima (o resto do "sem zoom": meta + js/sem-zoom.js) */
+  touch-action: manipulation;
   /* a barra tem duas faixas e altura variavel (entalhe do aparelho, menu de
      modulos): quem manda na conta e o JS, com ResizeObserver */
   --altura-barra: 60px;
@@ -122,7 +177,11 @@ body {
   font-family: "Plus Jakarta Sans", -apple-system, "Segoe UI", system-ui, sans-serif;
   font-size: 15px;
   line-height: 1.45;
+  /* nada pode alargar a pagina: no celular isso solta o zoom e o topo "foge".
+     `clip` nao cria rolagem propria (o sticky do topo continua valendo);
+     `hidden` fica de reserva para o Safari antigo */
   overflow-x: hidden;
+  overflow-x: clip;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   padding-bottom: env(safe-area-inset-bottom);
@@ -143,8 +202,23 @@ button { font: inherit; color: inherit; }
   border-radius: var(--raio-p);
 }
 
-/* números sempre alinhados: coluna de valores que não dança */
-.destaque-valor, .cartao-valor, .linha-valor { font-variant-numeric: tabular-nums; }
+/* Coluna de valores alinhada (listas, eixos, dica). Número grande sozinho
+   fica com os algarismos naturais da fonte: tabular deixa "121" frouxo. */
+.linha-valor, .linha-hora, .ranking-valor, .atencao-valor, .etapa-valor, .grafico-dica strong,
+.grafico-area text { font-variant-numeric: tabular-nums; }
+
+/* o que é só para leitor de tela (a tabela gêmea de cada gráfico) */
+.so-leitor {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
 
 /* ------------------------------------------------------------------ barra --- */
 .barra {
@@ -277,14 +351,22 @@ main {
 }
 
 /* --------------------------------------------------- o número do dia --- */
-/* Sem moldura de propósito: ele não é mais um cartão, é o assunto da tela. */
-.destaque {
+/* Sem moldura de propósito: ele não é mais um cartão, é o assunto da tela.
+   Embaixo dele, o caminho até ele (o gráfico) e as abas de período, perto do
+   polegar. */
+.abertura {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: var(--e1) 0 var(--e5);
+  padding: 0 0 var(--e5);
   border-bottom: 1px solid var(--fio);
 }
+.abertura-data {
+  margin: 0 0 var(--e4);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--tinta-fraca);
+}
+.destaque-corpo { display: flex; flex-direction: column; min-width: 0; }
 .destaque-rotulo {
   font-size: 11.5px;
   font-weight: 700;
@@ -293,16 +375,199 @@ main {
   color: var(--tinta-fraca);
 }
 .destaque-valor {
-  font-size: clamp(38px, 12vw, 46px);
+  font-size: clamp(38px, 12.5vw, 50px);
   font-weight: 800;
   line-height: 1.04;
   letter-spacing: -.035em;
-  margin-top: 2px;
+  margin-top: 4px;
+  white-space: nowrap;
 }
-.destaque-detalhe { font-size: 14px; color: var(--tinta-media); margin-top: var(--e1); }
-.destaque[data-tom="ok"] .destaque-valor { color: var(--ok); }
-.destaque[data-tom="aviso"] .destaque-valor { color: var(--aviso); }
-.destaque[data-tom="perigo"] .destaque-valor { color: var(--perigo); }
+/* passou de R$ 99 mil, de R$ 1 milhão: a letra encolhe, o número fica inteiro */
+.destaque-valor[data-tamanho="medio"] { font-size: clamp(34px, 11.5vw, 46px); }
+.destaque-valor[data-tamanho="longo"] { font-size: clamp(28px, 9.6vw, 40px); }
+/* venda nova: o número corre até o valor novo e acende por um instante */
+.destaque-valor.mudou { animation: chegou 1.4s cubic-bezier(.2, .7, .3, 1); }
+@keyframes chegou {
+  0%, 35% { color: var(--ok); }
+  100%    { color: var(--tinta); }
+}
+.destaque-corpo > .variacao { margin-top: var(--e2); }
+.destaque-detalhe { margin: var(--e1) 0 0; font-size: 14px; color: var(--tinta-media); }
+.abertura[data-tom="ok"] .destaque-valor { color: var(--ok); }
+.abertura[data-tom="aviso"] .destaque-valor { color: var(--aviso); }
+.abertura[data-tom="perigo"] .destaque-detalhe,
+.secao-destaque[data-tom="perigo"] .destaque-detalhe { color: var(--perigo); font-weight: 600; }
+.destaque-corpo > .grafico { margin-top: var(--e4); }
+
+/* o destaque de um módulo que não abre a tela: o mesmo desenho, menor */
+.secao-destaque {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: var(--e4);
+  margin-bottom: var(--e4);
+  border-bottom: 1px solid var(--fio);
+}
+.secao-destaque .destaque-valor,
+.secao-destaque .destaque-valor[data-tamanho] { font-size: 32px; }
+
+/* as abas do período: um corpo só, como um interruptor */
+.periodos {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 2px;
+  margin-top: var(--e4);
+  padding: 3px;
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--tinta) 6%, transparent);
+}
+.periodo {
+  min-height: 38px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--tinta-fraca);
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color .2s ease, background-color .2s ease;
+}
+.periodo[aria-selected="true"] {
+  background: var(--periodo-ativo, var(--superficie));
+  color: var(--tinta);
+  box-shadow: 0 1px 2px rgba(21, 21, 29, .1), 0 2px 8px -4px rgba(21, 21, 29, .2);
+}
+
+/* --------------------------------------------------- a comparação (delta) --- */
+/* A seta e o sinal dizem para onde foi; a cor só confirma se é boa notícia. */
+.variacao {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-size: 13px;
+  color: var(--tinta-fraca);
+}
+.delta {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tinta) 7%, transparent);
+  color: var(--tinta-media);
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: -.01em;
+  white-space: nowrap;
+}
+.delta[data-tom="ok"] { background: var(--ok-fraco); color: var(--ok); }
+.delta[data-tom="perigo"] { background: var(--perigo-fraco); color: var(--perigo); }
+
+/* ------------------------------------------------------ precisa de você --- */
+.atencao {
+  background: var(--superficie);
+  border: 1px solid var(--fio);
+  border-radius: var(--raio-g);
+  box-shadow: var(--sombra);
+  padding: var(--e4) var(--e4) var(--e2);
+}
+.atencao-topo { display: flex; align-items: center; gap: var(--e2); margin-bottom: var(--e1); }
+.atencao-topo h2 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: -.01em; }
+.atencao-contagem {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--perigo-fraco);
+  color: var(--perigo);
+  font-size: 12px;
+  font-weight: 800;
+}
+.atencao-contagem[data-tom="aviso"] { background: var(--aviso-fraco); color: var(--aviso); }
+.atencao-contagem[data-tom="ok"] { background: var(--ok-fraco); color: var(--ok); }
+.atencao-lista { list-style: none; margin: 0; padding: 0; }
+.atencao-lista li + li a { border-top: 1px solid var(--fio); }
+.atencao-lista a {
+  display: flex;
+  align-items: center;
+  gap: var(--e3);
+  min-height: 56px;
+  padding: var(--e2) 0;
+  color: inherit;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.atencao-lista a:active { opacity: .7; }
+.atencao-icone {
+  --cor: var(--aviso);
+  flex: none;
+  width: 34px;
+  height: 34px;
+  padding: 8px;
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--cor) 13%, transparent);
+  fill: none;
+  stroke: var(--cor);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.atencao-lista a[data-tom="perigo"] .atencao-icone { --cor: var(--perigo); }
+.atencao-lista a[data-tom="ok"] .atencao-icone { --cor: var(--ok); }
+.atencao-textos { display: flex; flex-direction: column; min-width: 0; flex: 1; gap: 1px; }
+.atencao-texto { font-weight: 600; font-size: 14.5px; line-height: 1.3; }
+.atencao-modulo { font-size: 12px; color: var(--tinta-fraca); }
+.atencao-valor { flex: none; font-weight: 700; font-size: 14px; color: var(--tinta-media); }
+.atencao-seta {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: var(--tinta-fraca);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.atencao[data-vazio] { padding-bottom: var(--e4); }
+.atencao-vazio {
+  display: flex;
+  align-items: center;
+  gap: var(--e2);
+  margin: var(--e2) 0 0;
+  color: var(--tinta-media);
+  font-size: 14px;
+}
+.atencao-vazio svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: var(--ok);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* "ver mais" de listas e alertas: o resto existe, só não empurra a tela */
+.ver-mais {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  margin-top: var(--e1);
+  border: 0;
+  border-radius: var(--raio-p);
+  background: none;
+  color: var(--violeta);
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.ver-mais:active { background: var(--violeta-fraco); }
 
 /* ------------------------------------------------------ fitas de rolagem --- */
 .chips {
@@ -510,9 +775,10 @@ main {
   border-radius: var(--raio-m);
   background: var(--superficie-2);
 }
-/* número ímpar de cartões: o primeiro (o mais importante) leva a linha toda */
-.cartoes > .cartao:first-child:nth-last-child(odd) { grid-column: 1 / -1; }
-.cartoes > .cartao:first-child:nth-last-child(odd) .cartao-valor { font-size: 25px; }
+/* linha inteira: o Hub pede (frase ou barra comprida) ou a tela decide -
+   número ímpar de cartões, o primeiro (o mais importante) se estica */
+.cartoes > .cartao[data-largo] { grid-column: 1 / -1; }
+.cartoes > .cartao[data-largo] .cartao-valor { font-size: 25px; }
 
 .cartao-rotulo {
   font-size: 12px;
@@ -523,24 +789,54 @@ main {
   white-space: nowrap;
 }
 .cartao-valor {
-  font-size: 21px;
+  font-size: 22px;
   font-weight: 800;
   letter-spacing: -.025em;
   line-height: 1.2;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
+/* valor comprido na meia largura encolhe a letra - número cortado mente */
+.cartao-valor[data-tamanho="medio"] { font-size: 19px; }
+.cartao-valor[data-tamanho="longo"] { font-size: 16.5px; letter-spacing: -.02em; }
+.cartao[data-largo] .cartao-valor[data-tamanho] { font-size: 25px; }
+/* frase de cartão quebra em até duas linhas: cortar no meio esconde o assunto */
 .cartao-detalhe {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   font-size: 12.5px;
+  line-height: 1.35;
   color: var(--tinta-fraca);
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
+.cartao > .variacao { margin: 3px 0 1px; font-size: 12px; line-height: 1.3; }
+.cartao > .variacao .delta { min-height: 20px; padding: 0 7px; font-size: 12px; }
+.cartao > .medidor { margin-top: var(--e2); }
 .cartao[data-tom="ok"] .cartao-valor { color: var(--ok); }
 .cartao[data-tom="aviso"] .cartao-valor { color: var(--aviso); }
 .cartao[data-tom="perigo"] .cartao-valor { color: var(--perigo); }
+
+/* ---------------------------------------------------------------- medidor --- */
+/* quanto de um todo já foi: o trilho é o mesmo tom, mais claro */
+.medidor {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--dado-trilho);
+  overflow: hidden;
+}
+.medidor > span {
+  display: block;
+  width: calc(var(--fracao, 0) * 100%);
+  height: 100%;
+  border-radius: 3px;
+  background: var(--dado);
+  transition: width .5s cubic-bezier(.32, .72, 0, 1);
+}
+.medidor[data-tom="aviso"] { background: var(--aviso-fraco); }
+.medidor[data-tom="aviso"] > span { background: var(--aviso); }
+.medidor[data-tom="perigo"] { background: var(--perigo-fraco); }
+.medidor[data-tom="perigo"] > span { background: var(--perigo); }
 
 /* ----------------------------------------------------------------- listas --- */
 .lista { margin-top: var(--e5); }
@@ -575,15 +871,15 @@ main {
 }
 .lista li[data-tom="perigo"] {
   border-left-color: var(--perigo);
-  background: color-mix(in srgb, var(--perigo-fraco) 55%, transparent);
+  background: color-mix(in srgb, var(--perigo-fraco) 40%, transparent);
 }
 .lista li[data-tom="aviso"] {
   border-left-color: var(--aviso);
-  background: color-mix(in srgb, var(--aviso-fraco) 55%, transparent);
+  background: color-mix(in srgb, var(--aviso-fraco) 40%, transparent);
 }
 .lista li[data-tom="ok"] {
   border-left-color: var(--ok);
-  background: color-mix(in srgb, var(--ok-fraco) 55%, transparent);
+  background: color-mix(in srgb, var(--ok-fraco) 40%, transparent);
 }
 .lista li[data-tom] + li[data-tom] { border-top: 0; }
 
@@ -604,6 +900,260 @@ main {
 .linha-valor { flex: none; font-weight: 700; font-size: 14.5px; letter-spacing: -.01em; }
 .lista li[data-tom="perigo"] .linha-valor { color: var(--perigo); }
 .lista li[data-tom="aviso"] .linha-valor { color: var(--aviso); }
+
+/* lista no tempo (hoje, vencimentos): a hora numa coluna própria, à esquerda */
+.linha-hora {
+  flex: none;
+  align-self: flex-start;
+  width: 46px;
+  padding-top: 1px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--tinta-media);
+  white-space: nowrap;
+}
+.lista ul[data-tempo] li { align-items: flex-start; }
+.lista ul[data-tempo] .linha-valor { align-self: flex-start; padding-top: 1px; }
+/* o que já passou sai da frente; o que está acontecendo leva o violeta */
+.lista li[data-estado="passou"] .linha-hora,
+.lista li[data-estado="passou"] .linha-textos,
+.lista li[data-estado="passou"] .linha-valor { opacity: .5; }
+.lista li[data-estado="agora"] .linha-hora { color: var(--violeta); }
+.selo-agora {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--violeta-fraco);
+  color: var(--violeta);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  vertical-align: 2px;
+}
+.lista li[data-tom="ok"] .selo-agora { background: var(--ok-fraco); color: var(--ok); }
+.linha-textos > .medidor { margin-top: 6px; max-width: 220px; }
+
+/* a ação que o celular resolve sozinho: abrir a conversa no WhatsApp */
+.acao-whatsapp {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  margin-top: var(--e2);
+  padding: 0 var(--e3) 0 10px;
+  border: 1px solid var(--fio-forte);
+  border-radius: 999px;
+  background: var(--superficie);
+  color: var(--violeta);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.acao-whatsapp:active { background: var(--violeta-fraco); }
+.acao-whatsapp svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* --------------------------------------------------------------- gráficos --- */
+.grafico { margin: var(--e5) 0 0; min-width: 0; }
+.grafico-titulo {
+  margin: 0 0 var(--e2);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--tinta-fraca);
+}
+.grafico-area {
+  position: relative;
+  /* arrastar de lado lê o gráfico; de cima para baixo continua rolando a tela */
+  touch-action: pan-y;
+  -webkit-tap-highlight-color: transparent;
+  outline-offset: 4px;
+}
+.grafico-linhas .grafico-area { min-height: 176px; }
+.grafico-colunas .grafico-area { min-height: 148px; }
+.grafico-area svg { display: block; overflow: visible; }
+.grafico-area text { font-family: inherit; }
+.grafico-area .marca,
+.grafico-area .rotulo-valor {
+  paint-order: stroke;
+  stroke: var(--fundo-grafico, var(--fundo));
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+.secao .grafico-area { --fundo-grafico: var(--superficie); }
+.grafico-area .marca { font-size: 10.5px; fill: var(--tinta-fraca); }
+.grafico-area .eixo-x text { font-size: 11px; font-weight: 500; fill: var(--tinta-fraca); }
+.grafico-area .fio { stroke: var(--grade); stroke-width: 1; }
+.grafico-area .eixo-zero { stroke: var(--eixo); stroke-width: 1; }
+.grafico-area .linha { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.grafico-area .linha.destaque { stroke: var(--dado); stroke-width: 2.5; }
+.grafico-area .linha.contexto { stroke: var(--contexto-linha); }
+.grafico-area .area { fill: var(--dado-lavado); }
+.grafico-area .area-negativa { fill: color-mix(in srgb, var(--perigo) 16%, transparent); }
+/* o ponto leva um anel da cor do fundo: continua legível em cima da linha */
+.grafico-area .ponto { stroke: var(--fundo-grafico, var(--fundo)); stroke-width: 2; }
+.secao .grafico-area .ponto { --fundo-grafico: var(--superficie); }
+.grafico-area .ponto.destaque { fill: var(--dado); }
+.grafico-area .ponto.contexto { fill: var(--contexto-linha); }
+.grafico-area .ponto.perigo { fill: var(--perigo); }
+.grafico-area .agora { stroke: var(--eixo); stroke-width: 1; }
+.grafico-area .rotulo-valor { font-size: 11.5px; font-weight: 700; fill: var(--tinta-media); }
+.grafico-area .barra { fill: var(--contexto); transition: fill .15s ease; }
+.grafico-area .barra.destaque { fill: var(--dado); }
+.grafico-area .barra.vazia { fill: var(--eixo); }
+.grafico-area .barra.ativa { fill: var(--contexto-forte); }
+.grafico-area .barra.destaque.ativa { fill: var(--dado-forte); }
+.grafico-area .mira { stroke: var(--tinta-fraca); stroke-width: 1; }
+.grafico-area .mira-ponto { fill: var(--contexto-linha); stroke: var(--fundo-grafico, var(--fundo)); stroke-width: 2; }
+.secao .grafico-area .mira-ponto { --fundo-grafico: var(--superficie); }
+.grafico-area .mira-ponto[data-serie="destaque"] { fill: var(--dado); }
+
+/* a dica: o valor manda, o nome acompanha */
+.grafico-dica {
+  position: absolute;
+  top: -6px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 230px;
+  padding: 7px 10px 8px;
+  border-radius: 10px;
+  background: var(--dica-fundo);
+  color: var(--dica-tinta);
+  font-size: 12.5px;
+  line-height: 1.35;
+  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, .35);
+  pointer-events: none;
+}
+.grafico-dica-titulo { font-size: 11.5px; font-weight: 600; opacity: .72; }
+.grafico-dica-linha { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.grafico-dica-linha strong { font-weight: 800; }
+.grafico-dica-nome { opacity: .72; }
+
+/* chave de série: um traço curto, como a própria linha */
+.legenda-chave {
+  flex: none;
+  display: inline-block;
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--contexto-linha);
+}
+.legenda-chave[data-serie="destaque"] { background: var(--dado); }
+.grafico-dica .legenda-chave[data-serie="destaque"] { background: var(--dado-forte); }
+.grafico-legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--e1) var(--e4);
+  margin: var(--e2) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12.5px;
+  color: var(--tinta-media);
+}
+.grafico-legenda li { display: inline-flex; align-items: center; gap: 7px; }
+.legenda-valor { font-weight: 700; color: var(--tinta); font-variant-numeric: tabular-nums; }
+
+/* o desenho entrando, uma vez só: a linha se traça, as colunas sobem */
+.grafico-area svg.entrando .linha.desenha {
+  stroke-dasharray: var(--comprimento, 900);
+  stroke-dashoffset: var(--comprimento, 900);
+  animation: tracar 1s cubic-bezier(.32, .72, 0, 1) .1s forwards;
+}
+@keyframes tracar { to { stroke-dashoffset: 0; } }
+.grafico-area svg.entrando .area,
+.grafico-area svg.entrando .area-negativa { animation: surgir .6s ease .4s both; }
+.grafico-area svg.entrando .ponto,
+.grafico-area svg.entrando .rotulo-valor { animation: surgir .35s ease .85s both; }
+.grafico-area svg.entrando .barra {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: crescer .55s cubic-bezier(.32, .72, 0, 1) var(--atraso, 0ms) both;
+}
+@keyframes surgir { from { opacity: 0; } }
+@keyframes crescer { from { transform: scaleY(0); } }
+
+/* ---------------------------------------------------------------- ranking --- */
+.ranking-itens { list-style: none; margin: 0; padding: 0; }
+.ranking-itens li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--e3);
+  row-gap: 6px;
+  padding: 9px 0;
+}
+.ranking-itens li + li { border-top: 1px solid var(--fio); }
+.ranking-rotulo {
+  font-weight: 600;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ranking-barra { grid-column: 1 / -1; }
+.ranking-valor { font-size: 14px; font-weight: 700; text-align: right; }
+.ranking-barra {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--dado-trilho);
+  overflow: hidden;
+}
+.ranking-barra > span {
+  display: block;
+  width: calc(var(--fracao, 0) * 100%);
+  height: 100%;
+  border-radius: 3px;
+  background: var(--dado);
+}
+.ranking-detalhe {
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tinta-fraca);
+}
+
+/* ----------------------------------------------------------------- etapas --- */
+/* uma barra só, cortada pelas etapas (2 px de fundo entre elas); a legenda
+   leva o número - a cor nunca diz sozinha */
+.etapas-barra {
+  display: flex;
+  gap: 2px;
+  height: 12px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.etapas-barra > span { flex: 1 1 0; min-width: 6px; }
+[data-etapa="1"] { background: var(--etapa-1); }
+[data-etapa="2"] { background: var(--etapa-2); }
+[data-etapa="3"] { background: var(--etapa-3); }
+[data-etapa="4"] { background: var(--etapa-4); }
+.etapas-legenda {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  margin: var(--e3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.etapas-legenda li { display: flex; align-items: center; gap: var(--e2); min-width: 0; font-size: 13px; }
+.etapa-chave { flex: none; width: 10px; height: 10px; border-radius: 3px; }
+.etapa-nome { flex: 1; min-width: 0; color: var(--tinta-media); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.etapa-valor { font-weight: 800; }
 
 /* módulo comprado agora, número ainda a caminho */
 .a-caminho { border-style: dashed; box-shadow: none; }

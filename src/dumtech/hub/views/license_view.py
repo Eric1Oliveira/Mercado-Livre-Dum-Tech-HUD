@@ -58,7 +58,7 @@ class LicenseView(QWidget):
 
         titulos = QVBoxLayout()
         titulos.setSpacing(2)
-        titulos.addWidget(label("Licenca", "title"))
+        titulos.addWidget(label("Licença", "title"))
         self.subtitulo = label("", "subtitle")
         titulos.addWidget(self.subtitulo)
         raiz.addLayout(titulos)
@@ -71,7 +71,7 @@ class LicenseView(QWidget):
 
         self.card_apps = Card()
         cabeca_apps = QHBoxLayout()
-        cabeca_apps.addWidget(label("Aplicativos desta licenca", "section"), 1)
+        cabeca_apps.addWidget(label("Aplicativos desta licença", "section"), 1)
         self.botao_adquirir = Button("Adquirir novo produto", "cart", "primary")
         self.botao_adquirir.setToolTip("Abre a loja DumTech no navegador")
         self.botao_adquirir.clicked.connect(self.adquirir.emit)
@@ -98,11 +98,11 @@ class LicenseView(QWidget):
 
         coluna = QVBoxLayout()
         coluna.setSpacing(6)
-        coluna.addWidget(label("Ativar licenca", "section"))
+        coluna.addWidget(label("Ativar licença", "section"))
         explicacao = label(
-            "Digite a chave que voce recebeu ao comprar os aplicativos DumTech. "
-            "A internet e necessaria apenas neste momento: depois de ativada, a "
-            "licenca fica gravada neste computador e o programa funciona offline.",
+            "Digite a chave que você recebeu ao comprar os aplicativos DumTech. "
+            "A internet é necessária apenas neste momento: depois de ativada, a "
+            "licença fica gravada neste computador e o programa funciona offline.",
             "muted",
         )
         explicacao.setWordWrap(True)
@@ -132,9 +132,9 @@ class LicenseView(QWidget):
     def _montar_dados(self) -> Card:
         card = Card()
         cabecalho = QHBoxLayout()
-        cabecalho.addWidget(label("Licenca deste computador", "section"), 1)
+        cabecalho.addWidget(label("Licença deste computador", "section"), 1)
 
-        self.botao_verificar = Button("Verificar licenca", "refresh")
+        self.botao_verificar = Button("Verificar licença", "refresh")
         self.botao_verificar.setToolTip(
             "Consulta a DumTech de novo - use depois de comprar um novo aplicativo"
         )
@@ -142,7 +142,7 @@ class LicenseView(QWidget):
         cabecalho.addWidget(self.botao_verificar)
 
         self.botao_remover = Button("Trocar chave", "close", "ghost")
-        self.botao_remover.setToolTip("Remove a licenca deste computador e libera a vaga")
+        self.botao_remover.setToolTip("Remove a licença deste computador e libera a vaga")
         self.botao_remover.clicked.connect(self.remover)
         cabecalho.addWidget(self.botao_remover)
         card.body.addLayout(cabecalho)
@@ -165,16 +165,16 @@ class LicenseView(QWidget):
         if ativa and atual.bloqueio:
             # a chave continua aqui: quando a DumTech reativar, "Verificar" devolve tudo
             self.subtitulo.setText(
-                str(atual.extras.get("mensagem") or "A DumTech bloqueou esta licenca.")
+                str(atual.extras.get("mensagem") or "A DumTech bloqueou esta licença.")
             )
         elif ativa:
             total = len(atual.entitlements)
             plural = "aplicativo liberado" if total == 1 else "aplicativos liberados"
             self.subtitulo.setText(f"{atual.customer}  -  {total} {plural}")
         elif atual.is_expired:
-            self.subtitulo.setText("A licenca deste computador venceu")
+            self.subtitulo.setText("A licença deste computador venceu")
         else:
-            self.subtitulo.setText("Nenhuma licenca ativada neste computador")
+            self.subtitulo.setText("Nenhuma licença ativada neste computador")
 
         self._preencher_dados(atual)
         self._preencher_apps(atual)
@@ -187,13 +187,13 @@ class LicenseView(QWidget):
                 widget.setParent(None)
                 widget.deleteLater()
 
-        origem = "Instalacao local (desenvolvimento)" if atual.is_local else "DumTech online"
+        origem = "Instalação local (desenvolvimento)" if atual.is_local else "DumTech online"
         linhas = [
             ("Chave", atual.key or "-"),
             ("Cliente", atual.customer or "-"),
             ("Computador", atual.machine or machine_id()),
             ("Ativada em", fmt.data_hora(atual.activated_at)),
-            ("Ultima verificacao", fmt.data_hora(atual.last_check)),
+            ("Última verificação", fmt.data_hora(atual.last_check)),
             ("Validade", self._validade(atual)),
             ("Origem", origem),
             ("Computadores", f"{atual.used_machines} de {atual.max_machines}"),
@@ -220,12 +220,12 @@ class LicenseView(QWidget):
     def _validade(atual: License) -> str:
         """Prazo e plano na mesma linha: 'Assinatura ate 31/12/2027'."""
         if not atual.expires_at:
-            return "Vitalicia" if atual.tipo == "vitalicia" else "Sem prazo"
+            return "Vitalícia" if atual.tipo == "vitalicia" else "Sem prazo"
         quando = fmt.data(atual.expires_at)
         if atual.tipo == "assinatura":
-            return f"Assinatura ate {quando}"
+            return f"Assinatura até {quando}"
         if atual.tipo == "teste":
-            return f"Teste ate {quando}"
+            return f"Teste até {quando}"
         return quando
 
     def _preencher_apps(self, atual: License) -> None:
@@ -255,11 +255,11 @@ class LicenseView(QWidget):
                 # quem nao tem: experimenta de graca ou compra, na mesma linha
                 if em_teste:
                     dias = atual.dias_de_teste(app)
-                    caixa.addWidget(Pill(f"Teste gratis  ·  {fmt.contagem(dias, 'dia', 'dias')}", "accent"))
+                    caixa.addWidget(Pill(f"Teste grátis  ·  {fmt.contagem(dias, 'dia', 'dias')}", "accent"))
                 elif atual.teste_acabou(app):
                     caixa.addWidget(Pill("Teste encerrado", "muted"))
                 elif atual.ativa and not atual.bloqueio:
-                    testar = Button("Testar 7 dias gratis", "", "ghost")
+                    testar = Button("Testar 7 dias grátis", "", "ghost")
                     testar.clicked.connect(lambda _=False, a=app: self.testar(a))
                     caixa.addWidget(testar)
                 botao = Button("Comprar", "cart", "primary" if em_teste else "")
@@ -292,7 +292,7 @@ class LicenseView(QWidget):
     def ativar(self) -> None:
         chave = normalize_key(self.campo_chave.text())
         if not chave:
-            self._mostrar_aviso("Digite a chave da licenca.", "warning")
+            self._mostrar_aviso("Digite a chave da licença.", "warning")
             return
 
         self._ocupado(True, "Falando com a DumTech...")
@@ -306,7 +306,7 @@ class LicenseView(QWidget):
     def testar(self, app_id: str) -> None:
         """Libera 7 dias gratis do modulo. Precisa de internet so agora."""
         self._testando = app_id
-        self._ocupado(True, f"Liberando o teste gratis de {self._nome_do_app(app_id)}...")
+        self._ocupado(True, f"Liberando o teste grátis de {self._nome_do_app(app_id)}...")
         tasks.executar(self, lambda: self.license_service.iniciar_teste(app_id),
                        self._teste_liberado, self._falha)
 
@@ -317,11 +317,11 @@ class LicenseView(QWidget):
         self.licenca_alterada.emit()
         if licenca.teste_ativo(app):
             self._mostrar_aviso(
-                f"Pronto: {self._nome_do_app(app)} liberado por 7 dias. Ele ja esta na barra de cima. "
-                "Gostou? O botao Comprar fica aqui e dentro do modulo.", "success")
+                f"Pronto: {self._nome_do_app(app)} liberado por 7 dias. Ele já está na barra de cima. "
+                "Gostou? O botão Comprar fica aqui e dentro do módulo.", "success")
         else:
-            self._mostrar_aviso("O servidor aceitou, mas o teste ainda nao chegou. Clique em "
-                                "Verificar licenca em instantes.", "warning")
+            self._mostrar_aviso("O servidor aceitou, mas o teste ainda não chegou. Clique em "
+                                "Verificar licença em instantes.", "warning")
 
     def verificar(self) -> None:
         self._entitlements_antes = tuple(self.license_service.current.entitlements)
@@ -333,16 +333,16 @@ class LicenseView(QWidget):
         resposta = QMessageBox.question(
             self,
             "Trocar chave",
-            f"Remover a licenca {atual.key} deste computador?\n\n"
-            "Os aplicativos ficarao bloqueados ate uma nova ativacao. "
-            "Os dados ja cadastrados continuam guardados no computador.",
+            f"Remover a licença {atual.key} deste computador?\n\n"
+            "Os aplicativos ficarão bloqueados até uma nova ativação. "
+            "Os dados já cadastrados continuam guardados no computador.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
         if resposta != QMessageBox.StandardButton.Yes:
             return
 
-        self._ocupado(True, "Removendo a licenca...")
+        self._ocupado(True, "Removendo a licença...")
         tasks.executar(
             self, self.license_service.deactivate, self._remocao_concluida, self._falha_remocao
         )
@@ -353,7 +353,7 @@ class LicenseView(QWidget):
         self.campo_chave.clear()
         total = len(licenca.entitlements)
         self._mostrar_aviso(
-            f"Licenca ativada para {licenca.customer}: {total} aplicativo(s) liberado(s).",
+            f"Licença ativada para {licenca.customer}: {total} aplicativo(s) liberado(s).",
             "success",
         )
         self.refresh()
@@ -370,15 +370,15 @@ class LicenseView(QWidget):
 
         if novos:
             nomes = ", ".join(self._nome_do_app(app) for app in novos)
-            self._mostrar_aviso(f"Licenca conferida. Liberado agora: {nomes}.", "success")
+            self._mostrar_aviso(f"Licença conferida. Liberado agora: {nomes}.", "success")
         elif perdidos:
             nomes = ", ".join(self._nome_do_app(app) for app in perdidos)
-            self._mostrar_aviso(f"Licenca conferida. Nao esta mais liberado: {nomes}.", "warning")
+            self._mostrar_aviso(f"Licença conferida. Não está mais liberado: {nomes}.", "warning")
         else:
             total = len(licenca.entitlements)
             self._mostrar_aviso(
-                f"Licenca conferida com a DumTech: {total} aplicativo(s) liberado(s). "
-                "Nada mudou desde a ultima vez.",
+                f"Licença conferida com a DumTech: {total} aplicativo(s) liberado(s). "
+                "Nada mudou desde a última vez.",
                 "success",
             )
 
@@ -388,7 +388,7 @@ class LicenseView(QWidget):
 
     def _remocao_concluida(self, _resultado) -> None:
         self._ocupado(False)
-        self._mostrar_aviso("Licenca removida deste computador.", "warning")
+        self._mostrar_aviso("Licença removida deste computador.", "warning")
         self.refresh()
         self.licenca_alterada.emit()
 
@@ -396,15 +396,15 @@ class LicenseView(QWidget):
         self._ocupado(False)
         self._mostrar_aviso(str(erro), "warning" if isinstance(erro, SemInternet) else "danger")
         if not isinstance(erro, LicenseError):
-            QMessageBox.warning(self, "Nao foi possivel validar a licenca", str(erro))
+            QMessageBox.warning(self, "Não foi possível validar a licença", str(erro))
 
     def _falha_remocao(self, erro: Exception) -> None:
         self._ocupado(False)
         resposta = QMessageBox.question(
             self,
-            "Nao foi possivel avisar a DumTech",
-            f"{erro}\n\nRemover a licenca somente deste computador mesmo assim?\n"
-            "(a vaga continuara ocupada ate voce falar com a DumTech)",
+            "Não foi possível avisar a DumTech",
+            f"{erro}\n\nRemover a licença somente deste computador mesmo assim?\n"
+            "(a vaga continuará ocupada até você falar com a DumTech)",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )

@@ -1,0 +1,29 @@
+{
+ "duracao": 28.0,
+ "passos": [
+  {
+   "t": 2.8,
+   "texto": "Abra Ordens: cada faixa é uma etapa"
+  },
+  {
+   "t": 5.1,
+   "texto": "Selecione a ordem: o botão já diz o próximo passo"
+  },
+  {
+   "t": 6.8,
+   "texto": "O cliente autorizou? Registrar aprovação"
+  },
+  {
+   "t": 13.8,
+   "texto": "Serviço pronto? Marcar como concluída"
+  },
+  {
+   "t": 17.5,
+   "texto": "O cliente veio buscar? Entregar ao cliente"
+  },
+  {
+   "t": 20.9,
+   "texto": "Quem retirou e como pagou: a garantia começa hoje"
+  }
+ ]
+}

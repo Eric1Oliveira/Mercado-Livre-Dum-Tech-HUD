@@ -60,7 +60,7 @@ class ContasView(QWidget):
         self.mostrar_inativas.stateChanged.connect(self.refresh)
         linha.addWidget(self.mostrar_inativas, 0, Qt.AlignmentFlag.AlignVCenter)
 
-        self.botao_transferir = Button("Transferencia", "swap")
+        self.botao_transferir = Button("Transferência", "swap")
         self.botao_transferir.clicked.connect(self._transferir)
         linha.addWidget(self.botao_transferir)
 
@@ -78,7 +78,7 @@ class ContasView(QWidget):
 
         texto = QVBoxLayout()
         texto.setSpacing(0)
-        texto.addWidget(label("Dinheiro disponivel", "muted"))
+        texto.addWidget(label("Dinheiro disponível", "muted"))
         texto.addWidget(label("Somando todas as contas ativas", "dim"))
         linha.addLayout(texto, 1)
 
@@ -110,10 +110,10 @@ class ContasView(QWidget):
 
     def _card_transferencias(self) -> Card:
         card = Card(padding=Space.lg)
-        card.body.addWidget(label("Transferencias recentes", "section"))
+        card.body.addWidget(label("Transferências recentes", "section"))
         self.tabela_transferencias = DataTable(["Data", "De", "Para", "Motivo", "Valor"])
         self.tabela_transferencias.set_empty_message(
-            "Nenhuma transferencia registrada."
+            "Nenhuma transferência registrada."
         )
         card.body.addWidget(self.tabela_transferencias)
         return card
@@ -209,7 +209,7 @@ class ContasView(QWidget):
             return
         if conta.ativo:
             self.repository.inativar_conta(conta.id)
-            recado = f"'{conta.nome}' saiu da lista. O historico continua guardado."
+            recado = f"'{conta.nome}' saiu da lista. O histórico continua guardado."
         else:
             self.repository.reativar_conta(conta.id)
             recado = f"'{conta.nome}' voltou para a lista."

@@ -24,6 +24,21 @@ O Hub é gravado numa janela de notebook (1280×720) para tudo aparecer grande.
 | `clientes.mp4` | Painel, novo cliente com CEP que preenche o endereço, ficha |
 | `agenda.mp4` | Semana hora a hora, novo compromisso, lista |
 
+## Outras lojas
+
+```powershell
+.venv\Scripts\python tools\videos\gravar.py --loja mercado   # hub, estoque, vendas, financeiro
+.venv\Scripts\python tools\videos\gravar.py --loja beauty    # hub, clientes, agenda
+```
+
+| Loja | Módulos | Saída | Dados / roteiros |
+|---|---|---|---|
+| **Mercado & Cia** (mercadinho) | Estoque, Vendas, Financeiro | `build\videos\mercado-e-cia\` | `semente_mercado.py` / `roteiros_mercado.py` |
+| **Beauty & Cia** (salão) | Clientes, Agenda | `build\videos\beauty-e-cia\` | `semente_beauty.py` / `roteiros_beauty.py` |
+
+A lista de lojas fica em `LOJAS`, no `gravar.py`. Uma semente com `MODULOS` limita o que
+a licença local do vídeo libera.
+
 ## Peças
 
 - `semente.py` — a empresa de demonstração (assistência técnica com loja).

@@ -29,7 +29,7 @@ class EstoqueWindow(AppWindow):
             EntradasView(self.repository, contas=self.context.contas),
         )
         self.movimentacoes_view = self.add_view(
-            "Movimentacoes", "swap", MovimentacoesView(self.repository)
+            "Movimentações", "swap", MovimentacoesView(self.repository)
         )
         self.contagem_view = self.add_view("Contagem", "list", ContagemView(self.repository))
 

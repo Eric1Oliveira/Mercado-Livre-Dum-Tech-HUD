@@ -53,11 +53,11 @@ class MovimentacoesMixin:
         if qtd <= 0:
             raise EstoqueError("A quantidade precisa ser maior que zero.")
         if tipo not in (TIPO_ENTRADA, TIPO_SAIDA):
-            raise EstoqueError("Tipo de movimentacao invalido.")
+            raise EstoqueError("Tipo de movimentação inválido.")
 
         produto = self.obter(produto_id)
         if produto is None:
-            raise EstoqueError("Selecione um produto valido.")
+            raise EstoqueError("Selecione um produto válido.")
 
         anterior = quantidade(produto.quantidade)
         custo_unitario = dinheiro(custo_unitario)
@@ -68,8 +68,8 @@ class MovimentacoesMixin:
             if maior_que(qtd, anterior):
                 raise EstoqueError(
                     f"Estoque insuficiente para '{produto.nome}'. "
-                    f"Disponivel: {quantidade_texto(anterior, produto.unidade)}, "
-                    f"saida pedida: {quantidade_texto(qtd, produto.unidade)}."
+                    f"Disponível: {quantidade_texto(anterior, produto.unidade)}, "
+                    f"saída pedida: {quantidade_texto(qtd, produto.unidade)}."
                 )
             atual = quantidade(anterior - qtd)
             novo_custo = produto.preco_custo
@@ -98,11 +98,11 @@ class MovimentacoesMixin:
         """Corrige o saldo para o que foi contado de verdade."""
         novo_saldo = quantidade(novo_saldo)
         if novo_saldo < 0:
-            raise EstoqueError("O saldo contado nao pode ser negativo.")
+            raise EstoqueError("O saldo contado não pode ser negativo.")
 
         produto = self.obter(produto_id)
         if produto is None:
-            raise EstoqueError("Selecione um produto valido.")
+            raise EstoqueError("Selecione um produto válido.")
 
         anterior = quantidade(produto.quantidade)
         if igual(anterior, novo_saldo):
@@ -145,9 +145,9 @@ class MovimentacoesMixin:
                 raise EstoqueError(f"Linha {posicao}: a quantidade precisa ser maior que zero.")
             produto = self.obter(item.produto_id)
             if produto is None:
-                raise EstoqueError(f"Linha {posicao}: produto nao encontrado.")
+                raise EstoqueError(f"Linha {posicao}: produto não encontrado.")
             if dinheiro(item.custo_unitario) < 0:
-                raise EstoqueError(f"Linha {posicao}: o custo nao pode ser negativo.")
+                raise EstoqueError(f"Linha {posicao}: o custo não pode ser negativo.")
             preparados.append((produto, qtd, dinheiro(item.custo_unitario)))
 
         registros: list[Movimentacao] = []

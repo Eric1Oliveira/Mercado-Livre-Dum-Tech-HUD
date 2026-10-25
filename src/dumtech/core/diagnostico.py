@@ -39,10 +39,10 @@ def relatorio(erro: BaseException, versao: str = "", contexto: str = "") -> str:
     """O texto completo: vai para o log e para a area de transferencia."""
     linhas = [
         "=" * LARGURA,
-        "DumTech Hub - relatorio de erro",
+        "DumTech Hub - relatório de erro",
         "=" * LARGURA,
         f"Quando:   {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}",
-        f"Versao:   {versao or 'desconhecida'}",
+        f"Versão:   {versao or 'desconhecida'}",
         f"Sistema:  {platform.system()} {platform.release()}",
         f"Python:   {platform.python_version()}",
         f"Programa: {'executavel' if getattr(sys, 'frozen', False) else 'codigo'}",

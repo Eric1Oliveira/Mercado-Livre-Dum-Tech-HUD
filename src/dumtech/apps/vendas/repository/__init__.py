@@ -8,6 +8,7 @@ porque o modulo deixou de ser um cadastro de vendas e virou um PDV.
     pagamentos.py   varias formas na mesma compra, e o troco
     caixa.py        abertura, sangria, suprimento e fechamento do dia
     devolucoes.py   o cliente voltou e trouxe parte (ou tudo) da compra
+    indicadores.py  o ritmo do dia e a tendencia (o celular mostra)
 
 O `catalogo` e opcional: com ele, o item vem do DumTech Estoque e a venda da
 baixa; sem ele, o item e texto livre e nada mais acontece.
@@ -21,13 +22,14 @@ from ....core.database import Database
 from ..models import Pagamento, ResumoVendas, Venda
 from .caixa import CaixaMixin
 from .devolucoes import DevolucoesMixin
+from .indicadores import IndicadoresMixin
 from .pagamentos import PagamentosMixin, pagamento_unico
 from .vendas import VendasMixin
 
 __all__ = ["VendasRepository", "Pagamento", "Venda", "ResumoVendas", "pagamento_unico"]
 
 
-class VendasRepository(VendasMixin, PagamentosMixin, CaixaMixin, DevolucoesMixin):
+class VendasRepository(VendasMixin, PagamentosMixin, CaixaMixin, DevolucoesMixin, IndicadoresMixin):
     """Tudo que o DumTech Vendas sabe fazer."""
 
     def __init__(self, database: Database, catalogo=None) -> None:
@@ -52,7 +54,7 @@ class VendasRepository(VendasMixin, PagamentosMixin, CaixaMixin, DevolucoesMixin
             for pagamento in venda.pagamentos:
                 por_forma[pagamento.forma] = por_forma.get(pagamento.forma, 0.0) + pagamento.valor
             if not venda.pagamentos:  # venda antiga, de antes do PDV
-                chave = venda.forma_pagamento or "Nao informado"
+                chave = venda.forma_pagamento or "Não informado"
                 por_forma[chave] = por_forma.get(chave, 0.0) + venda.total
 
         devolvido = sum(

@@ -75,6 +75,31 @@ export function linkWhatsApp(telefone, texto) {
   return `https://wa.me/${numero}?text=${encodeURIComponent(texto)}`;
 }
 
+/**
+ * O recado de acompanhamento que o painel deixa pronto no WhatsApp (dá para
+ * mudar antes de mandar). Nenhum diz ao cliente o que o painel sabe do uso
+ * dele: é conversa de quem vende, não relatório.
+ */
+export function mensagemDeAcompanhamento(motivo, { nome = "", modulo = "" } = {}) {
+  const primeiroNome = String(nome || "").trim().split(/\s+/)[0] || "";
+  const ola = primeiroNome ? `Olá, ${primeiroNome}!` : "Olá!";
+  const textos = {
+    teste: `${ola} Como está sendo o teste do módulo ${modulo} no DumTech Hub? ` +
+           "Se quiser, te ajudo a configurar ou tiro qualquer dúvida.",
+    teste_fim: `${ola} O teste grátis do módulo ${modulo} terminou. Quer continuar usando? ` +
+               "Posso liberar para você agora mesmo.",
+    parado: `${ola} Passando para saber se está tudo certo com ${modulo ? `o módulo ${modulo}` : "o DumTech Hub"}. ` +
+            "Precisa de ajuda com alguma coisa?",
+    sumiu: `${ola} Passando para saber se está tudo certo com o DumTech Hub. ` +
+           "Precisa de ajuda com alguma coisa?",
+    celular: `${ola} Sabia que dá para acompanhar o dia da empresa pelo celular? ` +
+             "No DumTech Hub, abra o menu da empresa > Ver no celular e aponte a câmera para o QR Code.",
+    loja: `${ola} Posso te ajudar a escolher os módulos do DumTech Hub? ` +
+          "Se tiver qualquer dúvida sobre preço ou instalação, é só me chamar.",
+  };
+  return textos[motivo] || textos.sumiu;
+}
+
 export function linkEmail(email, assunto, texto) {
   const destino = String(email || "").trim();
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(destino)) return "";

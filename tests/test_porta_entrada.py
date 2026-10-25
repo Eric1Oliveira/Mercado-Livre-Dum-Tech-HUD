@@ -346,14 +346,14 @@ class HubPortaDeEntradaTestCase(unittest.TestCase):
         # sem licenca: o estado vazio e quem leva para a loja
         # o texto do Button vem com o espaco do icone na frente
         botoes = [b.text().strip() for b in hub.home_view.findChildren(Button)]
-        self.assertIn("Conhecer os modulos", botoes,
+        self.assertIn("Conhecer os módulos", botoes,
                       "sem o bloco, quem nao comprou ficou sem caminho para a loja")
 
         # e o sinal e mesmo o da loja, nao so um botao com nome parecido
         abriu: list[bool] = []
         hub.home_view.adquirir.connect(lambda: abriu.append(True))
         for botao in hub.home_view.findChildren(Button):
-            if botao.text().strip() == "Conhecer os modulos":
+            if botao.text().strip() == "Conhecer os módulos":
                 botao.click()
         self.assertTrue(abriu, "o botao nao abre a loja")
 

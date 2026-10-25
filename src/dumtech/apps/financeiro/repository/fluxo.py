@@ -93,6 +93,8 @@ class FluxoMixin:
             # o mes conta pela data da BAIXA: e quando o dinheiro andou
             recebido_mes=self._movimentado_no_mes(mes, "receita"),
             pago_mes=self._movimentado_no_mes(mes, "despesa"),
+            pago_fixas_mes=self._movimentado_no_mes(mes, "despesa", fixa=True),
+            pago_variaveis_mes=self._movimentado_no_mes(mes, "despesa", fixa=False),
             saldo_contas=self.saldo_total(),
             proximos=sorted(
                 (i for i in abertos if not i.vencido), key=lambda i: i.vencimento
@@ -102,19 +104,18 @@ class FluxoMixin:
             por_categoria=self._despesas_por_categoria(mes, limite_listas),
         )
 
-    def _movimentado_no_mes(self, mes: str, tipo: str) -> float:
-        return dinheiro(
-            self.db.scalar(
-                "SELECT COALESCE(SUM(b.valor), 0) FROM baixas b"
-                " JOIN lancamentos l ON l.id = b.lancamento_id"
-                " WHERE l.tipo = ? AND b.data LIKE ?",
-                (tipo, f"{mes}%"),
-                default=0.0,
-            )
-        )
+    def _movimentado_no_mes(self, mes: str, tipo: str, fixa: bool | None = None) -> float:
+        sql = ("SELECT COALESCE(SUM(b.valor), 0) FROM baixas b"
+               " JOIN lancamentos l ON l.id = b.lancamento_id"
+               " WHERE l.tipo = ? AND b.data LIKE ?")
+        params: list = [tipo, f"{mes}%"]
+        if fixa is not None:
+            sql += " AND l.fixa = ?"
+            params.append(int(fixa))
+        return dinheiro(self.db.scalar(sql, params, default=0.0))
 
     def _despesas_por_categoria(self, mes: str, limite: int) -> list[tuple[str, float]]:
-        """Para onde o dinheiro foi neste mes."""
+        """As despesas pagas neste mes, por categoria."""
         linhas = self.db.query(
             "SELECT COALESCE(NULLIF(TRIM(l.categoria), ''), 'Sem categoria') AS categoria,"
             " SUM(b.valor) AS total"

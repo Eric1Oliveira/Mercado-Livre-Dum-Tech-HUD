@@ -1,13 +1,25 @@
-"""Janela de cadastro/edicao de produto."""
+"""Janela de cadastro/edicao de produto.
+
+A foto fica ao lado da descricao, e nao numa linha so dela: a janela ja esta
+no limite da altura de um notebook de 768 px.
+"""
 
 from __future__ import annotations
 
-from PySide6.QtWidgets import QCheckBox, QWidget
+from PySide6.QtWidgets import QCheckBox, QFileDialog, QHBoxLayout, QMessageBox, QVBoxLayout, QWidget
 
+from ....ui.theme import Space
 from ....ui.widgets import form
+from ....ui.widgets.buttons import Button
+from ....ui.widgets.foto import FotoProduto
 from ....ui.widgets.form import FormDialog
-from ..models import UNIDADES, Produto, casas
+from .. import imagem
+from ..models import UNIDADES, EstoqueError, Produto, casas
 from ..repository import EstoqueRepository
+
+
+#: altura da foto = altura da descricao = dois botoes empilhados
+ALTURA_FOTO = 78
 
 
 class ProdutoDialog(FormDialog):
@@ -22,6 +34,9 @@ class ProdutoDialog(FormDialog):
         self.repository = repository
         self.produto = produto or Produto()
         self.editando = produto is not None
+        #: bytes prontos para gravar; so vai ao banco se `_imagem_mudou`
+        self._imagem = repository.imagem(self.produto.id) if self.produto.id else None
+        self._imagem_mudou = False
         super().__init__(
             "Editar produto" if self.editando else "Novo produto",
             "Preencha os dados do produto do seu estoque",
@@ -31,13 +46,13 @@ class ProdutoDialog(FormDialog):
 
         self.codigo = form.texto(self.produto.codigo, "Ex.: MOU-001")
         self.codigo_barras = form.texto(self.produto.codigo_barras, "Bipe ou digite o EAN")
-        self.add_row("Codigo", form.linha(self.codigo, "Codigo de barras", self.codigo_barras))
+        self.add_row("Código", form.linha(self.codigo, "Código de barras", self.codigo_barras))
 
         self.nome = form.texto(self.produto.nome, "Ex.: Mouse USB sem fio")
         self.add_row("Nome", self.nome)
 
         self.categoria = form.combo_sugestao(
-            self.produto.categoria, self.repository.categorias(), "Ex.: Perifericos"
+            self.produto.categoria, self.repository.categorias(), "Ex.: Periféricos"
         )
         self.unidade = form.escolha(
             [(f"{u.sigla} - {u.nome}", u.sigla) for u in UNIDADES.values()],
@@ -47,7 +62,7 @@ class ProdutoDialog(FormDialog):
         self.add_row("Categoria", form.linha(self.categoria, "Unidade", self.unidade))
 
         self.fornecedor = form.combo_sugestao(
-            self.produto.fornecedor, self.repository.fornecedores(), "De quem voce compra"
+            self.produto.fornecedor, self.repository.fornecedores(), "De quem você compra"
         )
         self.localizacao = form.combo_sugestao(
             self.produto.localizacao, self.repository.localizacoes(), "Ex.: Prateleira A3"
@@ -58,42 +73,95 @@ class ProdutoDialog(FormDialog):
         self.quantidade = form.quantidade(self.produto.quantidade, decimais)
         self.estoque_minimo = form.quantidade(self.produto.estoque_minimo, decimais)
         self.estoque_maximo = form.quantidade(self.produto.estoque_maximo, decimais)
+        # uma linha so: a janela precisa caber num notebook de 768 px
         self.add_row(
             "Quantidade",
             form.linha(
                 self.quantidade,
-                "Minimo",
+                "Estoque mínimo",
                 self.estoque_minimo,
-                "Maximo",
+                "Estoque máximo",
                 self.estoque_maximo,
             ),
         )
 
         self.preco_custo = form.dinheiro(self.produto.preco_custo)
         self.preco_venda = form.dinheiro(self.produto.preco_venda)
-        self.add_row("Custo medio", form.linha(self.preco_custo, "Venda", self.preco_venda))
+        self.add_row("Custo médio", form.linha(self.preco_custo, "Venda", self.preco_venda))
 
-        self.descricao = form.area(self.produto.descricao, "Detalhes do produto (opcional)")
-        self.add_row("Descricao", self.descricao)
+        self.descricao = form.area(
+            self.produto.descricao, "Detalhes do produto (opcional)", ALTURA_FOTO
+        )
+        self.add_row("Descrição", self._descricao_e_foto())
 
         if self.editando:
             self.ativo = QCheckBox("Produto ativo (aparece nas listas)")
             self.ativo.setChecked(self.produto.ativo)
             self.add_row("", self.ativo)
             self.add_note(
-                "O maximo e o nivel que voce quer ter em estoque: e dele que sai a "
-                "sugestao de quanto comprar. O custo medio se atualiza sozinho a cada "
-                "entrada com custo informado. Alterar a quantidade aqui gera um ajuste "
-                "no historico."
+                "Estoque mínimo é o ponto de recompra; estoque máximo é o nível que "
+                "você quer ter: é dele que sai a sugestão de quanto comprar. O custo "
+                "médio se atualiza sozinho a cada entrada com custo informado. Alterar "
+                "a quantidade aqui gera um ajuste no histórico."
             )
         else:
             self.add_note(
-                "O maximo e o nivel que voce quer ter em estoque: e dele que sai a "
-                "sugestao de quanto comprar. Deixe em zero se nao usar."
+                "Estoque mínimo é o ponto de recompra; estoque máximo é o nível que "
+                "você quer ter: é dele que sai a sugestão de quanto comprar. Deixe em "
+                "zero se não usar."
             )
         self.codigo.setFocus()
 
     # ------------------------------------------------------------------ campos
+    def _descricao_e_foto(self) -> QWidget:
+        caixa = QWidget()
+        linha = QHBoxLayout(caixa)
+        linha.setContentsMargins(0, 0, 0, 0)
+        linha.setSpacing(10)
+        linha.addWidget(self.descricao, 1)
+
+        self.foto = FotoProduto(ALTURA_FOTO, clicavel=True, parent=self)
+        self.foto.setToolTip("Imagem do produto - aparece no balcão do Vendas")
+        self.foto.clicado.connect(self._escolher_imagem)
+        linha.addWidget(self.foto)
+
+        botoes = QVBoxLayout()
+        botoes.setSpacing(Space.xs + 2)
+        self.botao_imagem = Button("Escolher imagem", "image")
+        self.botao_imagem.clicked.connect(self._escolher_imagem)
+        botoes.addWidget(self.botao_imagem)
+        self.botao_tirar_imagem = Button("Remover", "trash", "ghost")
+        self.botao_tirar_imagem.clicked.connect(self._remover_imagem)
+        botoes.addWidget(self.botao_tirar_imagem)
+        linha.addLayout(botoes)
+
+        self._mostrar_imagem()
+        return caixa
+
+    def _mostrar_imagem(self) -> None:
+        tem = self.foto.set_imagem(self._imagem)
+        self.botao_imagem.setText(f"  {'Trocar imagem' if tem else 'Escolher imagem'}")
+        self.botao_tirar_imagem.setEnabled(tem)
+
+    def _escolher_imagem(self) -> None:
+        caminho, _ = QFileDialog.getOpenFileName(
+            self, "Imagem do produto", "", imagem.FILTRO
+        )
+        if not caminho:
+            return
+        try:
+            self._imagem = imagem.preparar(caminho)
+        except EstoqueError as erro:
+            QMessageBox.warning(self, "Imagem do produto", str(erro))
+            return
+        self._imagem_mudou = True
+        self._mostrar_imagem()
+
+    def _remover_imagem(self) -> None:
+        self._imagem = None
+        self._imagem_mudou = True
+        self._mostrar_imagem()
+
     def _unidade_mudou(self) -> None:
         """Unidade de medida aceita fracao; unidade contavel, nao."""
         decimais = casas(self.unidade.currentData())
@@ -122,3 +190,5 @@ class ProdutoDialog(FormDialog):
             self.repository.atualizar(self.produto)
         else:
             self.repository.criar(self.produto)
+        if self._imagem_mudou:
+            self.repository.salvar_imagem(self.produto.id, self._imagem)

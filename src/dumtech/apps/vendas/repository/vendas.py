@@ -153,9 +153,9 @@ class VendasMixin:
 
         venda = self.obter(venda_id)
         if venda is None:
-            raise VendaError("Venda nao encontrada.")
+            raise VendaError("Venda não encontrada.")
         if venda.status == CANCELADA:
-            raise VendaError(f"A venda {venda.numero} ja esta cancelada.")
+            raise VendaError(f"A venda {venda.numero} já está cancelada.")
 
         self.db.execute(
             "UPDATE vendas SET status = ?, cancelada_em = ?, motivo_cancelamento = ?"
@@ -176,8 +176,8 @@ class VendasMixin:
         venda = self.obter(venda_id)
         if venda is not None and venda.status != CANCELADA and venda.itens:
             raise VendaError(
-                f"A venda {venda.numero} nao pode ser apagada. "
-                "Cancele a venda para manter o historico."
+                f"A venda {venda.numero} não pode ser apagada. "
+                "Cancele a venda para manter o histórico."
             )
         self.db.execute("DELETE FROM vendas WHERE id = ?", (venda_id,))
 
@@ -229,7 +229,7 @@ class VendasMixin:
             except RegraError as erro:
                 avisos.append(f"{item.descricao}: {erro}")
             except Exception as erro:  # noqa: BLE001 - o estoque nunca derruba a venda
-                avisos.append(f"{item.descricao}: nao foi possivel dar baixa ({erro})")
+                avisos.append(f"{item.descricao}: não foi possível dar baixa ({erro})")
         return avisos
 
     def _devolver_ao_estoque(
@@ -246,27 +246,27 @@ class VendasMixin:
                     item.produto_id, qtd, documento=documento, motivo=motivo
                 )
             except Exception as erro:  # noqa: BLE001
-                avisos.append(f"{item.descricao}: nao voltou ao estoque ({erro})")
+                avisos.append(f"{item.descricao}: não voltou ao estoque ({erro})")
         return avisos
 
     # ------------------------------------------------------------------ regras
     def _validar(self, venda: Venda) -> None:
         if not venda.numero.strip():
-            raise VendaError("Informe o numero da venda.")
+            raise VendaError("Informe o número da venda.")
         if not venda.itens:
             raise VendaError("Adicione pelo menos um item na venda.")
         for item in venda.itens:
             if not item.descricao.strip():
-                raise VendaError("Todo item precisa de uma descricao.")
+                raise VendaError("Todo item precisa de uma descrição.")
             if quantidade(item.quantidade) <= 0:
                 raise VendaError(f"A quantidade de '{item.descricao}' precisa ser maior que zero.")
         if dinheiro(venda.desconto) > venda.subtotal:
-            raise VendaError("O desconto nao pode ser maior que o total dos itens.")
+            raise VendaError("O desconto não pode ser maior que o total dos itens.")
         # regravar os itens apagaria as linhas da devolucao junto (CASCADE):
         # depois que mercadoria voltou, a venda vira historico
         if venda.id is not None and self.total_devolvido(venda.id) > 0:
             raise VendaError(
-                f"A venda {venda.numero} tem devolucao registrada e nao pode mais "
+                f"A venda {venda.numero} tem devolução registrada e não pode mais "
                 "ser alterada."
             )
         repetido = self.db.query_one(
@@ -274,4 +274,4 @@ class VendasMixin:
             (venda.numero.strip(), venda.id),
         )
         if repetido is not None:
-            raise VendaError(f"Ja existe uma venda com o numero {venda.numero}.")
+            raise VendaError(f"Já existe uma venda com o número {venda.numero}.")

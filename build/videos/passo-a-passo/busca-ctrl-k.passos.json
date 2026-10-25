@@ -1,0 +1,17 @@
+{
+ "duracao": 12.2,
+ "passos": [
+  {
+   "t": 2.8,
+   "texto": "Aperte Ctrl + K (ou clique em Buscar no Hub)"
+  },
+  {
+   "t": 4.4,
+   "texto": "Digite o que procura: uma tela ou uma ação"
+  },
+  {
+   "t": 7.3,
+   "texto": "Enter abre direto o que você escolheu"
+  }
+ ]
+}

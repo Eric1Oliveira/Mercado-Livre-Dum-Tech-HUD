@@ -438,6 +438,6 @@ class FormDialog(QDialog):
             if self.salvar() is False:
                 return  # a subclasse pediu para continuar aberta
         except Exception as erro:  # regra de negocio: avisa e mantem aberto
-            QMessageBox.warning(self, "Nao foi possivel salvar", str(erro))
+            QMessageBox.warning(self, "Não foi possível salvar", str(erro))
             return
         self.accept()

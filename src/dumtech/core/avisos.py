@@ -55,38 +55,38 @@ class Tipo:
     explicacao: str
     #: prazo em dias, quando o aviso tem um; None quando nao faz sentido
     dias: int | None = None
-    rotulo_dias: str = "Avisar com quantos dias de antecedencia"
+    rotulo_dias: str = "Avisar com quantos dias de antecedência"
     minimo: int = 1
     maximo: int = 90
 
 
 TIPOS: tuple[Tipo, ...] = (
     Tipo("compromisso_hoje", "agenda", "Compromissos de hoje",
-         "Os horarios marcados para hoje, com o proximo em destaque.",
+         "Os horários marcados para hoje, com o próximo em destaque.",
          dias=None),
     Tipo("aniversario_hoje", "clientes", "Aniversariantes",
-         "Quem faz aniversario hoje - motivo de ligacao que gera venda.",
+         "Quem faz aniversário hoje - motivo de ligação que gera venda.",
          dias=None),
     Tipo("estoque_baixo", "estoque", "Estoque baixo",
-         "Produtos que chegaram ao minimo que voce definiu.", dias=None),
+         "Produtos que chegaram ao mínimo que você definiu.", dias=None),
     Tipo("conta_vencendo", "financeiro", "Contas a vencer",
          "Contas a pagar e a receber chegando ao vencimento.",
-         dias=7, rotulo_dias="Avisar com quantos dias de antecedencia"),
+         dias=7, rotulo_dias="Avisar com quantos dias de antecedência"),
     Tipo("conta_vencida", "financeiro", "Contas vencidas",
          "O que passou do vencimento e continua em aberto.", dias=None),
     Tipo("proposta_parada", "orcamentos", "Propostas sem resposta",
-         "Propostas enviadas que o cliente ainda nao respondeu.",
+         "Propostas enviadas que o cliente ainda não respondeu.",
          dias=5, rotulo_dias="Cobrar depois de quantos dias sem resposta"),
     Tipo("proposta_vencendo", "orcamentos", "Propostas vencendo",
-         "Propostas cuja validade esta acabando.",
-         dias=3, rotulo_dias="Avisar com quantos dias de antecedencia"),
-    Tipo("os_atrasada", "ordens", "Ordens atrasadas",
-         "Ordens de servico que passaram do prazo combinado.", dias=None),
-    Tipo("os_para_retirar", "ordens", "Servicos parados na prateleira",
-         "Ordens prontas que o cliente ainda nao veio buscar.",
+         "Propostas cuja validade está acabando.",
+         dias=3, rotulo_dias="Avisar com quantos dias de antecedência"),
+    Tipo("os_atrasada", "ordens", "OS atrasadas",
+         "Ordens de Serviço que passaram do prazo combinado.", dias=None),
+    Tipo("os_para_retirar", "ordens", "Serviços parados na prateleira",
+         "OS prontas que o cliente ainda não veio buscar.",
          dias=2, rotulo_dias="Avisar depois de quantos dias prontas"),
     Tipo("venda_a_receber", "vendas", "Vendas a receber",
-         "Vendas fechadas que ainda nao foram pagas.", dias=None),
+         "Vendas fechadas que ainda não foram pagas.", dias=None),
 )
 POR_CHAVE = {tipo.chave: tipo for tipo in TIPOS}
 

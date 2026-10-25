@@ -1,0 +1,37 @@
+{
+ "duracao": 34.0,
+ "passos": [
+  {
+   "t": 2.8,
+   "texto": "Abra o Estoque pela aba no topo"
+  },
+  {
+   "t": 4.8,
+   "texto": "Vá em Produtos"
+  },
+  {
+   "t": 6.9,
+   "texto": "Clique em Novo produto"
+  },
+  {
+   "t": 8.7,
+   "texto": "Código interno e código de barras (dá para bipar)"
+  },
+  {
+   "t": 12.5,
+   "texto": "Nome, categoria e fornecedor"
+  },
+  {
+   "t": 19.3,
+   "texto": "Quantidade, estoque mínimo, custo e preço de venda"
+  },
+  {
+   "t": 25.2,
+   "texto": "Clique em Salvar"
+  },
+  {
+   "t": 27.2,
+   "texto": "Pronto: o produto já aparece na lista e no balcão"
+  }
+ ]
+}

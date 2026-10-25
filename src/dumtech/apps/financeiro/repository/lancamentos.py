@@ -79,6 +79,7 @@ class LancamentosMixin:
         categoria: str = "",
         conta_id: int = 0,
         limite: int = 500,
+        fixa: bool | None = None,
     ) -> list[Lancamento]:
         sql = f"{SELECT_LANCAMENTO} WHERE 1 = 1"
         params: list = []
@@ -89,6 +90,9 @@ class LancamentosMixin:
         if tipo:
             sql += " AND l.tipo = ?"
             params.append(tipo)
+        if fixa is not None:
+            sql += " AND l.fixa = ?"
+            params.append(int(fixa))
         if categoria.strip():
             sql += " AND l.categoria = ?"
             params.append(categoria.strip())
@@ -173,8 +177,8 @@ class LancamentosMixin:
             INSERT INTO lancamentos (tipo, descricao, categoria, cliente, valor,
                                      vencimento, pago_em, forma_pagamento,
                                      observacoes, conta_id, grupo, parcela,
-                                     parcelas, serie, criado_em)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                     parcelas, serie, fixa, criado_em)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             self._valores(lancamento) + (momento,),
         )
@@ -187,20 +191,21 @@ class LancamentosMixin:
 
     def atualizar(self, lancamento: Lancamento) -> Lancamento:
         if lancamento.id is None:
-            raise FinanceiroError("Lancamento sem identificacao.")
+            raise FinanceiroError("Lançamento sem identificação.")
         self._validar(lancamento)
         atual = self.obter(lancamento.id)
         if atual is not None and atual.baixado > lancamento.valor + 0.005:
             raise FinanceiroError(
-                f"Ja foram baixados {fmt.moeda(atual.baixado)} deste lancamento. "
-                "O valor nao pode ficar menor que isso."
+                f"Já foram baixados {fmt.moeda(atual.baixado)} deste lançamento. "
+                "O valor não pode ficar menor que isso."
             )
         self.db.execute(
             """
             UPDATE lancamentos SET tipo = ?, descricao = ?, categoria = ?, cliente = ?,
                                    valor = ?, vencimento = ?, pago_em = ?,
                                    forma_pagamento = ?, observacoes = ?, conta_id = ?,
-                                   grupo = ?, parcela = ?, parcelas = ?, serie = ?
+                                   grupo = ?, parcela = ?, parcelas = ?, serie = ?,
+                                   fixa = ?
             WHERE id = ?
             """,
             self._valores(lancamento) + (lancamento.id,),
@@ -243,9 +248,9 @@ class LancamentosMixin:
     ) -> list[Lancamento]:
         quantidade = int(quantidade)
         if quantidade < 2:
-            raise FinanceiroError("Uma serie precisa de pelo menos 2 lancamentos.")
+            raise FinanceiroError("Uma série precisa de pelo menos 2 lançamentos.")
         if quantidade > MAXIMO_PARCELAS:
-            raise FinanceiroError(f"No maximo {MAXIMO_PARCELAS} lancamentos por serie.")
+            raise FinanceiroError(f"No máximo {MAXIMO_PARCELAS} lançamentos por série.")
 
         inicio = ler_data(base.vencimento)
         if inicio is None:
@@ -273,6 +278,7 @@ class LancamentosMixin:
                 parcela=indice + 1,
                 parcelas=quantidade,
                 serie=serie,
+                fixa=base.fixa,
             )
             criados.append(self.criar(item))
         return criados
@@ -294,16 +300,18 @@ class LancamentosMixin:
             int(lancamento.parcela or 0),
             int(lancamento.parcelas or 0),
             lancamento.serie,
+            # receita nao e fixa nem variavel: a marca so vale para despesa
+            int(bool(lancamento.fixa) and lancamento.tipo == DESPESA),
         )
 
     def _validar(self, lancamento: Lancamento) -> None:
         if lancamento.tipo not in (RECEITA, DESPESA):
-            raise FinanceiroError("Escolha se e uma receita ou uma despesa.")
+            raise FinanceiroError("Escolha se é uma receita ou uma despesa.")
         if not lancamento.descricao.strip():
-            raise FinanceiroError("Informe a descricao do lancamento.")
+            raise FinanceiroError("Informe a descrição do lançamento.")
         if dinheiro(lancamento.valor) <= 0:
             raise FinanceiroError("O valor precisa ser maior que zero.")
         if not lancamento.vencimento:
             raise FinanceiroError("Informe a data de vencimento.")
         if ler_data(lancamento.vencimento) is None:
-            raise FinanceiroError("Data de vencimento invalida.")
+            raise FinanceiroError("Data de vencimento inválida.")

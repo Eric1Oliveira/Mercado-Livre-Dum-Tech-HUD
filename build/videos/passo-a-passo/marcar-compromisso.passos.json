@@ -1,0 +1,25 @@
+{
+ "duracao": 24.2,
+ "passos": [
+  {
+   "t": 2.8,
+   "texto": "Abra a Agenda: a semana hora a hora"
+  },
+  {
+   "t": 5.3,
+   "texto": "Clique em Novo compromisso"
+  },
+  {
+   "t": 7.1,
+   "texto": "O que é, o tipo e o cliente"
+  },
+  {
+   "t": 14.9,
+   "texto": "Dia e hora"
+  },
+  {
+   "t": 18.7,
+   "texto": "Salve: se bater com outro horário, o Hub avisa"
+  }
+ ]
+}

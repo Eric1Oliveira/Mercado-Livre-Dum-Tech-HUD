@@ -115,8 +115,8 @@ class BoasVindasView(QWidget):
     def _passo_cadastro(self) -> QWidget:
         pagina, corpo = self._moldura(
             "Bem-vindo a DumTech",
-            "Para comecar, diga quem voce e. Usamos esses dados para identificar "
-            "a sua conta e para assinar os comprovantes que voce emite.",
+            "Para começar, diga quem você é. Usamos esses dados para identificar "
+            "a sua conta e para assinar os comprovantes que você emite.",
             "user",
         )
 
@@ -149,7 +149,7 @@ class BoasVindasView(QWidget):
     def _passo_chave(self) -> QWidget:
         pagina, corpo = self._moldura(
             "Sua chave DumTech",
-            "Digite a chave que voce recebeu na compra. A internet e necessaria "
+            "Digite a chave que você recebeu na compra. A internet é necessária "
             "apenas agora: depois disso o programa funciona offline.",
             "key",
         )
@@ -158,7 +158,7 @@ class BoasVindasView(QWidget):
         self.campo_chave.setMaxLength(19)
         self.campo_chave.textEdited.connect(self._formatar_chave)
         self.campo_chave.returnPressed.connect(self.ativar)
-        corpo.addWidget(form.campo("Chave da licenca", self.campo_chave))
+        corpo.addWidget(form.campo("Chave da licença", self.campo_chave))
 
         self.aviso_chave = label("", "muted")
         self.aviso_chave.setWordWrap(True)
@@ -166,9 +166,9 @@ class BoasVindasView(QWidget):
         corpo.addWidget(self.aviso_chave)
 
         acoes = QHBoxLayout()
-        self.botao_sem_chave = Button("Ainda nao tenho chave", "forward", "ghost")
+        self.botao_sem_chave = Button("Ainda não tenho chave", "forward", "ghost")
         self.botao_sem_chave.setToolTip(
-            "Conheca o programa e veja os modulos DumTech; voce ativa quando comprar"
+            "Conheça o programa e veja os módulos DumTech; você ativa quando comprar"
         )
         self.botao_sem_chave.clicked.connect(self.pular)
         acoes.addWidget(self.botao_sem_chave)
@@ -228,7 +228,7 @@ class BoasVindasView(QWidget):
     def ativar(self) -> None:
         chave = normalize_key(self.campo_chave.text())
         if not chave:
-            self._dizer(self.aviso_chave, "Digite a chave da licenca.", "warning")
+            self._dizer(self.aviso_chave, "Digite a chave da licença.", "warning")
             return
 
         self._ocupado(True)

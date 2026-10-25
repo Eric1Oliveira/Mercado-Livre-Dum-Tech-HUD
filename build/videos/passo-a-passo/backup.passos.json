@@ -1,0 +1,21 @@
+{
+ "duracao": 16.9,
+ "passos": [
+  {
+   "t": 2.8,
+   "texto": "No menu da empresa, escolha Backup"
+  },
+  {
+   "t": 6.8,
+   "texto": "O Hub faz uma cópia sozinho todo dia"
+  },
+  {
+   "t": 8.6,
+   "texto": "Fazer backup agora gera uma cópia na hora"
+  },
+  {
+   "t": 12.0,
+   "texto": "Para levar a outro computador, guarde a cópia num pen drive"
+  }
+ ]
+}

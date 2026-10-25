@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no">
+<!-- Só scripts desta pasta. Vídeo e capa vêm daqui mesmo; a cópia da loja que viaja dentro do programa
+     não leva os vídeos (para o instalador não engordar) e busca no site publicado. Nada fala com o banco. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://dumtechsolution.com; media-src 'self' https://dumtechsolution.com; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Passo a passo do DumTech Hub — vídeos de como fazer cada coisa</title>
+<meta name="description" content="Vídeos curtos do DumTech Hub de verdade: como cadastrar produtos, vender no balcão, fechar o caixa, lançar contas, abrir ordem de serviço e muito mais. Escreva a sua dúvida e o vídeo certo aparece.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect width='24' height='24' rx='6' fill='%237353F6'/><path d='M6 6h4v4H6z M14 6h4v4h-4z M6 14h4v4H6z M14 14h4v4h-4z' fill='none' stroke='white' stroke-width='2'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/estilo.css">
+<link rel="stylesheet" href="../css/paginas.css">
+<link rel="stylesheet" href="../css/passo.css">
+<link rel="modulepreload" href="busca.js">
+<link rel="modulepreload" href="catalogo.js">
+<script type="module" src="passo.js"></script>
+<!-- sem zoom no celular: o iPhone ignora o meta, o script resolve -->
+<script src="../js/sem-zoom.js"></script>
+</head>
+<body class="passo-pagina">
+
+<header class="topo" data-rolou="sim">
+  <div class="envolve">
+    <a class="marca" href="../">
+      <span class="selo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h6v6H4z M14 4h6v6h-6z M4 14h6v6H4z M14 14h6v6h-6z"/></svg></span>
+      DumTech Hub
+    </a>
+    <nav>
+      <a href="../#montador">Montar kit</a>
+      <a href="./" aria-current="page">Passo a passo</a>
+      <a href="../guia/">Guia de instalação</a>
+      <a href="../baixar/">Baixar</a>
+    </nav>
+  </div>
+</header>
+
+<main class="passo">
+  <section class="passo-hero">
+    <div class="envolve">
+      <p class="sobrenome">Passo a passo</p>
+      <h1>Como eu faço…?</h1>
+      <p class="lede">Escreva a sua dúvida do seu jeito. O vídeo certo aparece na hora: cada um mostra uma tarefa do começo ao fim, no programa de verdade, em menos de um minuto.</p>
+      <form class="busca-passo" id="busca-form" role="search" autocomplete="off">
+        <label for="busca" class="so-leitor">Sua dúvida</label>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14z M20 20l-3.5-3.5"/></svg>
+        <input id="busca" type="search" name="q" placeholder="Ex.: como cadastro produtos" enterkeyhint="search" spellcheck="false">
+        <kbd aria-hidden="true">/</kbd>
+      </form>
+      <div class="sugestoes" id="sugestoes" aria-label="Dúvidas comuns"></div>
+    </div>
+  </section>
+
+  <section class="destaque envolve" id="destaque" hidden aria-live="polite">
+    <p class="destaque-nota" id="destaque-nota"></p>
+    <div class="player-cartao">
+      <div class="player">
+        <video id="video" controls playsinline preload="none"></video>
+      </div>
+      <aside class="passos">
+        <p class="sobrenome" id="video-grupo"></p>
+        <h2 id="video-titulo"></h2>
+        <p class="passos-resumo" id="video-resumo"></p>
+        <ol class="lista-passos" id="lista-passos"></ol>
+        <div class="passos-acoes">
+          <span class="duracao" id="video-duracao"></span>
+          <button type="button" class="botao botao-fantasma" id="copiar-link">Copiar link deste vídeo</button>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="catalogo envolve" id="catalogo">
+    <div class="catalogo-topo">
+      <h2 id="catalogo-titulo">Todos os vídeos</h2>
+      <nav class="filtros" id="filtros" aria-label="Filtrar por assunto"></nav>
+    </div>
+    <div class="grade" id="grade"></div>
+    <div class="vazio" id="vazio" hidden>
+      <h3>Ainda não temos um vídeo para isso</h3>
+      <p>Tente com outras palavras — por exemplo “venda”, “caixa”, “produto” ou “cliente” — ou fale com a gente que a gente grava.</p>
+    </div>
+  </section>
+
+  <section class="nao-achou envolve">
+    <div>
+      <h2>Não achou o que procurava?</h2>
+      <p>Fale com a gente pelo mesmo canal em que você comprou. Se a dúvida aparecer mais de uma vez, ela vira vídeo aqui.</p>
+    </div>
+    <a class="botao botao-primario" href="../#contato">Falar com a DumTech</a>
+  </section>
+</main>
+
+<footer class="rodape">
+  <div class="envolve">
+    <span>DumTech · sistemas para quem atende no balcão</span>
+    <span><a href="../termos.html">Termos de uso</a> · <a href="../privacidade.html">Privacidade</a></span>
+  </div>
+</footer>
+</body>
+</html>

@@ -86,16 +86,16 @@ class PagamentosView(QWidget):
         corpo = card.body
         corpo.setSpacing(Space.md)
 
-        corpo.addWidget(label("Area protegida", "title"))
+        corpo.addWidget(label("Área protegida", "title"))
         explica = label(
-            "A chave Pix decide para onde vai o dinheiro do balcao. Para ver ou "
-            "mudar, confirme que e voce: enviamos um codigo para o e-mail da licenca.",
+            "A chave Pix decide para onde vai o dinheiro do balcão. Para ver ou "
+            "mudar, confirme que é você: enviamos um código para o e-mail da licença.",
             "muted",
         )
         explica.setWordWrap(True)
         corpo.addWidget(explica)
 
-        self.botao_enviar = Button("Enviar codigo por e-mail", "chat", "primary")
+        self.botao_enviar = Button("Enviar código por e-mail", "chat", "primary")
         self.botao_enviar.setMinimumHeight(40)
         self.botao_enviar.clicked.connect(self._pedir_codigo)
         corpo.addWidget(self.botao_enviar)
@@ -115,7 +115,7 @@ class PagamentosView(QWidget):
         fonte.setLetterSpacing(fonte.SpacingType.AbsoluteSpacing, 4)
         self.codigo.setFont(fonte)
         self.codigo.returnPressed.connect(self._entrar)
-        bloco.addWidget(form.campo("Codigo do e-mail", self.codigo))
+        bloco.addWidget(form.campo("Código do e-mail", self.codigo))
 
         linha = QHBoxLayout()
         linha.setSpacing(Space.sm)
@@ -135,8 +135,8 @@ class PagamentosView(QWidget):
 
         corpo.addWidget(separator())
         self.rodape_trancada = label(
-            "Perdeu o acesso a esse e-mail? Fale com a DumTech: o e-mail da licenca "
-            "e trocado no cadastro, e o proximo codigo chega no novo endereco.",
+            "Perdeu o acesso a esse e-mail? Fale com a DumTech: o e-mail da licença "
+            "é trocado no cadastro, e o próximo código chega no novo endereço.",
             "dim",
         )
         self.rodape_trancada.setWordWrap(True)
@@ -178,13 +178,13 @@ class PagamentosView(QWidget):
 
     def _card_pix(self) -> Card:
         card = Card(padding=Space.lg)
-        card.body.addWidget(label("Chave Pix do balcao", "section"))
+        card.body.addWidget(label("Chave Pix do balcão", "section"))
         card.body.addWidget(separator())
         self.pix_atual = label("", "body")
         self.pix_atual.setWordWrap(True)
         card.body.addWidget(self.pix_atual)
 
-        self.pix_nova = form.texto("", "CPF, CNPJ, telefone, e-mail ou chave aleatoria")
+        self.pix_nova = form.texto("", "CPF, CNPJ, telefone, e-mail ou chave aleatória")
         self.pix_nova.textChanged.connect(self._conferir_pix)
         self.pix_nova.returnPressed.connect(self._salvar_pix)
         linha = QHBoxLayout()
@@ -206,9 +206,9 @@ class PagamentosView(QWidget):
 
     def _card_formas(self) -> Card:
         card = Card(padding=Space.lg)
-        card.body.addWidget(label("Formas de pagamento no balcao", "section"))
+        card.body.addWidget(label("Formas de pagamento no balcão", "section"))
         card.body.addWidget(separator())
-        dica = label("Desmarque o que a loja nao aceita: some da tela de Receber.", "dim")
+        dica = label("Desmarque o que a loja não aceita: some da tela de Receber.", "dim")
         dica.setWordWrap(True)
         card.body.addWidget(dica)
 
@@ -245,7 +245,7 @@ class PagamentosView(QWidget):
         self.codigo.clear()
         self.pix_nova.clear()
         self._mostrar_trancada()
-        _dizer(self.aviso_trancada, "Area trancada.")
+        _dizer(self.aviso_trancada, "Área trancada.")
 
     def hideEvent(self, evento) -> None:  # noqa: N802 (Qt)
         # saiu da secao (nao so minimizou a janela): tranca
@@ -263,7 +263,7 @@ class PagamentosView(QWidget):
         self.botao_enviar.setEnabled(pode and not self._ocupado)
         if not pode:
             _dizer(self.aviso_trancada,
-                   "Ative a licenca deste computador (em Licenca) para proteger os pagamentos.",
+                   "Ative a licença deste computador (em Licença) para proteger os pagamentos.",
                    "warning")
 
     def _mostrar_liberada(self) -> None:
@@ -273,7 +273,7 @@ class PagamentosView(QWidget):
         if chave:
             self.pix_atual.setText(f"Chave em uso: {chave}  ({tipo_chave_pix(chave) or 'chave'})")
         else:
-            self.pix_atual.setText("Nenhuma chave cadastrada - o balcao nao mostra QR Code.")
+            self.pix_atual.setText("Nenhuma chave cadastrada - o balcão não mostra QR Code.")
         self.botao_remover_pix.setVisible(bool(chave))
         self._conferir_pix()
 
@@ -288,7 +288,7 @@ class PagamentosView(QWidget):
     def _tique(self) -> None:
         if self.service.acesso is None:
             self.trancar()
-            _dizer(self.aviso_trancada, "O tempo acabou e a area foi trancada.")
+            _dizer(self.aviso_trancada, "O tempo acabou e a área foi trancada.")
             return
         minutos, segundos = divmod(self.service.segundos_restantes(), 60)
         _dizer(self.estado, f"Liberado  ·  tranca em {minutos:02d}:{segundos:02d}", "success")
@@ -303,14 +303,14 @@ class PagamentosView(QWidget):
         if self._ocupado or self._reenvio > 0:
             return
         self._ocupar(True, self.botao_enviar, self.botao_reenviar)
-        _dizer(self.aviso_trancada, "Enviando o codigo...")
+        _dizer(self.aviso_trancada, "Enviando o código...")
 
         def concluiu(email: str) -> None:
             self._ocupar(False, self.botao_enviar)
             self._abrir_campo_codigo()
             _dizer(self.aviso_trancada,
-                   f"Enviamos um codigo para {email or 'o e-mail da licenca'}. "
-                   "Ele vale por 10 minutos. Confira tambem a caixa de spam.", "success")
+                   f"Enviamos um código para {email or 'o e-mail da licenca'}. "
+                   "Ele vale por 10 minutos. Confira também a caixa de spam.", "success")
             self._comecar_espera()
 
         def falhou(erro: Exception) -> None:
@@ -347,7 +347,7 @@ class PagamentosView(QWidget):
             return
         texto = self.codigo.text().strip()
         if not texto:
-            _dizer(self.aviso_trancada, "Digite o codigo.", "warning")
+            _dizer(self.aviso_trancada, "Digite o código.", "warning")
             return
         self._ocupar(True, self.botao_entrar)
         _dizer(self.aviso_trancada, "Conferindo...")
@@ -375,14 +375,14 @@ class PagamentosView(QWidget):
         chave = self.pix_nova.text().strip()
         if not chave:
             _dizer(self.aviso_pix,
-                   "A DumTech confirma a chave e manda um aviso para o e-mail da licenca "
-                   "a cada troca. O QR Code so usa chave confirmada.")
+                   "A DumTech confirma a chave e manda um aviso para o e-mail da licença "
+                   "a cada troca. O QR Code só usa chave confirmada.")
         elif chave_pix_valida(chave):
             _dizer(self.aviso_pix, f"Chave reconhecida: {tipo_chave_pix(chave)}.", "success")
         else:
             _dizer(self.aviso_pix,
-                   "Essa chave nao parece valida. Use CPF, CNPJ, telefone, e-mail ou "
-                   "a chave aleatoria que o banco gerou.", "danger")
+                   "Essa chave não parece válida. Use CPF, CNPJ, telefone, e-mail ou "
+                   "a chave aleatória que o banco gerou.", "danger")
 
     def _salvar_pix(self) -> None:
         chave = self.pix_nova.text().strip()
@@ -396,7 +396,7 @@ class PagamentosView(QWidget):
 
     def _remover_pix(self) -> None:
         if not confirmar(self, "Remover a chave Pix?",
-                         "O balcao deixa de mostrar o QR Code. Voce continua recebendo "
+                         "O balcão deixa de mostrar o QR Code. Você continua recebendo "
                          "em Pix, conferindo no aplicativo do banco.",
                          rotulo_ok="Remover chave"):
             return
@@ -418,9 +418,9 @@ class PagamentosView(QWidget):
             self.pix_nova.clear()
             self._mostrar_liberada()
             _dizer(self.aviso_pix,
-                   "Chave salva e confirmada. O balcao ja usa a nova chave, e o aviso "
-                   "foi enviado para o e-mail da licenca." if chave else
-                   "Chave removida. O balcao nao mostra mais o QR Code.", "success")
+                   "Chave salva e confirmada. O balcão já usa a nova chave, e o aviso "
+                   "foi enviado para o e-mail da licença." if chave else
+                   "Chave removida. O balcão não mostra mais o QR Code.", "success")
             self.alterada.emit()
 
         def falhou(erro: Exception) -> None:
@@ -442,7 +442,7 @@ class PagamentosView(QWidget):
             if erro.codigo == "sessao_vencida":
                 self.trancar()
             return
-        _dizer(self.aviso_formas, "Formas salvas. O balcao ja mostra so as marcadas.", "success")
+        _dizer(self.aviso_formas, "Formas salvas. O balcão já mostra só as marcadas.", "success")
         self.alterada.emit()
 
 

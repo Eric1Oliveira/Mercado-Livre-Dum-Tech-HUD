@@ -118,7 +118,7 @@ class PagamentoDialog(QDialog):
         self.recebido = form.dinheiro(self.total)
         linha.addWidget(form.campo("Recebido", self.recebido), 2)
 
-        self.botao_lancar = Button("Lancar", "plus")
+        self.botao_lancar = Button("Lançar", "plus")
         self.botao_lancar.clicked.connect(self._lancar)
         linha.addWidget(form.campo(" ", self.botao_lancar), 1)
         return caixa
@@ -197,7 +197,7 @@ class PagamentoDialog(QDialog):
 
     def _copiar_pix(self) -> None:
         if self.painel_pix.copiar():
-            self._dizer("Codigo Pix copiado - cole no aplicativo do cliente.", "success")
+            self._dizer("Código Pix copiado - cole no aplicativo do cliente.", "success")
 
     def _em_pix(self) -> bool:
         return self.forma.currentText().strip().casefold() == PIX.casefold()
@@ -240,7 +240,7 @@ class PagamentoDialog(QDialog):
             return
         recebido = dinheiro(self.recebido.value()) if self._em_dinheiro() else valor
         if recebido < valor:
-            self._dizer("O recebido nao cobre o valor lancado.", "danger")
+            self._dizer("O recebido não cobre o valor lançado.", "danger")
             return
 
         self.pagamentos.append(

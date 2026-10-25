@@ -21,16 +21,21 @@ from .dialogos import BaixaDialog, SerieDialog
 from .lancamento_dialog import LancamentoDialog
 
 
+#: o filtro de tipo tambem separa a despesa fixa da variavel
+FILTRO_FIXAS = "fixas"
+FILTRO_VARIAVEIS = "variaveis"
+
+
 class LancamentosView(CrudView):
-    titulo = "Lancamentos"
-    nome_registro = "lancamento"
-    nome_plural = "lancamentos"
-    rotulo_novo = "Novo lancamento"
-    dica_pesquisa = "Pesquisar por descricao, categoria ou cliente..."
+    titulo = "Lançamentos"
+    nome_registro = "lançamento"
+    nome_plural = "lançamentos"
+    rotulo_novo = "Novo lançamento"
+    dica_pesquisa = "Pesquisar por descrição, categoria ou cliente..."
     # sem coluna "Tipo": o sinal e a cor do valor ja dizem se entra ou sai, e a
     # largura e curta demais para gastar com informacao repetida
-    colunas = ["Vencimento", "Descricao", "Cliente", "Categoria", "Valor",
-               "Em aberto", "Situacao"]
+    colunas = ["Vencimento", "Descrição", "Cliente", "Categoria", "Valor",
+               "Em aberto", "Situação"]
     larguras = {0: 200, 2: 150, 3: 120, 4: 130, 5: 115, 6: 105}
 
     def __init__(
@@ -55,11 +60,13 @@ class LancamentosView(CrudView):
         self.filtro_tipo.addItem("Receitas e despesas", "")
         self.filtro_tipo.addItem("Somente receitas", RECEITA)
         self.filtro_tipo.addItem("Somente despesas", DESPESA)
+        self.filtro_tipo.addItem("Despesas fixas", FILTRO_FIXAS)
+        self.filtro_tipo.addItem("Despesas variáveis", FILTRO_VARIAVEIS)
         self.filtro_tipo.currentIndexChanged.connect(self.refresh)
         layout.addWidget(self.filtro_tipo, 1)
 
         self.filtro_situacao = QComboBox()
-        self.filtro_situacao.addItem("Todas as situacoes", "")
+        self.filtro_situacao.addItem("Todas as situações", "")
         self.filtro_situacao.addItem("Em aberto", SITUACAO_ABERTO)
         self.filtro_situacao.addItem("Vencidos", SITUACAO_VENCIDO)
         self.filtro_situacao.addItem("Recebidos em parte", SITUACAO_PARCIAL)
@@ -85,16 +92,21 @@ class LancamentosView(CrudView):
         self.botao_parcelar.clicked.connect(lambda: self._serie(PARCELAMENTO))
         layout.insertWidget(4, self.botao_parcelar)
 
-        self.botao_repetir = Button("Repetir", "refresh")
+        self.botao_repetir = Button("Recorrência", "refresh")
         self.botao_repetir.clicked.connect(lambda: self._serie(RECORRENCIA))
         layout.insertWidget(4, self.botao_repetir)
 
     # ------------------------------------------------------------------- dados
     def carregar(self) -> list[Lancamento]:
+        tipo = self.filtro_tipo.currentData() or ""
+        fixa = None
+        if tipo in (FILTRO_FIXAS, FILTRO_VARIAVEIS):
+            tipo, fixa = DESPESA, tipo == FILTRO_FIXAS
         return self.repository.listar(
             busca=self.busca.text(),
-            tipo=self.filtro_tipo.currentData() or "",
+            tipo=tipo,
             situacao=self.filtro_situacao.currentData() or "",
+            fixa=fixa,
         )
 
     def montar_linha(self, lancamento: Lancamento) -> list:
@@ -190,7 +202,7 @@ class LancamentosView(CrudView):
         self.repository.excluir(lancamento.id)
         self.refresh()
         self.mostrar_aviso(
-            f"'{lancamento.descricao}' virou {len(dialogo.criados)} lancamentos.",
+            f"'{lancamento.descricao}' virou {len(dialogo.criados)} lançamentos.",
             "success",
         )
         self.data_changed.emit()

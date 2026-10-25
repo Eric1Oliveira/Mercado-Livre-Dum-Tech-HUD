@@ -45,35 +45,35 @@ class Modelo:
 PROPOSTA = Modelo(
     chave="proposta",
     titulo="Proposta enviada",
-    quando="No Orcamentos, ao mandar a proposta para o cliente decidir.",
+    quando="No Orçamentos, ao mandar a proposta para o cliente decidir.",
     campos=("cliente", "empresa", "numero", "total", "validade", "pagamento",
             "prazo"),
     padrao=(
-        "Ola, {cliente}! Aqui e da {empresa}.\n\n"
-        "Sua proposta {numero} esta pronta, no valor de {total}. "
-        "Ela vale ate {validade}.\n\n"
-        "Qualquer duvida e so chamar por aqui."
+        "Olá, {cliente}! Aqui é da {empresa}.\n\n"
+        "Sua proposta {numero} está pronta, no valor de {total}. "
+        "Ela vale até {validade}.\n\n"
+        "Qualquer dúvida é só chamar por aqui."
     ),
     exemplo={
-        "cliente": "Mercado Bom Preco", "empresa": "Casa do Parafuso",
+        "cliente": "Mercado Bom Preço", "empresa": "Casa do Parafuso",
         "numero": "ORC-2026-0042", "total": "R$ 4.509,40",
         "validade": "16/09/2026", "pagamento": "50% na entrada",
-        "prazo": "10 dias uteis",
+        "prazo": "10 dias úteis",
     },
 )
 
 ORDEM_PRONTA = Modelo(
     chave="ordem_pronta",
-    titulo="Servico pronto para retirada",
-    quando="Nas Ordens de Servico, quando o servico fica pronto.",
+    titulo="Serviço pronto para retirada",
+    quando="Nas Ordens de Serviço, quando o serviço fica pronto.",
     campos=("cliente", "empresa", "numero", "equipamento", "total", "garantia"),
     # `{equipamento}` fica numa linha so dele porque o item e OPCIONAL: quem
     # instala, lava ou faz chave nao tem o que digitar ali. No meio da frase
     # ("Seu {equipamento} esta pronto") o campo vazio mandava "Seu esta pronto"
     # para o cliente; sozinho, ele so nao aparece.
     padrao=(
-        "Ola, {cliente}! Aqui e da {empresa}.\n\n"
-        "O seu servico esta pronto para retirada.\n"
+        "Olá, {cliente}! Aqui é da {empresa}.\n\n"
+        "O seu serviço está pronto para retirada.\n"
         "{equipamento}\n"
         "Ordem {numero}, valor {total}.\n\n"
         "Estamos te esperando!"
@@ -88,13 +88,13 @@ ORDEM_PRONTA = Modelo(
 COBRANCA = Modelo(
     chave="cobranca",
     titulo="Lembrete de vencimento",
-    quando="No Financeiro, para uma conta a receber que esta vencendo.",
+    quando="No Financeiro, para uma conta a receber que está vencendo.",
     campos=("cliente", "empresa", "descricao", "valor", "vencimento", "dias"),
     padrao=(
-        "Ola, {cliente}! Aqui e da {empresa}.\n\n"
+        "Olá, {cliente}! Aqui é da {empresa}.\n\n"
         "Passando para lembrar de {descricao}, no valor de {valor}, "
         "com vencimento em {vencimento}.\n\n"
-        "Se ja tiver pago, e so desconsiderar esta mensagem."
+        "Se já tiver pago, é só desconsiderar esta mensagem."
     ),
     exemplo={
         "cliente": "Ana Paula Lima", "empresa": "Casa do Parafuso",
@@ -106,13 +106,13 @@ COBRANCA = Modelo(
 VENDA = Modelo(
     chave="venda",
     titulo="Agradecimento de venda",
-    quando="No Vendas, depois de fechar a venda no balcao.",
+    quando="No Vendas, depois de fechar a venda no balcão.",
     campos=("cliente", "empresa", "numero", "total", "data"),
     padrao=(
-        "Ola, {cliente}! Aqui e da {empresa}.\n\n"
-        "Obrigado pela preferencia! Sua compra {numero} foi registrada "
+        "Olá, {cliente}! Aqui é da {empresa}.\n\n"
+        "Obrigado pela preferência! Sua compra {numero} foi registrada "
         "aqui, no valor de {total}.\n\n"
-        "Qualquer coisa e so chamar. Ate a proxima!"
+        "Qualquer coisa é só chamar. Até a próxima!"
     ),
     exemplo={
         "cliente": "Maria Souza", "empresa": "Casa do Parafuso",
@@ -123,28 +123,28 @@ VENDA = Modelo(
 COMPROMISSO = Modelo(
     chave="compromisso",
     titulo="Lembrete de compromisso",
-    quando="Na Agenda, para confirmar um horario marcado.",
+    quando="Na Agenda, para confirmar um horário marcado.",
     campos=("cliente", "empresa", "titulo", "data", "hora"),
     padrao=(
-        "Ola, {cliente}! Aqui e da {empresa}.\n\n"
+        "Olá, {cliente}! Aqui é da {empresa}.\n\n"
         "Passando para confirmar o nosso compromisso: {titulo}, "
-        "dia {data} as {hora}.\n\n"
+        "dia {data} às {hora}.\n\n"
         "Pode confirmar para mim?"
     ),
     exemplo={
-        "cliente": "Joao da Silva", "empresa": "Casa do Parafuso",
-        "titulo": "Visita tecnica", "data": "03/09/2026", "hora": "14:30",
+        "cliente": "João da Silva", "empresa": "Casa do Parafuso",
+        "titulo": "Visita técnica", "data": "03/09/2026", "hora": "14:30",
     },
 )
 
 ANIVERSARIO = Modelo(
     chave="aniversario",
-    titulo="Aniversario do cliente",
-    quando="No Clientes, na lista de aniversariantes do mes.",
+    titulo="Aniversário do cliente",
+    quando="No Clientes, na lista de aniversariantes do mês.",
     campos=("cliente", "empresa", "idade"),
     padrao=(
-        "Ola, {cliente}! Feliz aniversario!\n\n"
-        "Toda a equipe da {empresa} deseja um otimo dia para voce."
+        "Olá, {cliente}! Feliz aniversário!\n\n"
+        "Toda a equipe da {empresa} deseja um ótimo dia para você."
     ),
     exemplo={
         "cliente": "Carlos Menezes", "empresa": "Casa do Parafuso",
@@ -235,7 +235,7 @@ def link(telefone: str, texto: str) -> str:
     numero = numero_internacional(telefone)
     if not numero:
         raise MensagemError(
-            "Numero de WhatsApp invalido. Use DDD e numero, como (63) 98888-7777."
+            "Número de WhatsApp inválido. Use DDD e número, como (63) 98888-7777."
         )
     return f"https://wa.me/{numero}?text={quote(texto or '')}"
 

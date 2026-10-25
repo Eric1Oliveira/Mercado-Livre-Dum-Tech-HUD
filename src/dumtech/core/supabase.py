@@ -86,7 +86,7 @@ class SupabaseClient:
 
     def _post(self, endereco: str, params: dict[str, Any] | None, edge: bool = False) -> Any:
         if not self.configurado:
-            raise ServicoIndisponivel("Servidor de licencas nao configurado.")
+            raise ServicoIndisponivel("Servidor de licenças não configurado.")
 
         corpo = json.dumps(params or {}).encode("utf-8")
         pedido = urllib.request.Request(
@@ -112,10 +112,10 @@ class SupabaseClient:
             raise self._erro_http(erro) from erro
         except urllib.error.URLError as erro:  # sem internet, DNS, timeout...
             raise SemConexao(
-                "Sem conexao com a internet. Verifique sua rede e tente de novo em instantes."
+                "Sem conexão com a internet. Verifique sua rede e tente de novo em instantes."
             ) from erro
         except TimeoutError as erro:
-            raise SemConexao("A conexao com o servidor demorou. Tente de novo em alguns instantes.") from erro
+            raise SemConexao("A conexão com o servidor demorou. Tente de novo em alguns instantes.") from erro
 
         if not bruto.strip():
             return None
@@ -123,7 +123,7 @@ class SupabaseClient:
             return json.loads(bruto)
         except ValueError as erro:
             raise ServicoIndisponivel(
-                "O servidor de licencas retornou uma resposta inesperada. Tente de novo em alguns minutos."
+                "O servidor de licenças retornou uma resposta inesperada. Tente de novo em alguns minutos."
             ) from erro
 
     # ------------------------------------------------------------------ interno
@@ -137,15 +137,15 @@ class SupabaseClient:
 
         if erro.code == 404:
             return ServicoIndisponivel(
-                "O servidor de licencas ainda nao esta preparado "
+                "O servidor de licenças ainda não está preparado "
                 "(as migrations de supabase/migrations foram aplicadas?)."
             )
         if erro.code in (401, 403):
             return ServicoIndisponivel(
-                "Este programa nao tem permissao para consultar as licencas."
+                "Este programa não tem permissão para consultar as licenças."
             )
         if erro.code >= 500:
             return ServicoIndisponivel(
-                "O servidor de licencas esta fora do ar. Tente de novo em alguns minutos."
+                "O servidor de licenças está fora do ar. Tente de novo em alguns minutos."
             )
-        return ServicoIndisponivel(detalhe or f"Erro {erro.code} no servidor de licencas. Tente de novo.")
+        return ServicoIndisponivel(detalhe or f"Erro {erro.code} no servidor de licenças. Tente de novo.")

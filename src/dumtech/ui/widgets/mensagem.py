@@ -48,7 +48,7 @@ class MensagemDialog(QDialog):
         cabecalho.setSpacing(2)
         cabecalho.addWidget(label(titulo, "section"))
         cabecalho.addWidget(
-            label("Nada e enviado sozinho: o WhatsApp abre com o texto pronto",
+            label("Nada é enviado sozinho: o WhatsApp abre com o texto pronto",
                   "muted")
         )
         raiz.addLayout(cabecalho)
@@ -99,7 +99,7 @@ class MensagemDialog(QDialog):
         valido = bool(numero_internacional(self.numero.text()))
         self.botao_abrir.setEnabled(valido)
         if self.numero.text().strip() and not valido:
-            self._dizer("Numero incompleto: informe DDD e numero.", "warning")
+            self._dizer("Número incompleto: informe DDD e número.", "warning")
         elif not self.numero.text().strip():
             self._dizer("Informe o WhatsApp do cliente para abrir a conversa.")
         else:

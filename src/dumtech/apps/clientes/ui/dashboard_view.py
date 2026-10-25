@@ -44,7 +44,7 @@ class DashboardView(QWidget):
 
         cartoes = FaixaDeNumeros()
         self.card_total = StatCard("Clientes ativos", "0", "users", "accent")
-        self.card_mes = StatCard("Novos neste mes", "0", "plus", "success")
+        self.card_mes = StatCard("Novos neste mês", "0", "plus", "success")
         self.card_cidades = StatCard("Cidades atendidas", "0", "home", "warning")
         for cartao in (self.card_total, self.card_mes, self.card_cidades):
             cartoes.add(cartao)
@@ -55,14 +55,14 @@ class DashboardView(QWidget):
         self.grafico_cidades = GraficoBarras(largura_rotulo=150)
         self.grafico_cidades.vazio = "Sem cidades informadas no cadastro."
         self.painel_cidades = ChartPanel(
-            "Onde estao os clientes", self.grafico_cidades
+            "Onde estão os clientes", self.grafico_cidades
         )
         desenhos.addWidget(self.painel_cidades, 1)
 
         self.grafico_segmentos = GraficoRosca(titulo_centro="Ativos")
         self.grafico_segmentos.vazio = "Preencha o segmento no cadastro."
         self.painel_segmentos = ChartPanel(
-            "De que tipo sao", self.grafico_segmentos
+            "De que tipo são", self.grafico_segmentos
         )
         desenhos.addWidget(self.painel_segmentos, 1)
         raiz.addLayout(desenhos, 3)
@@ -73,11 +73,11 @@ class DashboardView(QWidget):
         # aniversario e o motivo mais barato de ligar para um cliente antigo
         self.painel_aniversarios = ListPanel(
             f"Aniversariantes de {mes}",
-            "Ninguem faz aniversario este mes. Preencha a data no cadastro.",
+            "Ninguém faz aniversário este mês. Preencha a data no cadastro.",
         )
         listas.addWidget(self.painel_aniversarios, 1)
         self.painel_recentes = ListPanel(
-            "Ultimos cadastros", "Nenhum cliente cadastrado ainda."
+            "Últimos cadastros", "Nenhum cliente cadastrado ainda."
         )
         listas.addWidget(self.painel_recentes, 1)
         raiz.addLayout(listas, 2)
@@ -138,5 +138,5 @@ class DashboardView(QWidget):
         if not aniversario:
             return "-"
         if self._e_hoje(contato, hoje):
-            return "e hoje!"
+            return "é hoje!"
         return f"dia {aniversario[0]:02d}"

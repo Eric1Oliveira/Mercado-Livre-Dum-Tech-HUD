@@ -365,6 +365,49 @@ class ResumoTestCase(FinanceiroBase):
         )
 
 
+class DespesaFixaTestCase(FinanceiroBase):
+    """Aluguel e internet separados do que varia com o movimento do mes."""
+
+    def test_grava_le_e_edita_a_marca_de_fixa(self) -> None:
+        aluguel = self._lancamento(tipo=DESPESA, descricao="Aluguel", fixa=True)
+        self.assertTrue(self.repo.obter(aluguel.id).fixa)
+
+        aluguel.fixa = False
+        self.repo.atualizar(aluguel)
+        self.assertFalse(self.repo.obter(aluguel.id).fixa)
+
+    def test_receita_nunca_fica_marcada_como_fixa(self) -> None:
+        venda = self._lancamento(tipo=RECEITA, fixa=True)
+        self.assertFalse(self.repo.obter(venda.id).fixa)
+
+    def test_a_recorrencia_inteira_herda_a_marca(self) -> None:
+        base = Lancamento(tipo=DESPESA, descricao="Internet", valor=120.0,
+                          vencimento=dia(0), fixa=True)
+        criados = self.repo.repetir(base, 3)
+        self.assertTrue(all(self.repo.obter(item.id).fixa for item in criados))
+
+    def test_filtra_fixas_e_variaveis(self) -> None:
+        self._lancamento(tipo=DESPESA, descricao="Aluguel", fixa=True)
+        self._lancamento(tipo=DESPESA, descricao="Frete")
+        self._lancamento(tipo=RECEITA, descricao="Venda")
+
+        fixas = self.repo.listar(tipo=DESPESA, fixa=True)
+        variaveis = self.repo.listar(tipo=DESPESA, fixa=False)
+        self.assertEqual([i.descricao for i in fixas], ["Aluguel"])
+        self.assertEqual([i.descricao for i in variaveis], ["Frete"])
+
+    def test_resumo_separa_o_pago_no_mes(self) -> None:
+        for descricao, valor, fixa in (("Aluguel", 2200.0, True), ("Frete", 300.0, False)):
+            item = self._lancamento(tipo=DESPESA, descricao=descricao, valor=valor,
+                                    vencimento=dia(0), fixa=fixa)
+            self.repo.baixar(item.id)
+
+        resumo = self.repo.resumo()
+        self.assertEqual(resumo.pago_mes, 2500.0)
+        self.assertEqual(resumo.pago_fixas_mes, 2200.0)
+        self.assertEqual(resumo.pago_variaveis_mes, 300.0)
+
+
 class MigracaoTestCase(unittest.TestCase):
     """Quem ja usava a versao 1 nao pode perder lancamento nem pagamento."""
 
@@ -391,7 +434,7 @@ class MigracaoTestCase(unittest.TestCase):
         db = open_database(arquivo)
         self.addCleanup(db.close)
         repo = FinanceiroRepository(db)
-        self.assertEqual(db.schema_version, 2)
+        self.assertEqual(db.schema_version, 3)
 
         paga = repo.obter(1)
         self.assertEqual(paga.descricao, "Venda antiga")
@@ -410,6 +453,8 @@ class MigracaoTestCase(unittest.TestCase):
         # campos novos chegam com padrao util
         self.assertEqual(aberta.conta_id, 0)
         self.assertEqual(aberta.grupo, "")
+        # o que ja existia nasce variavel
+        self.assertFalse(aberta.fixa)
 
         # e o banco migrado continua funcionando
         conta = repo.criar_conta(Conta(nome="Caixa", tipo=CAIXA, saldo_inicial=50.0))

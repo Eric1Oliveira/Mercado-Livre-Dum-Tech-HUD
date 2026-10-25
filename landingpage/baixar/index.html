@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Baixar o DumTech Hub</title>
 <meta name="description" content="Baixe o instalador do DumTech Hub para Windows, instale e ative com a sua chave.">
@@ -12,6 +12,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../css/estilo.css">
 <link rel="stylesheet" href="../css/paginas.css">
+<!-- sem zoom no celular: o iPhone ignora o meta, o script resolve -->
+<script src="../js/sem-zoom.js"></script>
 </head>
 <body>
 
@@ -23,6 +25,7 @@
     </a>
     <nav>
       <a href="../#montador">Montar kit</a>
+      <a href="../passo-a-passo/" class="nav-passo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l5.5-3.5z"/></svg>Passo a passo</a>
       <a href="../guia/">Guia de instalação</a>
     </nav>
   </div>

@@ -113,7 +113,7 @@ class CaixaView(QWidget):
         card = Card(padding=Space.lg)
         card.body.addWidget(label("Fechamentos anteriores", "section"))
         self.tabela_caixas = DataTable(
-            ["Abertura", "Fechamento", "Abertura R$", "Contado", "Diferenca"]
+            ["Abertura", "Fechamento", "Abertura R$", "Contado", "Diferença"]
         )
         self.tabela_caixas.set_empty_message("Nenhum caixa fechado ainda.")
         self.tabela_caixas.setMaximumHeight(190)
@@ -177,7 +177,7 @@ class CaixaView(QWidget):
             ("Sangrias", -conta.sangrias, "danger"),
         ]
         if conta.devolucoes_dinheiro:
-            linhas.append(("Devolucoes", -conta.devolucoes_dinheiro, "danger"))
+            linhas.append(("Devoluções", -conta.devolucoes_dinheiro, "danger"))
 
         for titulo, valor, tom in linhas:
             self._contas.addWidget(self._conta(titulo, valor, tom))
@@ -266,4 +266,4 @@ class CaixaView(QWidget):
             self.subtitulo.setText(str(erro))
             repolish(self.subtitulo)
             return
-        ComprovanteDialog(texto, "Conferencia do caixa", self).exec()
+        ComprovanteDialog(texto, "Conferência do caixa", self).exec()

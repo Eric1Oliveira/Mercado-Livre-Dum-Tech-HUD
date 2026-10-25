@@ -64,8 +64,8 @@ class ErroDialog(QDialog):
         cabecalho.setSpacing(4)
         cabecalho.addWidget(label("Alguma coisa deu errado", "section"))
         aviso = tone_label(
-            "O programa continua aberto e os dados nao foram perdidos. "
-            "Se o problema se repetir, clique em 'Copiar relatorio' e mande "
+            "O programa continua aberto e os dados não foram perdidos. "
+            "Se o problema se repetir, clique em 'Copiar relatório' e mande "
             "para o suporte.",
             "muted",
         )
@@ -112,7 +112,7 @@ class ErroDialog(QDialog):
             abrir.clicked.connect(self._abrir_log)
             linha.addWidget(abrir)
 
-        copiar = Button("Copiar relatorio", "file")
+        copiar = Button("Copiar relatório", "file")
         copiar.clicked.connect(self._copiar)
         linha.addWidget(copiar)
 
@@ -131,7 +131,7 @@ class ErroDialog(QDialog):
 
     def _copiar(self) -> None:
         QGuiApplication.clipboard().setText(self.texto)
-        self._dizer("Relatorio copiado. Cole no WhatsApp ou no e-mail do suporte.")
+        self._dizer("Relatório copiado. Cole no WhatsApp ou no e-mail do suporte.")
 
     def _abrir_log(self) -> None:
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(self.log)))

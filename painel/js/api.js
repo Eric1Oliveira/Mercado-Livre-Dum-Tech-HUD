@@ -480,14 +480,54 @@ export async function atualizar(tabela, filtros, dados) {
   return linhas;
 }
 
-export async function apagar(tabela, filtros) {
+/**
+ * Apaga as linhas que batem com os filtros.
+ *
+ * `conferir`: pede ao banco as linhas que ele de fato apagou e reclama se
+ * nenhuma saiu. Sem isso, uma policy que barra (ou um registro que outra
+ * pessoa ja apagou) devolve "204 sem conteudo" igual a uma exclusao que deu
+ * certo - e a tela diria "excluido" sem ter excluido nada.
+ */
+export async function apagar(tabela, filtros, { conferir = false } = {}) {
   const parametros = new URLSearchParams(filtros);
-  await chamar(`/${tabela}?${parametros}`, {
+  // o banco devolve o que apagou: e o que sai da memoria na hora
+  const { dados } = await chamar(`/${tabela}?${parametros}`, {
     method: "DELETE",
-    headers: { Prefer: "return=minimal" },
+    headers: { Prefer: "return=representation" },
   });
   invalidar();
-  return null;
+  tirarDaMemoria(tabela, dados);
+  if (conferir && !(Array.isArray(dados) && dados.length)) {
+    throw new Error("O banco não excluiu nada: o registro já tinha saído ou esta conta não pode excluí-lo.");
+  }
+  return Array.isArray(dados) ? dados : [];
+}
+
+//: as visoes que mostram uma tabela com o id dela em outro nome
+const VISOES_DA_TABELA = {
+  clientes: { painel_clientes: "cliente_id" },
+  pedidos_site: { pedidos_abertos: "pedido_id" },
+};
+
+/**
+ * O que acabou de ser apagado sai da memoria (da tabela e das visoes que a
+ * mostram). Sem isso, a tela redesenhada logo depois mostraria o registro
+ * apagado ate a conferencia com o banco voltar - ele "sumia e voltava".
+ */
+function tirarDaMemoria(tabela, linhas) {
+  const ids = new Set((Array.isArray(linhas) ? linhas : []).map((linha) => linha?.id).filter(Boolean));
+  if (!ids.size) return;
+  const visoes = VISOES_DA_TABELA[tabela] || {};
+  for (const [caminho, entrada] of memoria) {
+    if (!Array.isArray(entrada.dados)) continue;
+    const alvo = caminho.slice(1, caminho.indexOf("?"));
+    const chave = alvo === tabela ? "id" : visoes[alvo];
+    if (!chave) continue;
+    const ficam = entrada.dados.filter((linha) => !ids.has(linha?.[chave]));
+    if (ficam.length !== entrada.dados.length) {
+      Object.assign(entrada, { dados: ficam, texto: JSON.stringify(ficam) });
+    }
+  }
 }
 
 /** Funcao do banco. `grava: false` para as que so leem (nao invalida a memoria). */

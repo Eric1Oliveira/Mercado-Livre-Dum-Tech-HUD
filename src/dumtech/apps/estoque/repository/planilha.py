@@ -93,7 +93,7 @@ def _numero(valor: str) -> float:
     try:
         return float(texto)
     except ValueError as exc:
-        raise ValueError(f"'{valor}' nao e um numero") from exc
+        raise ValueError(f"'{valor}' não é um número") from exc
 
 
 class PlanilhaMixin:
@@ -141,7 +141,7 @@ class PlanilhaMixin:
             chave = produto.codigo.lower()
             if chave in vistos:
                 previa.recusados.append(
-                    (linha_numero, f"codigo '{produto.codigo}' repetido na planilha")
+                    (linha_numero, f"código '{produto.codigo}' repetido na planilha")
                 )
                 continue
             vistos.add(chave)
@@ -159,8 +159,8 @@ class PlanilhaMixin:
         previa = self.prever_importacao(texto)
         if not previa.total_valido:
             raise EstoqueError(
-                "Nenhuma linha valida encontrada. Confira se a planilha tem as "
-                "colunas 'codigo' e 'nome'."
+                "Nenhuma linha válida encontrada. Confira se a planilha tem as "
+                "colunas 'código' e 'nome'."
             )
 
         criados = 0
@@ -183,7 +183,7 @@ class PlanilhaMixin:
     @staticmethod
     def _ler_linhas(texto: str):
         if not texto.strip():
-            raise EstoqueError("O arquivo esta vazio.")
+            raise EstoqueError("O arquivo está vazio.")
         amostra = texto[:2048]
         delimitador = ";" if amostra.count(";") >= amostra.count(",") else ","
         leitor = csv.reader(io.StringIO(texto), delimiter=delimitador)
@@ -191,10 +191,10 @@ class PlanilhaMixin:
         try:
             cabecalho = [_normalizar(c) for c in next(leitor)]
         except StopIteration as exc:
-            raise EstoqueError("O arquivo esta vazio.") from exc
+            raise EstoqueError("O arquivo está vazio.") from exc
         if "codigo" not in cabecalho or "nome" not in cabecalho:
             raise EstoqueError(
-                "A planilha precisa ter pelo menos as colunas 'codigo' e 'nome'."
+                "A planilha precisa ter pelo menos as colunas 'código' e 'nome'."
             )
 
         for numero, linha in enumerate(leitor, start=2):

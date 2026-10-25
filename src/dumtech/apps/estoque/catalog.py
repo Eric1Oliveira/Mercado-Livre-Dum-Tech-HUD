@@ -52,6 +52,12 @@ class CatalogoEstoque:
     def procurar(self, termo: str, limite: int = 20) -> list[ItemCatalogo]:
         return [_para_item(p) for p in self.repository.listar(busca=termo)[:limite]]
 
+    def imagem(self, produto_id: int) -> bytes | None:
+        return self.repository.imagem(produto_id)
+
+    def miniatura(self, produto_id: int) -> bytes | None:
+        return self.repository.miniatura(produto_id)
+
     # ------------------------------------------------------------------ escrita
     def baixar(
         self, produto_id: int, quantidade: float, documento: str = "", motivo: str = ""
@@ -65,7 +71,7 @@ class CatalogoEstoque:
         self, produto_id: int, quantidade: float, documento: str = "", motivo: str = ""
     ) -> None:
         self.repository.registrar_entrada(
-            produto_id, quantidade, motivo or "Devolucao de venda", documento=documento
+            produto_id, quantidade, motivo or "Devolução de venda", documento=documento
         )
         eventos.avisar(APP_ID)
 

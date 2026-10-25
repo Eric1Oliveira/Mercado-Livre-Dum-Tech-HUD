@@ -16,7 +16,7 @@ CANCELADO = "cancelado"
 STATUS_LABEL = {
     AGENDADO: "Agendado",
     CONFIRMADO: "Confirmado",
-    CONCLUIDO: "Concluido",
+    CONCLUIDO: "Concluído",
     CANCELADO: "Cancelado",
 }
 STATUS_TOM = {
@@ -60,7 +60,7 @@ QUINZENAL = "quinzenal"
 MENSAL = "mensal"
 
 REPETICOES = ((SEMANAL, "Toda semana"), (QUINZENAL, "A cada 15 dias"),
-              (DIARIA, "Todo dia"), (MENSAL, "Todo mes"))
+              (DIARIA, "Todo dia"), (MENSAL, "Todo mês"))
 REPETICAO_LABEL = dict(REPETICOES)
 
 #: a grade mostra o dia inteiro: para marcar uma reuniao as 5h, a linha das
@@ -74,9 +74,9 @@ HORA_SUGESTAO = 8
 
 #: as faixas que o cliente escolhe - o horario da loja dele nao e o meu
 FAIXAS = (
-    ("Dia inteiro (0h as 24h)", "dia", 0, 24),
-    ("Comercial (7h as 20h)", "comercial", 7, 20),
-    ("Estendido (6h as 23h)", "estendido", 6, 23),
+    ("Dia inteiro (0h às 24h)", "dia", 0, 24),
+    ("Comercial (7h às 20h)", "comercial", 7, 20),
+    ("Estendido (6h às 23h)", "estendido", 6, 23),
 )
 FAIXA_PADRAO = "dia"
 
@@ -109,7 +109,7 @@ def faixa_das_horas(compromissos, inicial: int = HORA_INICIAL,
             final = 24
     return max(0, min(inicial, 23)), min(24, max(final, inicial + 1))
 
-DIAS_SEMANA = ("Segunda", "Terca", "Quarta", "Quinta", "Sexta", "Sabado", "Domingo")
+DIAS_SEMANA = ("Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo")
 DIAS_CURTOS = ("Seg", "Ter", "Qua", "Qui", "Sex", "Sab", "Dom")
 
 #: duracoes comuns, em minutos
@@ -189,7 +189,7 @@ class Compromisso:
         fim = self.fim_dt
         if fim is None:
             return inicio.strftime("%H:%M")
-        return f"{inicio.strftime('%H:%M')} as {fim.strftime('%H:%M')}"
+        return f"{inicio.strftime('%H:%M')} às {fim.strftime('%H:%M')}"
 
     @property
     def duracao_texto(self) -> str:
@@ -340,3 +340,5 @@ class ResumoAgenda:
     do_dia: list[Compromisso] = field(default_factory=list)
     proximos: list[Compromisso] = field(default_factory=list)
     atrasados_lista: list[Compromisso] = field(default_factory=list)
+    #: compromissos de segunda a domingo desta semana
+    por_dia_semana: list[int] = field(default_factory=lambda: [0] * 7)
