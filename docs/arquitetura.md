@@ -143,7 +143,11 @@ partir delas. Regras importantes:
   Nenhum aplicativo depende de outro para funcionar. A versao
   aplicada fica gravada no proprio arquivo (`PRAGMA user_version`), entao
   atualizacoes futuras nao perdem dados do cliente.
-- **Nenhum acesso a internet** no funcionamento diario. Hoje o programa nao faz
-  nenhuma chamada de rede.
+- **Nenhum acesso a internet e obrigatorio** no funcionamento diario. A rede so
+  entra no que o dono liga: licenca, celular e o link de agendamento da Agenda.
+  Um modulo com parte online expoe `online(paths, empresa)` no `module.py`
+  (contrato em `core/online.py`): ele le o proprio banco na thread da tela, o
+  Hub conversa com o servidor em segundo plano e devolve a resposta para o
+  modulo gravar. O Hub continua sem saber o que existe dentro do modulo.
 - **Um aplicativo com defeito nao derruba o Hub**: falhas ao carregar ou abrir um
   aplicativo sao registradas no log e viram aviso na tela.

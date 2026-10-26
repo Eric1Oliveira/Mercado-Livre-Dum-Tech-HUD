@@ -1,5 +1,5 @@
 {
- "duracao": 34.0,
+ "duracao": 34.3,
  "passos": [
   {
    "t": 2.8,
@@ -26,11 +26,11 @@
    "texto": "Quantidade, estoque mínimo, custo e preço de venda"
   },
   {
-   "t": 25.2,
+   "t": 25.4,
    "texto": "Clique em Salvar"
   },
   {
-   "t": 27.2,
+   "t": 27.4,
    "texto": "Pronto: o produto já aparece na lista e no balcão"
   }
  ]

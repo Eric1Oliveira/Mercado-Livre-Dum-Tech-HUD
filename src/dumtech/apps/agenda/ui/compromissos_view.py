@@ -157,7 +157,7 @@ class CompromissosView(CrudView):
             "titulo": compromisso.titulo,
             "data": fmt.data(compromisso.inicio),
             "hora": compromisso.horario,
-        }, contatos=self.contatos)
+        }, telefone=compromisso.telefone, contatos=self.contatos)
 
     def _status(self, status: str, recado: str) -> None:
         compromisso = self.registro_selecionado()

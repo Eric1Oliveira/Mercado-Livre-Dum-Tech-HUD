@@ -14,6 +14,7 @@ from ..repository import AgendaRepository
 from .agenda_view import AgendaView
 from .compromisso_dialog import CompromissoDialog
 from .compromissos_view import CompromissosView
+from .online_view import OnlineView
 
 
 class AgendaWindow(AppWindow):
@@ -31,10 +32,14 @@ class AgendaWindow(AppWindow):
                              mensageiro=self.mensagens,
                              contatos=self.context.contacts)
         )
+        self.online_view = self.add_view(
+            "Online", "link", OnlineView(self.repository, servidor=self.context.servidor,
+                                         empresa=self.empresa, paths=self.context.paths)
+        )
 
         self.agenda_view.abrir_ficha.connect(self.abrir_ficha)
         self.agenda_view.novo_em.connect(self.marcar_em)
-        for tela in (self.agenda_view, self.compromissos_view):
+        for tela in (self.agenda_view, self.compromissos_view, self.online_view):
             tela.data_changed.connect(self.refresh_all)
 
     def abrir_ficha(self, compromisso_id: int) -> None:

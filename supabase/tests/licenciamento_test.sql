@@ -481,7 +481,10 @@ begin
                              'dumtech_conferir_cupom', 'dumtech_iniciar_teste',
                              'dumtech_celular_iniciar', 'dumtech_celular_aparelhos',
                              'dumtech_celular_revogar', 'dumtech_celular_publicar',
-                             'dumtech_celular_parear', 'dumtech_celular_dados');
+                             'dumtech_celular_parear', 'dumtech_celular_dados',
+                             'dumtech_agenda_pagina', 'dumtech_agenda_horarios',
+                             'dumtech_agenda_reservar', 'dumtech_agenda_cancelar',
+                             'dumtech_agenda_salvar', 'dumtech_agenda_sincronizar');
     assert v_sobra is null, 'a chave anon executa funcoes demais: ' || coalesce(v_sobra, '');
 
     -- 13.3 RLS ligado em todas as tabelas do licenciamento

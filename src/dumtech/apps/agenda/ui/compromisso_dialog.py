@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from PySide6.QtWidgets import QComboBox, QWidget
 
+from ....core.documentos import formatar_telefone, mascara_telefone
 from ....ui import format as fmt
 from ....ui.widgets import form
 from ....ui.widgets.common import repolish
@@ -57,7 +58,10 @@ class CompromissoDialog(FormDialog):
         self.cliente = form.sugestao(
             self.compromisso.cliente, "Cliente (opcional)", clientes or []
         )
-        self.add_row("Cliente", self.cliente)
+        # o WhatsApp do compromisso: o link ja traz; no balcao, digita se quiser
+        self.telefone = form.texto(formatar_telefone(self.compromisso.telefone), "(00) 00000-0000")
+        self.telefone.textEdited.connect(self._mascarar_telefone)
+        self.add_row("Cliente", form.linha(self.cliente, "Telefone", self.telefone))
 
         self.inicio = form.data_hora(self.compromisso.inicio)
         self.inicio.dateTimeChanged.connect(self._conferir_conflito)
@@ -113,12 +117,20 @@ class CompromissoDialog(FormDialog):
     def em_serie(self) -> bool:
         return not self.editando and bool(self.repeticao.currentData())
 
+    def _mascarar_telefone(self, texto: str) -> None:
+        formatado = mascara_telefone(texto)
+        if formatado != texto:
+            self.telefone.setText(formatado)
+            self.telefone.setCursorPosition(len(formatado))
+
     def _tipo_mudou(self) -> None:
         """Bloqueio nao tem cliente: e almoco, folga, feriado."""
         bloqueio = self.tipo.currentData() == BLOQUEIO
         self.cliente.setEnabled(not bloqueio)
+        self.telefone.setEnabled(not bloqueio)
         if bloqueio:
             self.cliente.clear()
+            self.telefone.clear()
             if not self.titulo.text().strip():
                 self.titulo.setPlaceholderText("Ex.: Almoço, folga, feriado")
         self._conferir_conflito()
@@ -172,6 +184,7 @@ class CompromissoDialog(FormDialog):
 
         self.compromisso.titulo = self.titulo.text()
         self.compromisso.cliente = self.cliente.text()
+        self.compromisso.telefone = self.telefone.text().strip()
         self.compromisso.inicio = form.iso_da_data_hora(self.inicio)
         self.compromisso.duracao_min = self.duracao.currentData() or 60
         self.compromisso.local = self.local.text()

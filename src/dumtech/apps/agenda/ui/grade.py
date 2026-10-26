@@ -9,10 +9,12 @@ from __future__ import annotations
 
 from datetime import datetime, time, timedelta
 
-from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, Qt, Signal
+from PySide6.QtCore import QEvent, QPoint, QPointF, QRect, QRectF, Qt, Signal
 from PySide6.QtGui import QColor, QCursor, QFontMetrics, QPainter, QPainterPath, QPen
-from PySide6.QtWidgets import QWidget
+from PySide6.QtWidgets import QToolTip, QWidget
 
+from ....core.documentos import formatar_telefone
+from ....ui import icons
 from ....ui.theme import Radius, current_palette, font_for, mix, palette_for
 from ..models import CANCELADO, Compromisso, Grade
 
@@ -251,12 +253,19 @@ class GradeWidget(QWidget):
 
         cor_texto = QColor(p.text_dim if cancelado else p.text)
         cor_cliente = QColor(p.text_dim if cancelado else p.text_muted)
+        com_elo = compromisso.pelo_link and rect.width() >= 44 and rect.height() >= 15
         painter.save()
         painter.setClipRect(rect)
-        for area, papel, texto, e_cliente, alinhamento in self._textos(rect, compromisso):
+        # o texto para antes do elo: as reticencias caem antes do icone, nao embaixo dele
+        area_texto = rect.adjusted(0, 0, -15, 0) if com_elo else rect
+        for area, papel, texto, e_cliente, alinhamento in self._textos(area_texto, compromisso):
             painter.setFont(font_for(papel))
             painter.setPen(cor_cliente if e_cliente else cor_texto)
             painter.drawText(area, alinhamento, texto)
+        # o cliente marcou sozinho, pelo link: um elo pequeno no canto
+        if com_elo:
+            painter.drawPixmap(QPointF(rect.right() - 15, rect.top() + 3),
+                               icons.pixmap("link", cor.name(), 12, width=2.2))
         painter.restore()
 
     def _textos(self, rect: QRectF, compromisso: Compromisso) -> list[tuple]:
@@ -366,6 +375,25 @@ class GradeWidget(QWidget):
             self.selecao = None
             self.update()
             self.vazio.emit(momento)
+
+    def event(self, event) -> bool:  # noqa: N802 (Qt)
+        """A dica do bloco: quem marcou pelo link e o WhatsApp dele."""
+        if event.type() == QEvent.Type.ToolTip:
+            bloco = self._bloco_em(QPointF(event.pos()))
+            if bloco is not None and (bloco.pelo_link or bloco.telefone):
+                linhas = [f"{bloco.horario} · {bloco.titulo}"]
+                if bloco.cliente:
+                    linhas.append(bloco.cliente)
+                if bloco.telefone:
+                    linhas.append(f"WhatsApp {formatar_telefone(bloco.telefone)}")
+                if bloco.pelo_link:
+                    linhas.append("Marcado pelo cliente no link de agendamento")
+                QToolTip.showText(event.globalPos(), "\n".join(linhas), self)
+            else:
+                QToolTip.hideText()
+                event.ignore()
+            return True
+        return super().event(event)
 
     def mouseDoubleClickEvent(self, event) -> None:  # noqa: N802
         bloco = self._bloco_em(event.position())

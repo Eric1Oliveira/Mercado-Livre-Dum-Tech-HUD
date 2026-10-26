@@ -2,27 +2,27 @@
  "duracao": 22.1,
  "passos": [
   {
-   "t": 2.9,
+   "t": 2.8,
    "texto": "Abra o Financeiro"
   },
   {
-   "t": 4.9,
+   "t": 4.8,
    "texto": "Vá em Lançamentos"
   },
   {
-   "t": 6.9,
+   "t": 6.8,
    "texto": "Clique em Novo lançamento"
   },
   {
-   "t": 8.7,
+   "t": 8.6,
    "texto": "Descrição e valor"
   },
   {
-   "t": 13.2,
+   "t": 13.1,
    "texto": "Categoria e cliente (com sugestões)"
   },
   {
-   "t": 16.8,
+   "t": 16.7,
    "texto": "Salve: a conta aparece no vencimento certo"
   }
  ]

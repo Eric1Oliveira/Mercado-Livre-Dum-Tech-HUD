@@ -1,28 +1,28 @@
 {
- "duracao": 28.0,
+ "duracao": 28.2,
  "passos": [
   {
-   "t": 2.8,
-   "texto": "Abra Ordens: cada faixa é uma etapa"
+   "t": 2.9,
+   "texto": "Abra a OS: cada faixa é uma etapa"
   },
   {
-   "t": 5.1,
+   "t": 5.2,
    "texto": "Selecione a ordem: o botão já diz o próximo passo"
   },
   {
-   "t": 6.8,
+   "t": 7.0,
    "texto": "O cliente autorizou? Registrar aprovação"
   },
   {
-   "t": 13.8,
+   "t": 13.9,
    "texto": "Serviço pronto? Marcar como concluída"
   },
   {
-   "t": 17.5,
+   "t": 17.6,
    "texto": "O cliente veio buscar? Entregar ao cliente"
   },
   {
-   "t": 20.9,
+   "t": 21.0,
    "texto": "Quem retirou e como pagou: a garantia começa hoje"
   }
  ]

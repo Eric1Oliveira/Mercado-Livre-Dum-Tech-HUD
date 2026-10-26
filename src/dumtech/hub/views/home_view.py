@@ -332,7 +332,7 @@ class HomeView(QWidget):
         baixar.clicked.connect(self.baixar_versao.emit)
         botoes.addWidget(baixar)
         if not aviso.obrigatoria:     # obrigatoria fica ate a pessoa atualizar
-            depois = Button("Agora não", "", "ghost")
+            depois = Button("Lembrar em 3 dias", "", "ghost")
             depois.clicked.connect(self.dispensar_versao.emit)
             botoes.addWidget(depois)
         linha.addLayout(botoes)

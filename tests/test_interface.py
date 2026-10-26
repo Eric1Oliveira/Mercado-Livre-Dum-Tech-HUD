@@ -851,9 +851,9 @@ class GradeDaAgendaTestCase(unittest.TestCase):
         dados.update(campos)
         return self.repo.salvar(Compromisso(**dados))
 
-    def test_agenda_tem_duas_telas_comecando_pela_grade(self) -> None:
+    def test_agenda_comeca_pela_grade_e_tem_o_link_online(self) -> None:
         self.assertEqual(
-            [v.title for v in self.casca.views], ["Agenda", "Compromissos"]
+            [v.title for v in self.casca.views], ["Agenda", "Compromissos", "Online"]
         )
 
     def test_a_grade_desenha_uma_coluna_por_dia_da_semana(self) -> None:

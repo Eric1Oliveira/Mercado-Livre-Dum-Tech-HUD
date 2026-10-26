@@ -53,7 +53,9 @@ def secao(paths, manifesto) -> dict:
 
     banco = open_database(paths.app_db(manifesto.app_id))
     try:
-        r = AgendaRepository(banco).resumo(limite_listas=c.LIMITE_LISTA)
+        repositorio = AgendaRepository(banco)
+        r = repositorio.resumo(limite_listas=c.LIMITE_LISTA)
+        do_link = len(repositorio.do_link_para_confirmar())
     finally:
         banco.close()
 
@@ -63,6 +65,10 @@ def secao(paths, manifesto) -> dict:
     do_dia = sorted(r.do_dia, key=lambda x: x.inicio or "")
     ja_listados = {x.id for x in do_dia}  # o de hoje ja esta na linha do tempo
     alertas = []
+    if do_link:
+        alertas.append(c.alerta(
+            f"Confirmar {fmt.contagem(do_link, 'agendamento feito pelo link', 'agendamentos feitos pelo link')}",
+            tom="aviso"))
     if r.atrasados:
         alertas.append(c.alerta(
             f"Fechar {fmt.contagem(r.atrasados, 'compromisso que já passou', 'compromissos que já passaram')}",

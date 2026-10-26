@@ -53,6 +53,10 @@ TIPO_TOM = {
 }
 TIPO_OPCOES = [(rotulo, chave) for chave, rotulo in TIPO_LABEL.items()]
 
+#: de onde veio o compromisso: vazio = marcado aqui; "link" = o proprio
+#: cliente marcou pela pagina de agendamento online
+ORIGEM_LINK = "link"
+
 #: com que frequencia um compromisso se repete
 DIARIA = "diaria"
 SEMANAL = "semanal"
@@ -165,6 +169,10 @@ class Compromisso:
     tipo: str = ATENDIMENTO
     grupo: str = ""
     repeticao: str = ""
+    telefone: str = ""
+    origem: str = ""
+    #: id da reserva no servidor (so o que veio do link)
+    reserva: str = ""
 
     # ------------------------------------------------------------------- tempo
     @property
@@ -224,6 +232,10 @@ class Compromisso:
         return self.tipo == BLOQUEIO
 
     @property
+    def pelo_link(self) -> bool:
+        return self.origem == ORIGEM_LINK
+
+    @property
     def em_aberto(self) -> bool:
         return self.status in ABERTOS
 
@@ -258,8 +270,8 @@ class Compromisso:
         proprios = {campo.name for campo in fields(cls)}
         dados = {chave: row[chave] for chave in set(row.keys()) & proprios}
         dados["tipo"] = dados.get("tipo") or ATENDIMENTO
-        dados["grupo"] = dados.get("grupo") or ""
-        dados["repeticao"] = dados.get("repeticao") or ""
+        for campo in ("grupo", "repeticao", "telefone", "origem", "reserva"):
+            dados[campo] = dados.get(campo) or ""
         return cls(**dados)
 
 

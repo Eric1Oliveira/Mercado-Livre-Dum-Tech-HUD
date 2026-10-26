@@ -11,9 +11,13 @@ import uuid
 from datetime import date, datetime, timedelta
 
 from ...core.database import Database
+from ...core.documentos import formatar_telefone
 from .models import (
     ABERTOS,
+    AGENDADO,
+    ATENDIMENTO,
     BLOQUEIO,
+    CANCELADO,
     CONCLUIDO,
     DIARIA,
     HORA_FINAL,
@@ -21,6 +25,7 @@ from .models import (
     faixa_das_horas,
     MAXIMO_REPETICOES,
     MENSAL,
+    ORIGEM_LINK,
     QUINZENAL,
     SEMANAL,
     TIPO_LABEL,
@@ -38,7 +43,8 @@ PERIODO_SEMANA = "semana"
 PERIODO_MES = "mes"
 PERIODO_ATRASADOS = "atrasados"
 
-CAMPOS = "titulo, cliente, inicio, duracao_min, local, status, observacoes, tipo, grupo, repeticao"
+CAMPOS = ("titulo, cliente, inicio, duracao_min, local, status, observacoes, tipo, grupo, repeticao,"
+          " telefone, origem, reserva")
 
 
 def agora() -> str:
@@ -183,6 +189,9 @@ class AgendaRepository:
             compromisso.tipo,
             compromisso.grupo,
             compromisso.repeticao,
+            compromisso.telefone.strip(),
+            compromisso.origem,
+            compromisso.reserva,
         )
         if compromisso.id is None:
             marcadores = ", ".join("?" for _ in valores)
@@ -225,6 +234,7 @@ class AgendaRepository:
                 duracao_min=base.duracao_min, local=base.local,
                 status=base.status, observacoes=base.observacoes,
                 tipo=base.tipo, grupo=grupo, repeticao=repeticao,
+                telefone=base.telefone,
             )))
         return criados
 
@@ -340,6 +350,90 @@ class AgendaRepository:
 
     def abertos(self) -> list[Compromisso]:
         return [c for c in self.listar(limite=1000) if c.status in ABERTOS]
+
+    # ------------------------------------------------------- agendamento online
+    def importar_reserva(self, reserva: dict) -> Compromisso | None:
+        """Grava o que o cliente marcou pelo link. A mesma reserva entra uma vez so.
+
+        Devolve None quando ela ja estava aqui (a confirmacao de recebimento se
+        perdeu na rede e o servidor mandou de novo).
+        """
+        codigo = str(reserva.get("id") or "").strip()
+        if not codigo:
+            raise AgendaError("Reserva sem identificação.")
+        if self.db.query_one("SELECT 1 FROM compromissos WHERE reserva = ?", (codigo,)):
+            return None
+        return self.salvar(Compromisso(
+            titulo=str(reserva.get("servico") or "Atendimento")[:80],
+            cliente=str(reserva.get("nome") or "")[:80],
+            telefone=formatar_telefone(str(reserva.get("telefone") or "")),
+            inicio=str(reserva.get("inicio") or ""),
+            duracao_min=int(reserva.get("duracao") or 60),
+            observacoes=str(reserva.get("observacao") or ""),
+            status=AGENDADO,
+            tipo=ATENDIMENTO,
+            origem=ORIGEM_LINK,
+            reserva=codigo,
+        ))
+
+    def cancelar_reserva(self, codigo: str) -> Compromisso | None:
+        """O cliente cancelou pelo link: o horario volta a ficar livre."""
+        row = self.db.query_one("SELECT * FROM compromissos WHERE reserva = ?", (codigo,))
+        if row is None:
+            return None
+        compromisso = Compromisso.from_row(row)
+        if compromisso.status == CANCELADO:
+            return None
+        nota = f"Cancelado pelo cliente no link em {datetime.now():%d/%m às %H:%M}."
+        compromisso.observacoes = "\n".join(
+            t for t in (compromisso.observacoes.strip(), nota) if t)
+        self.db.execute(
+            "UPDATE compromissos SET status = ?, observacoes = ? WHERE id = ?",
+            (CANCELADO, compromisso.observacoes, compromisso.id),
+        )
+        compromisso.status = CANCELADO
+        return compromisso
+
+    def ocupados(self, de: date, ate: date) -> list[list]:
+        """Os horarios tomados de `de` a `ate`, sem nome de ninguem.
+
+        [inicio, minutos, bloqueio]: e TUDO o que sai deste computador para a
+        pagina de agendamento. Comeca um dia antes para pegar o que atravessa
+        a meia-noite.
+        """
+        return [
+            [c.inicio_dt.strftime("%Y-%m-%dT%H:%M"), min(int(c.duracao_min), 10080),
+             1 if c.e_bloqueio else 0]
+            for c in self.listar(inicio=(de - timedelta(days=1)).isoformat(),
+                                 fim=ate.isoformat(), limite=5000)
+            if c.ocupa_horario and c.inicio_dt is not None and int(c.duracao_min or 0) > 0
+        ]
+
+    def do_link_para_confirmar(self) -> list[Compromisso]:
+        """Marcados pelo cliente no link, ainda por vir e sem confirmar."""
+        return [Compromisso.from_row(row) for row in self.db.query(
+            "SELECT * FROM compromissos WHERE origem = ? AND status = ?"
+            " AND datetime(inicio) >= datetime(?) ORDER BY datetime(inicio)",
+            (ORIGEM_LINK, AGENDADO, datetime.now().isoformat(timespec="minutes")),
+        )]
+
+    def do_link_desde(self, quando: datetime) -> int:
+        """Quantos chegaram pelo link desde `quando` ("5 pelo link nesta semana")."""
+        return int(self.db.scalar(
+            "SELECT COUNT(*) FROM compromissos WHERE origem = ? AND criado_em >= ?",
+            (ORIGEM_LINK, quando.isoformat(timespec="seconds")),
+        ))
+
+    def ajuste(self, chave: str, padrao: str = "") -> str:
+        row = self.db.query_one("SELECT valor FROM ajustes WHERE chave = ?", (chave,))
+        return str(row["valor"]) if row else padrao
+
+    def definir_ajuste(self, chave: str, valor: str) -> None:
+        self.db.execute(
+            "INSERT INTO ajustes (chave, valor) VALUES (?, ?)"
+            " ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor",
+            (chave, str(valor)),
+        )
 
 
 __all__ = [

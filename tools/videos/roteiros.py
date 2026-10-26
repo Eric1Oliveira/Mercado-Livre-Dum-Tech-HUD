@@ -97,7 +97,7 @@ def estoque(d, hub):
     yield from d.digitar(d.por_dica("De quem voce compra"), "Distribuidora Sul")
     d.dizer("Quantidade, estoque mínimo, custo e preço de venda")
     yield from d.digitar(d.campo("Quantidade"), "15")
-    yield from d.digitar(d.campo("Minimo"), "5")
+    yield from d.digitar(d.campo("Estoque minimo"), "5")
     yield from d.digitar(d.campo("Custo medio"), "11,00")
     yield from d.digitar(d.campo("Venda"), "44,90")
     yield 600

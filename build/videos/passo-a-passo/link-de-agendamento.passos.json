@@ -1,0 +1,33 @@
+{
+ "duracao": 27.1,
+ "passos": [
+  {
+   "t": 2.8,
+   "texto": "Abra a Agenda"
+  },
+  {
+   "t": 5.1,
+   "texto": "Na aba Online fica o seu link de agendamento"
+  },
+  {
+   "t": 7.3,
+   "texto": "Clique em Criar meu link: ele já nasce pronto para usar"
+  },
+  {
+   "t": 10.5,
+   "texto": "Copie o link e mande no WhatsApp ou ponha na bio do Instagram"
+  },
+  {
+   "t": 14.6,
+   "texto": "Em Serviços e Horário de atendimento você escolhe o que aparece"
+  },
+  {
+   "t": 17.4,
+   "texto": "Quando o cliente marca pelo celular, o Hub avisa na hora"
+  },
+  {
+   "t": 20.6,
+   "texto": "E o horário já está na grade, com o WhatsApp do cliente"
+  }
+ ]
+}

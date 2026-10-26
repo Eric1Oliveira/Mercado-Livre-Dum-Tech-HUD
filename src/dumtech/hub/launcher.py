@@ -58,6 +58,9 @@ class AppLauncher(QObject):
         self._preparados: dict = {}
         #: Como avisar o usuario. Pode ser trocado (testes, modo silencioso).
         self.notify: Callable[[QWidget | None, str, str], None] = _avisar
+        #: o servidor com as credenciais da licenca, para quem tem parte online
+        #: (o Hub entrega; trocado nos testes e nos videos)
+        self.servidor = None
 
     # ------------------------------------------------------------------ abrir
     def open(self, app_id: str, parent_window: QWidget | None = None):
@@ -144,6 +147,7 @@ class AppLauncher(QObject):
             destinos=self.destinos(manifest.app_id),
             empresa=self.empresa(),
             mensagens=self.mensageiro(),
+            servidor=self.servidor,
         )
 
     def empresa(self):

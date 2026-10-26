@@ -80,6 +80,9 @@ def dentro(loja: str, nome: str, destino: str) -> None:
     carregar_fontes()
     ajustes = Settings()
     ajustes.set("conta", "concluido", True)
+    # o "O que mudou para voce" abriria por cima do video na primeira abertura
+    from dumtech import __version__
+    ajustes.set("novidades", "vista", __version__)
     ajustes.set("empresa", "nome", semente.EMPRESA)
     ajustes.set("empresa", "cidade", getattr(semente, "CIDADE", "Santo André"))
     ajustes.save()
@@ -91,6 +94,8 @@ def dentro(loja: str, nome: str, destino: str) -> None:
     tema = ThemeManager(app, MODO_CLARO)
     hub = HubWindow(settings=ajustes, theme=tema)
     hub.celular_service = roteiros.CelularDeMentira()
+    if hasattr(roteiros, "ServidorDeMentira"):  # o link de agendamento no video
+        hub.servidor = hub.launcher.servidor = roteiros.ServidorDeMentira()
     hub._tarefas_de_rede = lambda *a, **k: None  # video nao fala com servidor
     hub.conferir_versao = lambda *a, **k: None
     hub.resize(LARGURA, ALTURA)

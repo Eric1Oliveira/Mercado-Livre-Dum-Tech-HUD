@@ -23,14 +23,14 @@ export const VIDEOS = [
    "tour",
    "visao geral"
   ],
-  "duracao": 22.0,
+  "duracao": 22.1,
   "passos": [
    {
-    "t": 2.8,
+    "t": 2.9,
     "texto": "O Início mostra o dia inteiro da sua empresa"
    },
    {
-    "t": 6.9,
+    "t": 7.0,
     "texto": "Cada módulo é uma aba aqui em cima"
    },
    {
@@ -38,15 +38,15 @@ export const VIDEOS = [
     "texto": "Clique na aba para trocar de módulo"
    },
    {
-    "t": 11.6,
+    "t": 11.7,
     "texto": "A aba Início volta para o resumo do dia"
    },
    {
-    "t": 13.9,
+    "t": 14.0,
     "texto": "Ctrl + K abre a busca de qualquer lugar"
    }
   ],
-  "kb": 440
+  "kb": 446
  },
  {
   "id": "cadastrar-produto",
@@ -74,7 +74,7 @@ export const VIDEOS = [
    "preco de venda",
    "estoque minimo"
   ],
-  "duracao": 34.0,
+  "duracao": 34.3,
   "passos": [
    {
     "t": 2.8,
@@ -101,15 +101,15 @@ export const VIDEOS = [
     "texto": "Quantidade, estoque mínimo, custo e preço de venda"
    },
    {
-    "t": 25.2,
+    "t": 25.4,
     "texto": "Clique em Salvar"
    },
    {
-    "t": 27.2,
+    "t": 27.4,
     "texto": "Pronto: o produto já aparece na lista e no balcão"
    }
   ],
-  "kb": 538
+  "kb": 539
  },
  {
   "id": "buscar-produto",
@@ -133,34 +133,34 @@ export const VIDEOS = [
    "leitor",
    "lista de produtos"
   ],
-  "duracao": 22.4,
+  "duracao": 22.6,
   "passos": [
    {
-    "t": 2.8,
+    "t": 2.9,
     "texto": "Abra o Estoque"
    },
    {
-    "t": 4.8,
+    "t": 5.0,
     "texto": "Vá em Produtos"
    },
    {
-    "t": 6.9,
+    "t": 7.0,
     "texto": "Digite parte do nome"
    },
    {
-    "t": 9.9,
+    "t": 10.0,
     "texto": "Ou o código interno"
    },
    {
-    "t": 12.9,
+    "t": 13.0,
     "texto": "Ou bipe o código de barras com o leitor"
    },
    {
-    "t": 16.1,
+    "t": 16.2,
     "texto": "Duplo clique abre a ficha do produto"
    }
   ],
-  "kb": 449
+  "kb": 464
  },
  {
   "id": "entrada-mercadoria",
@@ -186,18 +186,18 @@ export const VIDEOS = [
    "custo",
    "custo medio"
   ],
-  "duracao": 31.0,
+  "duracao": 31.2,
   "passos": [
    {
     "t": 2.8,
     "texto": "Abra o Estoque"
    },
    {
-    "t": 4.8,
+    "t": 4.9,
     "texto": "Vá em Entradas"
    },
    {
-    "t": 6.8,
+    "t": 6.9,
     "texto": "Diga quem vendeu e o número da nota"
    },
    {
@@ -205,31 +205,31 @@ export const VIDEOS = [
     "texto": "Bipe ou digite o produto e aperte Enter"
    },
    {
-    "t": 13.8,
+    "t": 13.9,
     "texto": "Quantidade e custo de cada unidade"
    },
    {
-    "t": 16.7,
+    "t": 16.8,
     "texto": "Clique em Adicionar"
    },
    {
-    "t": 18.2,
+    "t": 18.3,
     "texto": "Bipe ou digite o produto e aperte Enter"
    },
    {
-    "t": 21.2,
+    "t": 21.3,
     "texto": "Quantidade e custo de cada unidade"
    },
    {
-    "t": 24.2,
+    "t": 24.3,
     "texto": "Clique em Adicionar"
    },
    {
-    "t": 25.7,
+    "t": 25.8,
     "texto": "Confira o total e clique em Confirmar entrada"
    }
   ],
-  "kb": 444
+  "kb": 456
  },
  {
   "id": "contagem-estoque",
@@ -256,27 +256,27 @@ export const VIDEOS = [
   "duracao": 27.8,
   "passos": [
    {
-    "t": 2.9,
+    "t": 2.8,
     "texto": "Abra o Estoque"
    },
    {
-    "t": 4.9,
+    "t": 4.8,
     "texto": "Vá em Contagem"
    },
    {
-    "t": 6.9,
+    "t": 6.8,
     "texto": "Bipe o produto e diga quantos você contou"
    },
    {
-    "t": 11.2,
+    "t": 11.1,
     "texto": "Clique em Anotar"
    },
    {
-    "t": 12.8,
+    "t": 12.7,
     "texto": "Bipe o produto e diga quantos você contou"
    },
    {
-    "t": 17.3,
+    "t": 17.2,
     "texto": "Clique em Anotar"
    },
    {
@@ -288,7 +288,7 @@ export const VIDEOS = [
     "texto": "Aplicar ajustes corrige o estoque de uma vez"
    }
   ],
-  "kb": 403
+  "kb": 402
  },
  {
   "id": "vender-balcao",
@@ -375,7 +375,7 @@ export const VIDEOS = [
    "conferir",
    "troco"
   ],
-  "duracao": 32.1,
+  "duracao": 32.2,
   "passos": [
    {
     "t": 2.8,
@@ -402,7 +402,7 @@ export const VIDEOS = [
     "texto": "No dia seguinte, Abrir caixa com o troco inicial"
    }
   ],
-  "kb": 536
+  "kb": 538
  },
  {
   "id": "devolucao",
@@ -424,34 +424,34 @@ export const VIDEOS = [
    "cancelar venda",
    "reembolso"
   ],
-  "duracao": 20.1,
+  "duracao": 20.0,
   "passos": [
    {
-    "t": 2.9,
+    "t": 2.8,
     "texto": "Abra Vendas"
    },
    {
-    "t": 4.9,
+    "t": 4.8,
     "texto": "Vá na lista de Vendas"
    },
    {
-    "t": 7.1,
+    "t": 7.0,
     "texto": "Selecione a venda do cliente"
    },
    {
-    "t": 8.6,
+    "t": 8.5,
     "texto": "Clique em Devolução"
    },
    {
-    "t": 10.4,
+    "t": 10.2,
     "texto": "Diga o motivo e o que voltou"
    },
    {
-    "t": 14.6,
+    "t": 14.5,
     "texto": "Confirme a devolução"
    }
   ],
-  "kb": 369
+  "kb": 366
  },
  {
   "id": "lancar-conta",
@@ -482,31 +482,31 @@ export const VIDEOS = [
   "duracao": 22.1,
   "passos": [
    {
-    "t": 2.9,
+    "t": 2.8,
     "texto": "Abra o Financeiro"
    },
    {
-    "t": 4.9,
+    "t": 4.8,
     "texto": "Vá em Lançamentos"
    },
    {
-    "t": 6.9,
+    "t": 6.8,
     "texto": "Clique em Novo lançamento"
    },
    {
-    "t": 8.7,
+    "t": 8.6,
     "texto": "Descrição e valor"
    },
    {
-    "t": 13.2,
+    "t": 13.1,
     "texto": "Categoria e cliente (com sugestões)"
    },
    {
-    "t": 16.8,
+    "t": 16.7,
     "texto": "Salve: a conta aparece no vencimento certo"
    }
   ],
-  "kb": 417
+  "kb": 414
  },
  {
   "id": "receber-conta",
@@ -529,7 +529,7 @@ export const VIDEOS = [
    "pagar",
    "parcial"
   ],
-  "duracao": 19.0,
+  "duracao": 19.1,
   "passos": [
    {
     "t": 2.8,
@@ -556,7 +556,7 @@ export const VIDEOS = [
     "texto": "A conta sai dos pendentes e o saldo atualiza"
    }
   ],
-  "kb": 398
+  "kb": 399
  },
  {
   "id": "fluxo-caixa",
@@ -603,7 +603,7 @@ export const VIDEOS = [
     "texto": "O Painel mostra o que vence e o que atrasou"
    }
   ],
-  "kb": 320
+  "kb": 328
  },
  {
   "id": "abrir-ordem",
@@ -634,7 +634,7 @@ export const VIDEOS = [
   "passos": [
    {
     "t": 2.8,
-    "texto": "Abra Ordens: a Bancada mostra cada serviço"
+    "texto": "Abra a OS: a Bancada mostra cada serviço"
    },
    {
     "t": 5.1,
@@ -657,7 +657,7 @@ export const VIDEOS = [
     "texto": "Salve: a ordem entra na Bancada"
    }
   ],
-  "kb": 463
+  "kb": 451
  },
  {
   "id": "avancar-ordem",
@@ -682,34 +682,34 @@ export const VIDEOS = [
    "garantia",
    "status"
   ],
-  "duracao": 28.0,
+  "duracao": 28.2,
   "passos": [
    {
-    "t": 2.8,
-    "texto": "Abra Ordens: cada faixa é uma etapa"
+    "t": 2.9,
+    "texto": "Abra a OS: cada faixa é uma etapa"
    },
    {
-    "t": 5.1,
+    "t": 5.2,
     "texto": "Selecione a ordem: o botão já diz o próximo passo"
    },
    {
-    "t": 6.8,
+    "t": 7.0,
     "texto": "O cliente autorizou? Registrar aprovação"
    },
    {
-    "t": 13.8,
+    "t": 13.9,
     "texto": "Serviço pronto? Marcar como concluída"
    },
    {
-    "t": 17.5,
+    "t": 17.6,
     "texto": "O cliente veio buscar? Entregar ao cliente"
    },
    {
-    "t": 20.9,
+    "t": 21.0,
     "texto": "Quem retirou e como pagou: a garantia começa hoje"
    }
   ],
-  "kb": 433
+  "kb": 437
  },
  {
   "id": "criar-orcamento",
@@ -731,18 +731,18 @@ export const VIDEOS = [
    "pdf",
    "itens"
   ],
-  "duracao": 35.5,
+  "duracao": 35.6,
   "passos": [
    {
-    "t": 2.8,
+    "t": 2.9,
     "texto": "Abra Orçamentos"
    },
    {
-    "t": 4.8,
+    "t": 4.9,
     "texto": "Vá na lista de propostas"
    },
    {
-    "t": 6.7,
+    "t": 6.8,
     "texto": "Clique em Nova proposta"
    },
    {
@@ -750,7 +750,7 @@ export const VIDEOS = [
     "texto": "Para quem é a proposta"
    },
    {
-    "t": 10.9,
+    "t": 11.0,
     "texto": "Adicione os itens: do estoque, o preço já vem"
    },
    {
@@ -758,15 +758,15 @@ export const VIDEOS = [
     "texto": "Condições de pagamento"
    },
    {
-    "t": 26.4,
+    "t": 26.5,
     "texto": "Salve a proposta"
    },
    {
-    "t": 28.6,
+    "t": 28.7,
     "texto": "Documento gera o PDF com a sua marca"
    }
   ],
-  "kb": 448
+  "kb": 447
  },
  {
   "id": "aprovar-orcamento",
@@ -807,7 +807,7 @@ export const VIDEOS = [
     "texto": "Enviar marca que o cliente recebeu"
    },
    {
-    "t": 10.1,
+    "t": 10.2,
     "texto": "O cliente aceitou? Clique em Aprovar"
    },
    {
@@ -815,11 +815,11 @@ export const VIDEOS = [
     "texto": "Gerar transforma a proposta em venda ou ordem, com os itens"
    },
    {
-    "t": 17.2,
+    "t": 17.3,
     "texto": "O Funil mostra quanto está em negociação"
    }
   ],
-  "kb": 401
+  "kb": 407
  },
  {
   "id": "cadastrar-cliente",
@@ -875,7 +875,7 @@ export const VIDEOS = [
     "texto": "Salve: o cliente aparece em todos os módulos"
    }
   ],
-  "kb": 439
+  "kb": 437
  },
  {
   "id": "ficha-cliente",
@@ -906,7 +906,7 @@ export const VIDEOS = [
     "texto": "Vá na lista de clientes"
    },
    {
-    "t": 6.7,
+    "t": 6.6,
     "texto": "Procure pelo nome, telefone ou cidade"
    },
    {
@@ -918,7 +918,7 @@ export const VIDEOS = [
     "texto": "Ver ficha mostra compras, propostas e agenda"
    }
   ],
-  "kb": 336
+  "kb": 341
  },
  {
   "id": "marcar-compromisso",
@@ -942,7 +942,7 @@ export const VIDEOS = [
    "atendimento",
    "marcar"
   ],
-  "duracao": 24.2,
+  "duracao": 24.3,
   "passos": [
    {
     "t": 2.8,
@@ -957,15 +957,76 @@ export const VIDEOS = [
     "texto": "O que é, o tipo e o cliente"
    },
    {
-    "t": 14.9,
+    "t": 15.0,
     "texto": "Dia e hora"
    },
    {
-    "t": 18.7,
+    "t": 18.8,
     "texto": "Salve: se bater com outro horário, o Hub avisa"
    }
   ],
-  "kb": 360
+  "kb": 372
+ },
+ {
+  "id": "link-de-agendamento",
+  "titulo": "Como criar o link para o cliente marcar sozinho",
+  "modulo": "agenda",
+  "grupo": "Agenda",
+  "resumo": "Mande o link no WhatsApp: o cliente escolhe um horário livre e o compromisso cai na Agenda.",
+  "perguntas": [
+   "como o cliente marca sozinho",
+   "link de agendamento",
+   "como criar agendamento online",
+   "como mandar a agenda para o cliente",
+   "cliente agendar pelo celular",
+   "agendamento pelo instagram"
+  ],
+  "palavras": [
+   "link",
+   "agendamento",
+   "agendamento online",
+   "online",
+   "agendar",
+   "whatsapp",
+   "instagram",
+   "reserva",
+   "horário livre",
+   "horario livre",
+   "cliente marca",
+   "qr code"
+  ],
+  "duracao": 27.1,
+  "passos": [
+   {
+    "t": 2.8,
+    "texto": "Abra a Agenda"
+   },
+   {
+    "t": 5.1,
+    "texto": "Na aba Online fica o seu link de agendamento"
+   },
+   {
+    "t": 7.3,
+    "texto": "Clique em Criar meu link: ele já nasce pronto para usar"
+   },
+   {
+    "t": 10.5,
+    "texto": "Copie o link e mande no WhatsApp ou ponha na bio do Instagram"
+   },
+   {
+    "t": 14.6,
+    "texto": "Em Serviços e Horário de atendimento você escolhe o que aparece"
+   },
+   {
+    "t": 17.4,
+    "texto": "Quando o cliente marca pelo celular, o Hub avisa na hora"
+   },
+   {
+    "t": 20.6,
+    "texto": "E o horário já está na grade, com o WhatsApp do cliente"
+   }
+  ],
+  "kb": 504
  },
  {
   "id": "busca-ctrl-k",
@@ -985,22 +1046,22 @@ export const VIDEOS = [
    "pesquisa",
    "menu"
   ],
-  "duracao": 12.2,
+  "duracao": 12.3,
   "passos": [
    {
-    "t": 2.8,
+    "t": 2.9,
     "texto": "Aperte Ctrl + K (ou clique em Buscar no Hub)"
    },
    {
-    "t": 4.4,
+    "t": 4.5,
     "texto": "Digite o que procura: uma tela ou uma ação"
    },
    {
-    "t": 7.3,
+    "t": 7.4,
     "texto": "Enter abre direto o que você escolheu"
    }
   ],
-  "kb": 231
+  "kb": 232
  },
  {
   "id": "tema-escuro",
@@ -1036,7 +1097,7 @@ export const VIDEOS = [
     "texto": "Clique de novo para voltar ao claro"
    }
   ],
-  "kb": 254
+  "kb": 248
  },
  {
   "id": "celular",
@@ -1058,22 +1119,22 @@ export const VIDEOS = [
    "app",
    "telefone"
   ],
-  "duracao": 13.7,
+  "duracao": 13.6,
   "passos": [
    {
-    "t": 2.9,
+    "t": 2.8,
     "texto": "Abra o menu da empresa, no canto de cima"
    },
    {
-    "t": 4.6,
+    "t": 4.5,
     "texto": "Escolha Ver no celular"
    },
    {
-    "t": 7.2,
+    "t": 7.1,
     "texto": "Aponte a câmera do celular para o QR Code"
    }
   ],
-  "kb": 282
+  "kb": 274
  },
  {
   "id": "minha-empresa",
@@ -1097,14 +1158,14 @@ export const VIDEOS = [
    "configurações",
    "comprovante"
   ],
-  "duracao": 19.1,
+  "duracao": 19.0,
   "passos": [
    {
-    "t": 2.9,
+    "t": 2.8,
     "texto": "No menu da empresa, escolha Minha empresa"
    },
    {
-    "t": 6.9,
+    "t": 6.8,
     "texto": "Nome, documento e contatos saem nos comprovantes"
    },
    {
@@ -1112,11 +1173,11 @@ export const VIDEOS = [
     "texto": "O logotipo entra por Escolher logotipo"
    },
    {
-    "t": 13.2,
+    "t": 13.1,
     "texto": "Salve os dados da empresa"
    }
   ],
-  "kb": 317
+  "kb": 316
  },
  {
   "id": "backup",
@@ -1159,7 +1220,7 @@ export const VIDEOS = [
     "texto": "Para levar a outro computador, guarde a cópia num pen drive"
    }
   ],
-  "kb": 348
+  "kb": 337
  },
  {
   "id": "usar-passo-a-passo",

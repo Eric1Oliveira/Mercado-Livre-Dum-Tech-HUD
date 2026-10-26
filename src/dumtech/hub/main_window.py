@@ -33,6 +33,7 @@ from PySide6.QtWidgets import (
 
 from .. import __version__
 from ..core import celular as nucleo_celular
+from ..core import online as nucleo_online
 from ..core import confirmacoes, eventos
 from ..core.avisos import Config as AvisosConfig
 from ..core import comunicados as comunicados_core
@@ -64,14 +65,21 @@ from ..ui.theme import (
     refresh_theme,
     stylesheet_for,
 )
-from ..ui.widgets.buttons import Button
 from ..ui.widgets.command_palette import Command, CommandPalette
 from ..ui.widgets.common import IconBadge, label, menu_arredondado
+from ..ui.widgets.aviso_flutuante import AvisoFlutuante
 from ..ui.widgets.confirmar import confirmar
 from ..ui.widgets.indicador import TRACO, Indicador
 from ..ui.widgets.pilha import Pilha
 from ..ui.widgets.topbar import ALTURA as ALTURA_TOPO
-from ..ui.widgets.topbar import BotaoTema, NavTab, ProfileButton, SearchPill, TabStrip
+from ..ui.widgets.topbar import (
+    BotaoAtualizar,
+    BotaoTema,
+    NavTab,
+    ProfileButton,
+    SearchPill,
+    TabStrip,
+)
 from .launcher import AppLauncher
 from .views.about_view import AboutView
 from .views.anuncio_dialog import AnuncioDialog
@@ -176,6 +184,8 @@ class HubWindow(QMainWindow):
         layout.addWidget(self._build_topo())
         layout.addWidget(self._build_content(), 1)
         self.setCentralWidget(central)
+        #: o recado do canto: chegou agendamento pelo link, por exemplo
+        self.aviso_flutuante = AvisoFlutuante(self)
 
         self._build_shortcuts()
         self.refresh_rail()
@@ -247,8 +257,7 @@ class HubWindow(QMainWindow):
 
         # o botao de atualizar mora ANTES da busca: e o unico recado do topo
         # que pede acao, e some assim que o cliente atualiza
-        self.botao_atualizar = Button("Atualizar", "in", "primary")
-        self.botao_atualizar.setToolTip("Há uma versão nova do DumTech Hub")
+        self.botao_atualizar = BotaoAtualizar()
         self.botao_atualizar.setVisible(False)
         self.botao_atualizar.clicked.connect(self.abrir_atualizacao)
         linha.addWidget(self.botao_atualizar, 0, Qt.AlignmentFlag.AlignVCenter)
@@ -289,6 +298,11 @@ class HubWindow(QMainWindow):
             self._icones_menu.append((item, icone))
             return item
 
+        # versao nova: o primeiro item do menu, so enquanto ela existir
+        self.item_atualizar = acao("Atualizar o Hub", "refresh", self.abrir_atualizacao)
+        self.separador_atualizar = self.menu_perfil.addSeparator()
+        self.item_atualizar.setVisible(False)
+        self.separador_atualizar.setVisible(False)
         acao("Minha empresa", "home", lambda: self._ir_para_config(self.empresa_view))
         self.item_licenca = acao("Licença", "key", lambda: self._go(PAGINA_LICENCA), True)
         self.item_config = acao("Configurações", "wrench",
@@ -514,6 +528,11 @@ class HubWindow(QMainWindow):
         self._celular_ultimo = ""
         self._celular_quando = 0.0
         self._celular_enviando = False
+        # a parte online dos aplicativos (o link de agendamento da Agenda)
+        self.servidor = nucleo_online.ServidorDaLicenca(lambda: self.license_service.current)
+        self.launcher.servidor = self.servidor
+        self._sincronias: dict[str, object] = {}
+        self._online_enviando = False
         self.pagamentos_view = PagamentosView(self.pagamentos_service)
         self.pagamentos_view.alterada.connect(self.launcher.atualizar_empresa)
         self.config_view.add_secao("Pagamentos", "money", self.pagamentos_view)
@@ -871,6 +890,11 @@ class HubWindow(QMainWindow):
     CELULAR_INTERVALO_MS = 5 * 1000
     #: mesmo sem mudanca, manda de vez em quando: o celular mostra "atualizado ha"
     CELULAR_BATIDA_S = 10 * 60
+    #: A parte online dos aplicativos (o link de agendamento): de quanto em
+    #: quanto tempo o Hub CONFERE se ha o que publicar ou buscar. Conferir e
+    #: local e barato; a rede so e chamada quando a agenda mudou ou quando ja
+    #: passou o intervalo do proprio modulo (1 minuto na Agenda).
+    ONLINE_INTERVALO_MS = 15 * 1000
     #: depois de uma escrita, espera a rajada de avisos acabar antes de montar.
     #: Curto de proposito: vendeu no balcao, o celular do dono ja sabe. Uma
     #: rajada vira um envio so - o resumo sem mudanca nao viaja.
@@ -905,6 +929,12 @@ class HubWindow(QMainWindow):
             self._relogio_do_celular.setInterval(self.CELULAR_INTERVALO_MS)
             self._relogio_do_celular.timeout.connect(self.publicar_no_celular)
             self._relogio_do_celular.start()
+
+            QTimer.singleShot(self.REDE_ESPERA_MS, self, self.sincronizar_online)
+            self._relogio_online = QTimer(self)
+            self._relogio_online.setInterval(self.ONLINE_INTERVALO_MS)
+            self._relogio_online.timeout.connect(self.sincronizar_online)
+            self._relogio_online.start()
 
     def _backup_depois_de_abrir(self) -> None:
         if not getattr(self, "_preparo_parado", False):
@@ -1013,11 +1043,23 @@ class HubWindow(QMainWindow):
         return nucleo_atualizacao.para_avisar(self.settings, __version__)
 
     def _atualizar_botao_versao(self) -> None:
-        """O botao do topo aparece quando ha versao nova - e some depois."""
+        """A pilula do topo aparece quando ha versao nova - e some depois.
+
+        Ela nao obedece ao "Lembrar em 3 dias" (isso e da faixa do Inicio):
+        enquanto houver versao nova, o caminho para atualizar fica a vista. E a
+        cada versao que chega - e a cada abertura do Hub - ela chama uma vez.
+        """
         aviso = nucleo_atualizacao.disponivel(self.settings, __version__)
-        self.botao_atualizar.setVisible(aviso is not None)
-        if aviso is not None:
-            self.botao_atualizar.setText(f"  Atualizar para {aviso.versao}")
+        existe = aviso is not None
+        chegou = existe and aviso.versao != self.botao_atualizar.versao
+        self.botao_atualizar.setVisible(existe)
+        self.item_atualizar.setVisible(existe)
+        self.separador_atualizar.setVisible(existe)
+        if existe:
+            self.botao_atualizar.set_versao(aviso.versao)
+            self.item_atualizar.setText(f"Atualizar para {aviso.versao}")
+            if chegou:
+                self.botao_atualizar.chamar()
 
     def abrir_atualizacao(self) -> None:
         """A janela que explica o que muda e faz a atualizacao inteira."""
@@ -1169,6 +1211,77 @@ class HubWindow(QMainWindow):
 
         tasks.executar(self, lambda: self.celular_service.publicar(resumo), concluiu, falhou)
 
+    # ------------------------------------------------------- parte online ---
+    def sincronizar_online(self) -> None:
+        """Publica e busca a parte online dos aplicativos liberados, um por vez.
+
+        Mesmo desenho do celular: o modulo le o banco aqui (`preparar`), a rede
+        vai para o segundo plano, e a resposta volta para gravar aqui
+        (`aplicar`). Sem licenca ativa, em modo local ou sem nada ligado, nao
+        sai nada do computador.
+        """
+        if getattr(self, "_preparo_parado", False) or modo_local_ligado() or self._online_enviando:
+            return
+        if not self.servidor.disponivel():
+            return
+        for entrada in self.registry.available():
+            sincronia = self._sincronia_de(entrada)
+            if sincronia is None:
+                continue
+            try:
+                pedido = sincronia.preparar()
+            except Exception:  # noqa: BLE001 - modulo quebrado nao derruba o Hub
+                logger.exception("Falha ao preparar a parte online de %s", entrada.app_id)
+                continue
+            if pedido is None:
+                continue
+            funcao, params = pedido
+            self._online_enviando = True
+            tasks.executar(
+                self,
+                lambda: self.servidor.chamar(funcao, params),
+                lambda resposta: self._online_respondeu(entrada, sincronia, funcao, params, resposta),
+                lambda erro: self._online_falhou(entrada, sincronia, funcao, erro),
+            )
+            return
+
+    def _sincronia_de(self, entrada):
+        if entrada.app_id not in self._sincronias:
+            self._sincronias[entrada.app_id] = nucleo_online.sincronia_de(
+                entrada.module, get_paths(), self.launcher.empresa)
+        return self._sincronias[entrada.app_id]
+
+    def _online_respondeu(self, entrada, sincronia, funcao: str, params: dict, resposta) -> None:
+        self._online_enviando = False
+        if getattr(self, "_preparo_parado", False):
+            return
+        try:
+            resultado = sincronia.aplicar(funcao, params, resposta)
+        except Exception:  # noqa: BLE001
+            logger.exception("Falha ao gravar a resposta online de %s", entrada.app_id)
+            return
+        if resultado.mudou:
+            eventos.avisar(entrada.app_id)  # a tela aberta recarrega; o Inicio tambem
+        if resultado.avisos:
+            texto = (resultado.avisos[0] if len(resultado.avisos) == 1
+                     else f"{len(resultado.avisos)} novidades no link de agendamento")
+            self.aviso_flutuante.mostrar(
+                texto, entrada.manifest.short_name, "link", entrada.manifest.accent,
+                acao=lambda app_id=entrada.app_id: self.open_app(app_id))
+        if resultado.de_novo:
+            # confirma ja o que chegou, junto com os ocupados novos
+            QTimer.singleShot(1500, self, self.sincronizar_online)
+
+    def _online_falhou(self, entrada, sincronia, funcao: str, erro: Exception) -> None:
+        self._online_enviando = False
+        logger.warning("A parte online de %s nao conversou com o servidor: %s", entrada.app_id, erro)
+        falhou = getattr(sincronia, "falhou", None)
+        if callable(falhou) and not getattr(self, "_preparo_parado", False):
+            try:
+                falhou(funcao, erro)
+            except Exception:  # noqa: BLE001
+                logger.exception("Falha ao anotar o erro online de %s", entrada.app_id)
+
     def _tarefas_de_rede(self, forcar: bool = False, forcar_licenca: bool = False) -> None:
         """Cadastro pendente, licenca, uso e ofertas: em segundo plano, sem incomodar.
 
@@ -1176,7 +1289,8 @@ class HubWindow(QMainWindow):
         """
         if getattr(self, "_preparo_parado", False) or modo_local_ligado():
             return
-        nome = self.launcher.empresa().nome
+        empresa = self.launcher.empresa()
+        nome, telefone = empresa.nome, empresa.telefone
         licenca = self.license_service.current
         chave, maquina = licenca.key, licenca.machine
         buscar_ofertas = forcar or self.comunicados_service.precisa_atualizar()
@@ -1198,7 +1312,7 @@ class HubWindow(QMainWindow):
         conferir_pix = conferir_licenca and licenca.ativa and not licenca.is_local
 
         def trabalho():
-            self.conta_service.reenviar(nome)
+            self.conta_service.reenviar(nome, telefone)
             conferida = self.license_service.conferir() if conferir_licenca else None
             vinculou = self.conta_service.vincular(chave, maquina, nome) if vincular else False
             enviou = self.uso_service.enviar_dados(chave, maquina, uso)

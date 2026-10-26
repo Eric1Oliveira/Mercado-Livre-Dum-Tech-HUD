@@ -21,7 +21,7 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import QAbstractButton, QHBoxLayout, QSizePolicy, QWidget
 
 from .. import icons
-from ..motion import Progresso, Realce
+from ..motion import Progresso, Pulso, Realce
 from ..theme import Palette, Radius, current_palette, font_for, mix, palette_for
 
 ALTURA = 64
@@ -374,6 +374,92 @@ class SearchPill(_Pintado):
         pintor.setFont(fonte_tecla)
         pintor.setPen(QColor(p.text_muted))
         pintor.drawText(tecla, int(Qt.AlignmentFlag.AlignCenter), self._atalho)
+        pintor.end()
+
+
+class BotaoAtualizar(_Pintado):
+    """Versao nova do Hub: a pilula que chama sem gritar.
+
+    Cheia na cor de destaque, com o numero da versao dentro. Quando a versao
+    chega, um halo sai dela tres vezes (`chamar`) e para - o olho percebe o
+    movimento e depois o botao fica quieto, sem piscar o dia inteiro.
+    """
+
+    ALTURA = 34
+    #: folga em volta da pilula para o halo crescer sem ser cortado
+    HALO = 6
+    PULSOS = 3
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._versao = ""
+        self._pulso = Pulso(self, vezes=self.PULSOS)
+        self.setText("Atualizar")
+        self.setFixedSize(self._largura(), self.ALTURA + 2 * self.HALO)
+
+    @property
+    def versao(self) -> str:
+        return self._versao
+
+    def set_versao(self, versao: str) -> None:
+        self._versao = versao or ""
+        self.setToolTip(f"Versão {versao} pronta: instala em menos de 1 minuto" if versao else "")
+        self.setFixedSize(self._largura(), self.ALTURA + 2 * self.HALO)
+        self.update()
+
+    def chamar(self) -> None:
+        """O halo sai `PULSOS` vezes (sem animacao no Windows, nada acontece)."""
+        self._pulso.tocar()
+
+    def _largura(self) -> int:
+        texto = QFontMetricsF(font_for("strong")).horizontalAdvance(self.text())
+        versao = QFontMetricsF(font_for("caption")).horizontalAdvance(self._versao)
+        return int(2 * self.HALO + 14 + 4 + 9 + texto + (8 + versao if self._versao else 0) + 16 + 0.99)
+
+    def paintEvent(self, event) -> None:  # noqa: N802
+        p = self._palette
+        pintor = QPainter(self)
+        pintor.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        pilula = QRectF(self.HALO, self.HALO, self.width() - 2 * self.HALO, self.ALTURA)
+        raio = self.ALTURA / 2
+
+        andou = self._pulso.valor
+        if andou > 0.001:
+            folga = self.HALO * andou
+            halo = QPainterPath()
+            halo.addRoundedRect(pilula.adjusted(-folga, -folga, folga, folga), raio + folga, raio + folga)
+            cor = QColor(p.accent)
+            cor.setAlphaF(0.45 * (1.0 - andou))
+            pintor.fillPath(halo, cor)
+
+        caixa = QPainterPath()
+        caixa.addRoundedRect(pilula, raio, raio)
+        pintor.fillPath(caixa, QColor(mix(p.accent, p.on_accent, 0.12 * self._realce.valor)))
+        if self._anel():
+            pintor.setPen(QPen(QColor(p.text), 1.4))
+            pintor.drawPath(caixa)
+
+        meio = pilula.center().y()
+        x = pilula.left() + 14
+        pintor.setPen(Qt.PenStyle.NoPen)
+        pintor.setBrush(QColor(p.on_accent))
+        pintor.drawEllipse(QPointF(x + 2, meio), 3.5, 3.5)
+
+        x += 4 + 9
+        fonte = font_for("strong")
+        largura = QFontMetricsF(fonte).horizontalAdvance(self.text())
+        pintor.setFont(fonte)
+        pintor.setPen(QColor(p.on_accent))
+        alinhar = int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        pintor.drawText(QRectF(x, pilula.top(), largura + 2, pilula.height()), alinhar, self.text())
+        if self._versao:
+            x += largura + 8
+            suave = QColor(p.on_accent)
+            suave.setAlphaF(0.78)
+            pintor.setFont(font_for("caption"))
+            pintor.setPen(suave)
+            pintor.drawText(QRectF(x, pilula.top(), pilula.right() - x, pilula.height()),
+                            alinhar, self._versao)
         pintor.end()
 
 

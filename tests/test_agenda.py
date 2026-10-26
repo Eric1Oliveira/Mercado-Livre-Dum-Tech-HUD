@@ -287,7 +287,8 @@ class MigracaoTestCase(unittest.TestCase):
         db = open_database(arquivo)
         self.addCleanup(db.close)
         repo = AgendaRepository(db)
-        self.assertEqual(db.schema_version, 2)
+        # passa pela 2 e chega na ultima (a 3 trouxe o agendamento online)
+        self.assertEqual(db.schema_version, MIGRATIONS[-1].version)
 
         antigo = repo.obter(1)
         self.assertEqual(antigo.titulo, "Visita antiga")

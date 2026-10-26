@@ -29,6 +29,10 @@ Options -Indexes
 
   # 3) nada de arquivo de desenvolvimento publicado
   RewriteRule ^(tests/|servidor\.mjs|package\.json|README\.md|_headers|netlify\.toml) - [F,L]
+
+  # 4) o link de agendamento de cada empresa: /agendar/<endereco> abre a
+  #    mesma pagina, que le o endereco e pergunta ao servidor (js/agendar.js)
+  RewriteRule ^agendar/[a-z0-9-]+/?$ agendar/index.html [L]
 </IfModule>
 
 # ---------------------------------------------------------------- tipos -----

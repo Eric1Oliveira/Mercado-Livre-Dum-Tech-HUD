@@ -1,6 +1,6 @@
 """Movimento da plataforma: pouco, curto e sempre com motivo.
 
-Quatro usos, e so quatro:
+Cinco usos, e so cinco:
 
 * **chegar** - a tela nova surge em vez de trocar num estalo, e o dialogo
   abre com uma entrada curta;
@@ -8,7 +8,9 @@ Quatro usos, e so quatro:
 * **crescer** - o grafico se desenha quando o numero muda, e o olho segue a
   mudanca em vez de procurar a diferenca;
 * **revelar** - o tema novo se abre num circulo a partir do botao de tema,
-  em vez de a janela inteira trocar de cor de uma vez.
+  em vez de a janela inteira trocar de cor de uma vez;
+* **chamar** - a versao nova do Hub chegou: um halo sai do botao tres vezes
+  e para. Uma vez, nunca piscando o dia inteiro.
 
 Tudo respeita a opcao "Efeitos de animacao" do Windows (Acessibilidade): quem
 desligou la nao ve movimento aqui. `DUMTECH_SEM_ANIMACAO=1` desliga tambem.
@@ -221,6 +223,32 @@ class Progresso(_Curva):
 
     def reiniciar(self) -> None:
         self.ir(1.0, de=0.0)
+
+
+class Pulso(_Curva):
+    """De 0 a 1, algumas vezes seguidas, e volta a 0: o halo que sai e some.
+
+    Para sozinho no fim. Chamar a atencao uma vez e diferente de piscar no
+    canto da tela de quem esta atendendo no balcao.
+    """
+
+    def __init__(self, widget: QWidget, vezes: int = 3, duracao: int = 1100) -> None:
+        super().__init__(widget, duracao, 0.0, QEasingCurve.Type.OutCubic)
+        self._animacao.setLoopCount(vezes)
+        self._animacao.finished.connect(self._parou)
+
+    @property
+    def ativo(self) -> bool:
+        return self._animacao.state() == QAbstractAnimation.State.Running
+
+    def tocar(self) -> None:
+        if not habilitado() or not self._widget.isVisible():
+            return
+        self.ir(1.0, de=0.0)
+
+    def _parou(self) -> None:
+        self.valor = 0.0
+        self._widget.update()
 
 
 # --------------------------------------------------------------- janelas ---

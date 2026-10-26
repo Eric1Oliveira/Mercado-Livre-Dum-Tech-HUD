@@ -11,6 +11,7 @@ embora venha antes no alfabeto.
 from __future__ import annotations
 
 import re
+from datetime import date
 
 from .loja import url_base
 
@@ -61,12 +62,25 @@ def endereco_confiavel(url: str, padrao: str = "") -> str:
     return texto if (alvo.hostname or "").lower() == casa.hostname.lower() else padrao
 
 
-# -------------------------------------------------------------- "agora nao" --
-def dispensar(settings, versao: str) -> None:
-    """O cliente clicou em "Agora nao": cala ate sair outra versao."""
+# ---------------------------------------------------------- "lembrar depois" --
+#: quantos dias o "Lembrar em 3 dias" cala a faixa do Inicio. Calar para
+#: sempre (como era) deixava cliente meses numa versao velha: um clique em
+#: "Agora nao" e a faixa nunca mais voltava.
+DIAS_DE_ESPERA = 3
+
+
+def dispensar(settings, versao: str, hoje: date | None = None) -> None:
+    """O cliente adiou: a faixa some por `DIAS_DE_ESPERA` dias e volta."""
     settings.set(SECAO, "dispensada", str(versao))
+    settings.set(SECAO, "dispensada_em", (hoje or date.today()).isoformat())
     settings.save()
 
 
-def foi_dispensada(settings, versao: str) -> bool:
-    return str(settings.get(SECAO, "dispensada", "")) == str(versao)
+def foi_dispensada(settings, versao: str, hoje: date | None = None) -> bool:
+    if str(settings.get(SECAO, "dispensada", "")) != str(versao):
+        return False
+    try:
+        quando = date.fromisoformat(str(settings.get(SECAO, "dispensada_em", "")))
+    except ValueError:
+        return False  # adiada antes da 1.5.0 (para sempre): volta a lembrar
+    return ((hoje or date.today()) - quando).days < DIAS_DE_ESPERA

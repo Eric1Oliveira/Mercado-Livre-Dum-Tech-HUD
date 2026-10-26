@@ -118,6 +118,13 @@ CATALOGO = {
         resumo="Atendimento, visita ou entrega: dia, hora e cliente, sem bater horário.",
         perguntas=["como marcar horário", "como agendar", "como usar a agenda", "como marcar uma visita"],
         palavras=["agenda", "agendar", "compromisso", "horario", "horário", "visita", "atendimento", "marcar"]),
+    "link-de-agendamento": dict(
+        titulo="Como criar o link para o cliente marcar sozinho", modulo="agenda", grupo="Agenda",
+        resumo="Mande o link no WhatsApp: o cliente escolhe um horário livre e o compromisso cai na Agenda.",
+        perguntas=["como o cliente marca sozinho", "link de agendamento", "como criar agendamento online",
+                   "como mandar a agenda para o cliente", "cliente agendar pelo celular", "agendamento pelo instagram"],
+        palavras=["link", "agendamento", "agendamento online", "online", "agendar", "whatsapp", "instagram",
+                  "reserva", "horário livre", "horario livre", "cliente marca", "qr code"]),
     "busca-ctrl-k": dict(
         titulo="Como achar qualquer tela com Ctrl+K", modulo="hub", grupo="Primeiros passos",
         resumo="A busca do Hub abre telas e ações pelo nome, de qualquer lugar.",
@@ -278,14 +285,14 @@ def cadastrar_produto(d, hub):
     yield from d.clicar(d.botao("Novo produto"), espera=1000)
     d.dizer("Código interno e código de barras (dá para bipar)")
     yield from d.digitar(d.por_dica("MOU-001"), "CAP-S23")
-    yield from d.digitar(d.por_dica("Bipe ou digite o EAN"), "7891000900099", por_segundo=24)
+    yield from d.digitar(d.por_dica("Bipe ou digite"), "7891000900099", por_segundo=24)
     d.dizer("Nome, categoria e fornecedor")
     yield from d.digitar(d.por_dica("Mouse USB sem fio"), "Capinha Galaxy S23 antichoque")
     yield from d.digitar(d.por_dica("Perifericos"), "Capinhas")
     yield from d.digitar(d.por_dica("De quem voce compra"), "Distribuidora Sul")
     d.dizer("Quantidade, estoque mínimo, custo e preço de venda")
     yield from d.digitar(d.campo("Quantidade"), "15")
-    yield from d.digitar(d.campo("Minimo"), "5")
+    yield from d.digitar(d.campo("Estoque minimo"), "5")
     yield from d.digitar(d.campo("Custo medio"), "11,00")
     yield from d.digitar(d.campo("Venda"), "44,90")
     yield 500
@@ -494,7 +501,7 @@ def fluxo_caixa(d, hub):
 # ============================================================== ORDENS
 def abrir_ordem(d, hub):
     yield from abrir(d, "abrir-ordem")
-    yield from modulo(d, "Ordens", "Abra Ordens: a Bancada mostra cada serviço", 1600)
+    yield from modulo(d, "OS", "Abra a OS: a Bancada mostra cada serviço", 1600)
     d.dizer("Clique em Nova ordem")
     yield from d.clicar(d.botao("Nova ordem"), espera=1000)
     f = d.dialogo()
@@ -520,7 +527,7 @@ def abrir_ordem(d, hub):
 
 def avancar_ordem(d, hub):
     yield from abrir(d, "avancar-ordem")
-    yield from modulo(d, "Ordens", "Abra Ordens: cada faixa é uma etapa", 1600)
+    yield from modulo(d, "OS", "Abra a OS: cada faixa é uma etapa", 1600)
     d.dizer("Selecione a ordem: o botão já diz o próximo passo")
     yield from d.clicar(d.rotulo("Notebook Dell Inspiron"), espera=1100)
     d.dizer("O cliente autorizou? Registrar aprovação")
@@ -660,6 +667,49 @@ def marcar_compromisso(d, hub):
     yield from fim(d, "Os compromissos de hoje também aparecem no Início e no celular.")
 
 
+class ServidorDeMentira:
+    """O servidor da DumTech no video: publica o link e devolve uma reserva quando pedirem."""
+
+    def disponivel(self) -> bool:
+        return True
+
+    def chamar(self, funcao: str, params: dict | None = None) -> dict:
+        from dumtech.apps.agenda.online import slug_de
+
+        nome = ((params or {}).get("p_config") or {}).get("empresa", {}).get("nome", "")
+        return {"ok": True, "slug": slug_de(nome) or "minha-agenda", "ativo": True, "link": True,
+                "novas": [], "canceladas": []}
+
+
+def link_de_agendamento(d, hub):
+    yield from abrir(d, "link-de-agendamento")
+    yield from modulo(d, "Agenda", "Abra a Agenda", 1500)
+    yield from aba(d, "Online", "Na aba Online fica o seu link de agendamento", 1700)
+    d.dizer("Clique em Criar meu link: ele já nasce pronto para usar")
+    yield from d.clicar(d.botao("Criar meu link"), espera=2400)
+    d.dizer("Copie o link e mande no WhatsApp ou ponha na bio do Instagram")
+    yield from d.clicar(d.botao("Copiar"), espera=1600)
+    yield from d.apontar(d.botao("Enviar no WhatsApp"), QPoint(40, 16))
+    yield 1200
+    d.dizer("Em Serviços e Horário de atendimento você escolhe o que aparece")
+    yield from d.apontar(d.botao("Adicionar serviço"), QPoint(30, 14))
+    yield 2200
+
+    # um cliente marca pelo celular: a resposta do servidor chega como chegaria de verdade
+    entrada = next(e for e in hub.registry.available() if e.app_id == "agenda")
+    sincronia = hub._sincronia_de(entrada)
+    amanha = QDate.currentDate().addDays(1).toString("yyyy-MM-dd")
+    reserva = {"id": "video-1", "servico": "Atendimento", "inicio": f"{amanha}T14:00", "duracao": 60,
+               "nome": "Camila Rocha", "telefone": "11987654321", "observacao": ""}
+    d.dizer("Quando o cliente marca pelo celular, o Hub avisa na hora")
+    hub._online_respondeu(entrada, sincronia, "dumtech_agenda_sincronizar",
+                          {"p_recebidas": [], "p_canceladas": []},
+                          {"ok": True, "link": True, "novas": [reserva], "canceladas": []})
+    yield 3200
+    yield from aba(d, "Agenda", "E o horário já está na grade, com o WhatsApp do cliente", 2600)
+    yield from fim(d, "Seus clientes marcam a qualquer hora, sem você parar o que está fazendo.")
+
+
 ROTEIROS = {
     "primeiros-passos": primeiros_passos,
     "cadastrar-produto": cadastrar_produto,
@@ -679,6 +729,7 @@ ROTEIROS = {
     "cadastrar-cliente": cadastrar_cliente,
     "ficha-cliente": ficha_cliente,
     "marcar-compromisso": marcar_compromisso,
+    "link-de-agendamento": link_de_agendamento,
     "busca-ctrl-k": busca_ctrl_k,
     "tema-escuro": tema_escuro,
     "celular": celular,

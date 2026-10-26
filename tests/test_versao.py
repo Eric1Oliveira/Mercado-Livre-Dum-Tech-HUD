@@ -89,6 +89,21 @@ class DispensarTestCase(unittest.TestCase):
         self.assertTrue(foi_dispensada(settings, "1.3.0"))
         self.assertFalse(foi_dispensada(settings, "1.4.0"), "a proxima volta a avisar")
 
+    def test_lembrar_em_3_dias(self) -> None:
+        from datetime import date, timedelta
+
+        settings = _settings()
+        hoje = date(2026, 10, 26)
+        dispensar(settings, "1.5.0", hoje=hoje)
+        self.assertTrue(foi_dispensada(settings, "1.5.0", hoje=hoje + timedelta(days=2)))
+        self.assertFalse(foi_dispensada(settings, "1.5.0", hoje=hoje + timedelta(days=3)),
+                         "depois de 3 dias a faixa volta")
+
+    def test_adiada_para_sempre_antes_da_1_5_volta_a_lembrar(self) -> None:
+        settings = _settings()
+        settings.set("versao", "dispensada", "1.4.5")  # sem a data: o jeito antigo
+        self.assertFalse(foi_dispensada(settings, "1.4.5"))
+
 
 if __name__ == "__main__":
     unittest.main()

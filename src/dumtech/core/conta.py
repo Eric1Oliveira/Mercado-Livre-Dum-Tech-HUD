@@ -22,6 +22,7 @@ import logging
 import re
 from dataclasses import dataclass
 
+from .documentos import so_digitos
 from .supabase import SupabaseClient, SupabaseError
 
 logger = logging.getLogger(__name__)
@@ -91,7 +92,7 @@ class ContaService:
     def atual(self) -> Conta:
         return Conta.carregar(self.settings)
 
-    def registrar(self, nome: str, email: str) -> Conta:
+    def registrar(self, nome: str, email: str, telefone: str = "") -> Conta:
         """Grava a conta e avisa o servidor. Sem internet, fica pendente.
 
         Levanta ``ContaError`` apenas quando o que foi digitado nao serve -
@@ -104,10 +105,10 @@ class ContaService:
         if not email_valido(email):
             raise ContaError("Confira o e-mail digitado.")
 
-        enviado = self._enviar(nome, email)
+        enviado = self._enviar(nome, email, telefone)
         return Conta(concluido=True, email=email, pendente=not enviado).salvar(self.settings)
 
-    def reenviar(self, nome: str) -> Conta:
+    def reenviar(self, nome: str, telefone: str = "") -> Conta:
         """Segunda chance para o cadastro que nao chegou ao servidor.
 
         Chamado quando o Hub abre. Se nao houver nada pendente, nao fala com a
@@ -117,7 +118,7 @@ class ContaService:
         nome = (nome or "").strip()
         if not conta.pendente or not conta.email or not nome:
             return conta
-        if self._enviar(nome, conta.email):
+        if self._enviar(nome, conta.email, telefone):
             conta.pendente = False
             conta.salvar(self.settings)
         return conta
@@ -164,11 +165,15 @@ class ContaService:
         self.settings.save()
 
     # ------------------------------------------------------------------ interno
-    def _enviar(self, nome: str, email: str) -> bool:
+    def _enviar(self, nome: str, email: str, telefone: str = "") -> bool:
+        params = {"p_nome": nome, "p_email": email}
+        # so os digitos, e so quando ha: o servidor anterior a 1.5.0 nao
+        # conhece o parametro, e o cadastro sem telefone continua igual
+        digitos = so_digitos(telefone)
+        if digitos:
+            params["p_telefone"] = digitos
         try:
-            resposta = self.client.rpc(
-                FUNCAO_IDENTIFICAR, {"p_nome": nome, "p_email": email}
-            )
+            resposta = self.client.rpc(FUNCAO_IDENTIFICAR, params)
         except SupabaseError as erro:
             logger.info("Cadastro da conta adiado: %s", erro)
             return False

@@ -44,6 +44,28 @@ MIGRATIONS = (
             """,
         ),
     ),
+    Migration(
+        version=3,
+        name="agendamento online",
+        statements=(
+            # so acrescimo: telefone serve a qualquer compromisso; origem e
+            # reserva marcam o que veio do link. O indice unico impede a mesma
+            # reserva de entrar duas vezes (a confirmacao pode se perder na
+            # rede e o servidor manda de novo). `ajustes` guarda a configuracao
+            # do link: ele e deste computador e vai no backup junto da agenda.
+            """
+            ALTER TABLE compromissos ADD COLUMN telefone TEXT NOT NULL DEFAULT '';
+            ALTER TABLE compromissos ADD COLUMN origem TEXT NOT NULL DEFAULT '';
+            ALTER TABLE compromissos ADD COLUMN reserva TEXT NOT NULL DEFAULT '';
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_compromissos_reserva
+                ON compromissos(reserva) WHERE reserva <> '';
+            CREATE TABLE IF NOT EXISTS ajustes (
+                chave TEXT PRIMARY KEY,
+                valor TEXT NOT NULL
+            );
+            """,
+        ),
+    ),
 )
 
 

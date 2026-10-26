@@ -23,6 +23,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
 
 from ...core.conta import ContaService, email_valido
+from ...core.documentos import formatar_telefone, mascara_telefone, telefone_valido
 from ...core.empresa import Empresa
 from ...core.licensing import LicenseError, LicenseService, SemInternet, normalize_key
 from ...ui import tasks
@@ -127,7 +128,8 @@ class BoasVindasView(QWidget):
         corpo.addWidget(form.campo("E-mail", self.campo_email))
 
         self.campo_telefone = form.texto("", "(00) 00000-0000")
-        corpo.addWidget(form.campo("Telefone (opcional)", self.campo_telefone))
+        self.campo_telefone.textEdited.connect(self._mascarar_telefone)
+        corpo.addWidget(form.campo("Telefone (WhatsApp)", self.campo_telefone))
 
         self.aviso_cadastro = label("", "muted")
         self.aviso_cadastro.setWordWrap(True)
@@ -202,20 +204,25 @@ class BoasVindasView(QWidget):
             self._dizer(self.aviso_cadastro, "Confira o e-mail digitado.", "warning")
             self.campo_email.setFocus()
             return
+        # obrigatorio: e por ele que a DumTech fala com quem instalou
+        telefone = self.campo_telefone.text().strip()
+        if not telefone_valido(telefone):
+            self._dizer(self.aviso_cadastro, "Digite o seu telefone com DDD.", "warning")
+            self.campo_telefone.setFocus()
+            return
 
         # a identidade da empresa e do cliente sao a mesma coisa aqui: assim os
         # comprovantes ja saem com nome, sem ninguem repetir o cadastro
         empresa = Empresa.carregar(self.settings)
         empresa.nome = empresa.nome or nome
         empresa.email = email
-        if self.campo_telefone.text().strip():
-            empresa.telefone = self.campo_telefone.text()
+        empresa.telefone = formatar_telefone(telefone)
         empresa.salvar(self.settings)
 
         # o cadastro segue em segundo plano: o cliente nao espera a internet
         tasks.executar(
             self,
-            lambda: self.conta_service.registrar(nome, email),
+            lambda: self.conta_service.registrar(nome, email, telefone),
             lambda _conta: None,
             lambda _erro: None,
         )
@@ -252,6 +259,12 @@ class BoasVindasView(QWidget):
         self._dizer(self.aviso_chave, str(erro), tom)
 
     # ------------------------------------------------------------------ apoio
+    def _mascarar_telefone(self, texto: str) -> None:
+        formatado = mascara_telefone(texto)
+        if formatado != texto:
+            self.campo_telefone.setText(formatado)
+            self.campo_telefone.setCursorPosition(len(formatado))
+
     def _formatar_chave(self, texto: str) -> None:
         formatada = normalize_key(texto)
         if formatada != texto:

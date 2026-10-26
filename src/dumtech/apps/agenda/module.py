@@ -23,18 +23,32 @@ def create_window(context: AppContext):
 
 
 def avisos(paths, config):
-    """Os compromissos de hoje - a pergunta que a agenda responde melhor."""
+    """Os compromissos de hoje - e o que os clientes marcaram pelo link."""
     from ...core.avisos import Aviso
+    from ...ui import format as fmt
     from .database import open_database
     from .repository import AgendaRepository
 
     banco = open_database(paths.app_db(MANIFEST.app_id))
     try:
-        resumo = AgendaRepository(banco).resumo()
+        repositorio = AgendaRepository(banco)
+        resumo = repositorio.resumo()
+        do_link = repositorio.do_link_para_confirmar()
     finally:
         banco.close()
 
     encontrados = []
+    if do_link:
+        primeiro = do_link[0]
+        encontrados.append(Aviso(
+            app_id=MANIFEST.app_id, tipo="link_para_confirmar",
+            titulo=_contagem(len(do_link), "agendamento do link", "agendamentos do link")
+                   + " para confirmar",
+            detalhe=f"{fmt.data(primeiro.inicio)} {primeiro.horario} - {primeiro.titulo}"
+                    + (f" ({primeiro.cliente})" if primeiro.cliente else ""),
+            tom="accent", urgencia=45, icone="link",
+            quantidade=len(do_link),
+        ))
     if resumo.do_dia:
         proximo = resumo.do_dia[0]
         encontrados.append(Aviso(
@@ -81,3 +95,10 @@ def celular(paths):
     from .celular import secao
 
     return secao(paths, MANIFEST)
+
+
+def online(paths, empresa):
+    """O link de agendamento: publica os ocupados e busca o que os clientes marcaram."""
+    from .online import Sincronia
+
+    return Sincronia(paths, empresa)

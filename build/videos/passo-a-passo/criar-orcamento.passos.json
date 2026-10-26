@@ -1,16 +1,16 @@
 {
- "duracao": 35.5,
+ "duracao": 35.6,
  "passos": [
   {
-   "t": 2.8,
+   "t": 2.9,
    "texto": "Abra Orçamentos"
   },
   {
-   "t": 4.8,
+   "t": 4.9,
    "texto": "Vá na lista de propostas"
   },
   {
-   "t": 6.7,
+   "t": 6.8,
    "texto": "Clique em Nova proposta"
   },
   {
@@ -18,7 +18,7 @@
    "texto": "Para quem é a proposta"
   },
   {
-   "t": 10.9,
+   "t": 11.0,
    "texto": "Adicione os itens: do estoque, o preço já vem"
   },
   {
@@ -26,11 +26,11 @@
    "texto": "Condições de pagamento"
   },
   {
-   "t": 26.4,
+   "t": 26.5,
    "texto": "Salve a proposta"
   },
   {
-   "t": 28.6,
+   "t": 28.7,
    "texto": "Documento gera o PDF com a sua marca"
   }
  ]

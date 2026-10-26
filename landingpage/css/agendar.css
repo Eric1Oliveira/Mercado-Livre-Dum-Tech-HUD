@@ -1,0 +1,750 @@
+/* =============================================================================
+   Agendamento online — a página que o cliente da loja abre no celular.
+
+   A página é da EMPRESA, não da DumTech: o nome, o logotipo e a cor que o
+   dono escolheu no Hub mandam. Tudo em volta fica quieto (cinza quente, fio
+   fino, Plus Jakarta Sans da família DumTech) para a cor dela aparecer.
+
+   A ASSINATURA
+     Confirmado, o resumo vira o cartãozinho de horário que salão, barbearia e
+     consultório entregam no balcão: o dia grande, a hora, o serviço e um
+     picote separando o canhoto. É o que o cliente reconhece da vida real.
+
+   Uma mão só, na luz do sol: alvo de toque de 44 px ou mais, campo com 16 px
+   (o iPhone não dá zoom), claro ou escuro conforme o aparelho.
+   ============================================================================= */
+
+:root {
+  color-scheme: light dark;
+  /* a cor da empresa: js/agendar-tela.js troca pela escolhida no Hub */
+  --destaque: #6a4ce8;
+  --destaque-suave: #f0edfd;
+  --destaque-texto: #6a4ce8;
+  --sobre-destaque: #ffffff;
+
+  --fundo: #f2f1ee;
+  --cartao: #ffffff;
+  --tinta: #17161a;
+  --tinta-media: #4a4750;
+  --tinta-fraca: #6f6b76;
+  --fio: #e3e1dc;
+  --fio-forte: #cfccc5;
+  --perigo: #b42318;
+
+  --raio: 16px;
+  --raio-p: 12px;
+  --coluna: 480px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --destaque-suave: #2a2540;
+    --destaque-texto: #a593f2;
+    --fundo: #121114;
+    --cartao: #1c1b1f;
+    --tinta: #f3f1f6;
+    --tinta-media: #cbc7d2;
+    --tinta-fraca: #9b97a4;
+    --fio: #2e2c33;
+    --fio-forte: #45424b;
+    --perigo: #ff8a80;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--fundo);
+  color: var(--tinta);
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  /* a barra de confirmar fica por cima do fim da página */
+  padding-bottom: calc(132px + env(safe-area-inset-bottom));
+}
+
+button { font: inherit; color: inherit; }
+
+[hidden] { display: none !important; }
+
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+:focus-visible {
+  outline: 3px solid var(--destaque-texto);
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------- a empresa -- */
+.topo {
+  background: linear-gradient(180deg, var(--destaque-suave) 0%, var(--fundo) 100%);
+  padding: calc(30px + env(safe-area-inset-top)) 20px 6px;
+}
+
+.topo-dentro,
+.recado,
+.pagina,
+.barra-dentro,
+.rodape {
+  max-width: var(--coluna);
+  margin-inline: auto;
+}
+
+.topo-dentro {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.marca {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  overflow: hidden;
+  border-radius: 18px;
+  background: var(--destaque);
+  color: var(--sobre-destaque);
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  box-shadow: 0 10px 22px -14px var(--destaque);
+}
+
+.marca.com-logo { background: #ffffff; }
+
+.marca img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.empresa {
+  margin: 0;
+  font-size: clamp(23px, 6.6vw, 30px);
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+
+.endereco {
+  margin: 5px 0 0;
+  color: var(--tinta-fraca);
+  font-size: 14px;
+}
+
+.recado {
+  margin-top: 16px;
+  padding: 11px 14px;
+  border-left: 3px solid var(--destaque);
+  border-radius: 4px var(--raio-p) var(--raio-p) 4px;
+  background: var(--cartao);
+  color: var(--tinta-media);
+  font-size: 14px;
+}
+
+/* ----------------------------------------------------------------- etapas -- */
+.pagina { padding: 8px 20px 0; }
+
+.etapa { margin-top: 28px; }
+
+.etapa-titulo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 12px;
+  color: var(--tinta-media);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.numero {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--tinta);
+  color: var(--fundo);
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
+.etapa-detalhe {
+  margin-left: auto;
+  color: var(--tinta-fraca);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* serviços */
+.servicos { display: grid; gap: 8px; }
+
+.servico {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 64px;
+  padding: 12px 16px;
+  border: 1.5px solid var(--fio);
+  border-radius: var(--raio);
+  background: var(--cartao);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.servico:hover { border-color: var(--fio-forte); }
+
+.servico[aria-checked="true"] {
+  border-color: var(--destaque);
+  background: var(--destaque-suave);
+}
+
+.marcador {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--fio-forte);
+  border-radius: 50%;
+}
+
+.servico[aria-checked="true"] .marcador {
+  border-color: var(--destaque);
+  background: var(--destaque);
+}
+
+.servico[aria-checked="true"] .marcador::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--sobre-destaque);
+}
+
+.servico-textos { display: grid; gap: 1px; min-width: 0; }
+
+.servico-nome { font-weight: 700; overflow-wrap: anywhere; }
+
+.servico-tempo { color: var(--tinta-fraca); font-size: 13px; }
+
+.servico-preco {
+  margin-left: auto;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* a faixa dos dias */
+.dias {
+  display: flex;
+  gap: 8px;
+  margin: 0 -20px;
+  padding: 2px 20px 8px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: 20px;
+  scrollbar-width: none;
+}
+
+.dias::-webkit-scrollbar { display: none; }
+
+.dia {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 64px;
+  padding: 10px 0 9px;
+  border: 1.5px solid var(--fio);
+  border-radius: var(--raio);
+  background: var(--cartao);
+  cursor: pointer;
+  scroll-snap-align: start;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.dia-semana {
+  color: var(--tinta-fraca);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.dia-numero {
+  font-size: 25px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.dia-mes { color: var(--tinta-fraca); font-size: 11px; }
+
+.dia[aria-checked="true"] {
+  border-color: var(--destaque);
+  background: var(--destaque);
+  color: var(--sobre-destaque);
+}
+
+.dia[aria-checked="true"] .dia-semana,
+.dia[aria-checked="true"] .dia-mes {
+  color: inherit;
+  opacity: 0.85;
+}
+
+/* fechado ou sem vaga: aparece, para ninguém achar que o dia sumiu */
+.dia:disabled {
+  border-style: dashed;
+  background: transparent;
+  cursor: default;
+  opacity: 0.42;
+}
+
+/* os horários */
+.periodo + .periodo { margin-top: 16px; }
+
+.periodo-nome {
+  margin: 0 0 8px;
+  color: var(--tinta-fraca);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.horas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+  gap: 8px;
+}
+
+.hora {
+  height: 48px;
+  border: 1.5px solid var(--fio);
+  border-radius: var(--raio-p);
+  background: var(--cartao);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.hora:hover { border-color: var(--fio-forte); }
+
+.hora[aria-checked="true"] {
+  border-color: var(--destaque);
+  background: var(--destaque);
+  color: var(--sobre-destaque);
+}
+
+.vazio {
+  margin: 0;
+  padding: 16px;
+  border: 1.5px dashed var(--fio-forte);
+  border-radius: var(--raio);
+  color: var(--tinta-fraca);
+  font-size: 14px;
+}
+
+.vazio .botao { margin-top: 12px; }
+
+/* os dados */
+.campo { display: block; margin-bottom: 14px; }
+
+.campo-rotulo {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.opcional { color: var(--tinta-fraca); font-weight: 500; }
+
+input,
+textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid var(--fio);
+  border-radius: var(--raio-p);
+  outline: none;
+  background: var(--cartao);
+  color: var(--tinta);
+  font: inherit;
+  font-size: 16px;
+}
+
+input { height: 52px; }
+
+textarea { min-height: 70px; resize: vertical; }
+
+input::placeholder,
+textarea::placeholder { color: var(--tinta-fraca); opacity: 0.8; }
+
+input:focus,
+textarea:focus {
+  border-color: var(--destaque);
+  box-shadow: 0 0 0 3px var(--destaque-suave);
+}
+
+[aria-invalid="true"] { border-color: var(--perigo); }
+
+.campo-dica {
+  display: block;
+  margin-top: 6px;
+  color: var(--tinta-fraca);
+  font-size: 13px;
+}
+
+.armadilha {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.privacidade {
+  margin: 4px 0 0;
+  color: var(--tinta-fraca);
+  font-size: 13px;
+}
+
+/* --------------------------------------------------- a barra de confirmar -- */
+.barra {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 10;
+  padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--fio);
+  background: var(--cartao);
+  box-shadow: 0 -14px 32px -22px rgba(0, 0, 0, 0.4);
+}
+
+.barra-dentro {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.resumo {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  color: var(--tinta-fraca);
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.resumo strong {
+  display: block;
+  overflow: hidden;
+  color: var(--tinta);
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.erro {
+  max-width: var(--coluna);
+  margin: 8px auto 0;
+  color: var(--perigo);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* ---------------------------------------------------------------- botões -- */
+.botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 52px;
+  padding: 0 20px;
+  border: 1.5px solid var(--fio-forte);
+  border-radius: 14px;
+  background: var(--cartao);
+  color: var(--tinta);
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.botao svg { width: 18px; height: 18px; flex: none; }
+
+.botao-cheio {
+  border-color: var(--destaque);
+  background: var(--destaque);
+  color: var(--sobre-destaque);
+}
+
+.botao:disabled { cursor: default; opacity: 0.45; }
+
+.botao-texto {
+  height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--tinta-media);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.botao-perigo { color: var(--perigo); }
+
+/* ---------------------------------------------------------------- estados -- */
+.carregando {
+  display: flex;
+  justify-content: center;
+  gap: 7px;
+  padding: 56px 0;
+}
+
+.ponto {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--destaque);
+  animation: pulsar 1s infinite ease-in-out;
+}
+
+.ponto:nth-child(2) { animation-delay: 0.15s; }
+.ponto:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes pulsar {
+  0%, 80%, 100% { opacity: 0.25; transform: scale(0.75); }
+  40% { opacity: 1; transform: scale(1); }
+}
+
+.aviso-cheio {
+  margin: 28px 0 0;
+  padding: 24px 22px;
+  border: 1px solid var(--fio);
+  border-radius: 20px;
+  background: var(--cartao);
+}
+
+.aviso-cheio h2 {
+  margin: 0 0 6px;
+  font-size: 21px;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.aviso-cheio p {
+  margin: 0;
+  color: var(--tinta-media);
+}
+
+.aviso-cheio .botao { margin-top: 18px; width: 100%; }
+
+/* os horários que este celular já marcou */
+.marcado {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 14px 12px 14px 16px;
+  border: 1.5px solid var(--destaque);
+  border-radius: var(--raio);
+  background: var(--destaque-suave);
+}
+
+.marcado-texto {
+  flex: 1;
+  min-width: 0;
+  color: var(--tinta-media);
+  font-size: 14px;
+}
+
+.marcado-texto strong {
+  display: block;
+  color: var(--tinta);
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+.recado-curto {
+  margin: 10px 0 0;
+  color: var(--tinta-media);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* ----------------------------------------------- o cartão de horário (assinatura) */
+.bilhete {
+  position: relative;
+  margin-top: 22px;
+  border: 1px solid var(--fio);
+  border-radius: 22px;
+  background: var(--cartao);
+  box-shadow: 0 26px 50px -32px rgba(0, 0, 0, 0.5);
+  animation: sair-do-balcao 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.bilhete-cabeca {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px 20px;
+  border-radius: 21px 21px 0 0;
+  background: var(--destaque);
+  color: var(--sobre-destaque);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.bilhete-cabeca svg {
+  width: 22px;
+  height: 22px;
+  padding: 3px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.bilhete-corpo {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: end;
+  column-gap: 16px;
+  padding: 22px 22px 20px;
+}
+
+.bilhete-dia {
+  color: var(--destaque-texto);
+  font-size: 78px;
+  font-weight: 800;
+  line-height: 0.78;
+  letter-spacing: -0.06em;
+  font-variant-numeric: tabular-nums;
+}
+
+.bilhete-mes {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.bilhete-semana {
+  color: var(--tinta-fraca);
+  font-size: 14px;
+}
+
+.bilhete-hora {
+  grid-column: 1 / -1;
+  margin-top: 18px;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.bilhete-servico {
+  grid-column: 1 / -1;
+  margin-top: 2px;
+  color: var(--tinta-media);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* o picote: tracejado e duas mordidas nas bordas, como o canhoto de papel */
+.bilhete-picote {
+  position: relative;
+  margin: 0 24px;
+  border-top: 2px dashed var(--fio-forte);
+}
+
+.bilhete-picote::before,
+.bilhete-picote::after {
+  content: "";
+  position: absolute;
+  top: -13px;
+  width: 24px;
+  height: 24px;
+  border: 1px solid;
+  border-radius: 50%;
+  background: var(--fundo);
+  transform: rotate(45deg);
+}
+
+.bilhete-picote::before {
+  left: -37px;
+  border-color: var(--fio) var(--fio) transparent transparent;
+}
+
+.bilhete-picote::after {
+  right: -37px;
+  border-color: transparent transparent var(--fio) var(--fio);
+}
+
+.bilhete-canhoto {
+  display: grid;
+  gap: 4px;
+  padding: 16px 22px 20px;
+  color: var(--tinta-media);
+  font-size: 14px;
+}
+
+.bilhete-canhoto strong { color: var(--tinta); font-size: 15px; }
+
+.bilhete.cancelado { opacity: 0.6; }
+
+.bilhete.cancelado .bilhete-cabeca { background: var(--tinta-fraca); }
+
+.acoes {
+  display: grid;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.acoes-linha {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+@keyframes sair-do-balcao {
+  from { opacity: 0; transform: translateY(22px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ----------------------------------------------------------------- rodapé -- */
+.rodape {
+  padding: 36px 20px 20px;
+  text-align: center;
+  font-size: 13px;
+}
+
+.rodape a { color: var(--tinta-fraca); text-decoration: none; }
+
+.rodape strong { color: var(--tinta-media); }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,28 +1,28 @@
 {
- "duracao": 20.1,
+ "duracao": 20.0,
  "passos": [
   {
-   "t": 2.9,
+   "t": 2.8,
    "texto": "Abra Vendas"
   },
   {
-   "t": 4.9,
+   "t": 4.8,
    "texto": "Vá na lista de Vendas"
   },
   {
-   "t": 7.1,
+   "t": 7.0,
    "texto": "Selecione a venda do cliente"
   },
   {
-   "t": 8.6,
+   "t": 8.5,
    "texto": "Clique em Devolução"
   },
   {
-   "t": 10.4,
+   "t": 10.2,
    "texto": "Diga o motivo e o que voltou"
   },
   {
-   "t": 14.6,
+   "t": 14.5,
    "texto": "Confirme a devolução"
   }
  ]

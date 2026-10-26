@@ -212,10 +212,32 @@ class BoasVindasTestCase(unittest.TestCase):
     def test_dados_errados_nao_avancam_nem_chamam_o_servidor(self) -> None:
         self.tela.campo_nome.setText("Joao")
         self.tela.campo_email.setText("isso-nao-e-email")
+        self.tela.campo_telefone.setText("(63) 99999-0000")
         self.tela.continuar()
 
         self.assertEqual(self.tela.passos.currentIndex(), PASSO_CADASTRO)
         self.assertEqual(self.cliente.chamadas, [])
+
+    def test_telefone_e_obrigatorio(self) -> None:
+        self.tela.campo_nome.setText("Loja do Joao")
+        self.tela.campo_email.setText("joao@exemplo.com")
+        for telefone in ("", "9999-0000"):
+            self.tela.campo_telefone.setText(telefone)
+            self.tela.continuar()
+            self.assertEqual(self.tela.passos.currentIndex(), PASSO_CADASTRO, telefone)
+            self.assertIn("telefone", self.tela.aviso_cadastro.text())
+        self.assertEqual(self.cliente.chamadas, [])
+
+    def test_telefone_chega_ao_servidor(self) -> None:
+        self.tela.campo_nome.setText("Loja do Joao")
+        self.tela.campo_email.setText("joao@exemplo.com")
+        self.tela.campo_telefone.setText("63999990000")
+        self.tela.continuar()
+        esperar_tarefas(self.app)
+
+        self.assertEqual(self.cliente.chamadas[0][1]["p_telefone"], "63999990000")
+        empresa = Empresa.carregar(Settings(self.settings.file_path))
+        self.assertEqual(empresa.telefone_formatado, "(63) 99999-0000")
 
     def test_sem_internet_o_cadastro_fica_pendente_mas_avanca(self) -> None:
         from dumtech.core.supabase import SemConexao
@@ -227,6 +249,7 @@ class BoasVindasTestCase(unittest.TestCase):
         self.addCleanup(tela.deleteLater)
         tela.campo_nome.setText("Loja do Joao")
         tela.campo_email.setText("joao@exemplo.com")
+        tela.campo_telefone.setText("(63) 99999-0000")
         tela.continuar()
         esperar_tarefas(self.app)
 

@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- A pagina publica de agendamento de cada empresa. Nenhum script de fora;
+     o que vem do servidor entra como TEXTO (textContent), nunca como HTML. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://kpiyhhmtteojqxhhmcyr.supabase.co http://127.0.0.1:* http://localhost:*; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<!-- a pagina de cada empresa nao entra em buscador: quem chega, chega pelo link dela -->
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#f2f1ee" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121114" media="(prefers-color-scheme: dark)">
+<meta name="description" content="Escolha o serviço, o dia e o horário e marque em poucos segundos.">
+<meta property="og:title" content="Agende seu horário">
+<meta property="og:description" content="Escolha o serviço, o dia e o horário livre e marque em poucos segundos.">
+<title>Agende seu horário</title>
+<link rel="icon" href="/celular/icone-192.png" type="image/png">
+<link rel="preconnect" href="https://kpiyhhmtteojqxhhmcyr.supabase.co" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/agendar.css?v=1">
+<link rel="modulepreload" href="/js/agendar-tela.js?v=1">
+<link rel="modulepreload" href="/js/agendar.js?v=1">
+<link rel="modulepreload" href="/js/config.js">
+<script type="module" src="/js/agendar-tela.js?v=1"></script>
+</head>
+<body>
+
+<header class="topo" id="topo">
+  <div class="topo-dentro">
+    <div class="marca" id="marca" aria-hidden="true"></div>
+    <div class="identidade">
+      <h1 class="empresa" id="empresa">Agende seu horário</h1>
+      <p class="endereco" id="endereco" hidden></p>
+    </div>
+  </div>
+  <p class="recado" id="recado" hidden></p>
+</header>
+
+<main class="pagina" id="pagina">
+  <section class="carregando" id="carregando" aria-live="polite">
+    <span class="ponto"></span><span class="ponto"></span><span class="ponto"></span>
+    <span class="sr">Carregando a agenda</span>
+  </section>
+
+  <!-- horarios que ESTE celular ja marcou neste link -->
+  <section class="marcados" id="marcados" hidden aria-label="Seus horários marcados"></section>
+
+  <section class="aviso-cheio" id="parado" hidden role="status"></section>
+
+  <form class="fluxo" id="fluxo" hidden novalidate>
+    <section class="etapa" id="etapa-servico" aria-labelledby="titulo-servico">
+      <h2 class="etapa-titulo" id="titulo-servico"><span class="numero" aria-hidden="true">1</span>Serviço</h2>
+      <div class="servicos" id="servicos" role="radiogroup" aria-labelledby="titulo-servico"></div>
+    </section>
+
+    <section class="etapa" id="etapa-dia" aria-labelledby="titulo-dia" hidden>
+      <h2 class="etapa-titulo" id="titulo-dia"><span class="numero" aria-hidden="true">2</span>Dia</h2>
+      <div class="dias" id="dias" role="radiogroup" aria-labelledby="titulo-dia"></div>
+    </section>
+
+    <section class="etapa" id="etapa-hora" aria-labelledby="titulo-hora" hidden>
+      <h2 class="etapa-titulo" id="titulo-hora"><span class="numero" aria-hidden="true">3</span>Horário
+        <span class="etapa-detalhe" id="dia-escolhido"></span></h2>
+      <div id="horarios"></div>
+    </section>
+
+    <section class="etapa" id="etapa-dados" aria-labelledby="titulo-dados" hidden>
+      <h2 class="etapa-titulo" id="titulo-dados"><span class="numero" aria-hidden="true">4</span>Seus dados</h2>
+      <label class="campo">
+        <span class="campo-rotulo">Nome</span>
+        <input id="nome" name="nome" autocomplete="name" maxlength="80" placeholder="Seu nome" required>
+      </label>
+      <label class="campo">
+        <span class="campo-rotulo">WhatsApp</span>
+        <input id="telefone" name="telefone" type="tel" inputmode="tel" autocomplete="tel-national"
+               maxlength="16" placeholder="(00) 00000-0000" required>
+        <span class="campo-dica">Para a empresa confirmar o horário com você.</span>
+      </label>
+      <label class="campo">
+        <span class="campo-rotulo">Observação <span class="opcional">(opcional)</span></span>
+        <textarea id="observacao" name="observacao" rows="2" maxlength="300"
+                  placeholder="Ex.: é a primeira vez"></textarea>
+      </label>
+      <!-- gente nao ve este campo; robo preenche e e recusado -->
+      <label class="armadilha" aria-hidden="true">Site <input id="site" name="site" tabindex="-1" autocomplete="off"></label>
+      <p class="privacidade" id="privacidade"></p>
+    </section>
+  </form>
+
+  <section class="feito" id="feito" hidden aria-live="polite"></section>
+</main>
+
+<div class="barra" id="barra" hidden>
+  <div class="barra-dentro">
+    <p class="resumo" id="resumo" aria-live="polite">Escolha um horário</p>
+    <button class="botao botao-cheio" id="confirmar" type="submit" form="fluxo" disabled>Confirmar</button>
+  </div>
+  <p class="erro" id="erro" role="alert" hidden></p>
+</div>
+
+<footer class="rodape">
+  <a href="https://dumtechsolution.com/?origem=agendar" rel="noopener">Agendamento online por <strong>DumTech</strong></a>
+</footer>
+
+<noscript><p class="aviso-cheio">Para marcar seu horário, ative o JavaScript do navegador.</p></noscript>
+</body>
+</html>

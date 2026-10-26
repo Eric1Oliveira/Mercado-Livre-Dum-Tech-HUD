@@ -69,6 +69,9 @@ class AppContext:
     contas: Any = None
     #: para onde uma proposta aprovada pode virar trabalho (`core/pedidos.py`)
     destinos: list = field(default_factory=list)
+    #: o servidor da DumTech ja com as credenciais da licenca (`core/online.py`)
+    #: - so para quem tem parte online, como o link de agendamento
+    servidor: Any = None
 
     @property
     def db_path(self) -> Path:

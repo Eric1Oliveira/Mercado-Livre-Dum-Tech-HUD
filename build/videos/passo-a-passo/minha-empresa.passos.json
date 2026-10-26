@@ -1,12 +1,12 @@
 {
- "duracao": 19.1,
+ "duracao": 19.0,
  "passos": [
   {
-   "t": 2.9,
+   "t": 2.8,
    "texto": "No menu da empresa, escolha Minha empresa"
   },
   {
-   "t": 6.9,
+   "t": 6.8,
    "texto": "Nome, documento e contatos saem nos comprovantes"
   },
   {
@@ -14,7 +14,7 @@
    "texto": "O logotipo entra por Escolher logotipo"
   },
   {
-   "t": 13.2,
+   "t": 13.1,
    "texto": "Salve os dados da empresa"
   }
  ]

@@ -1,5 +1,5 @@
 {
- "duracao": 24.2,
+ "duracao": 24.3,
  "passos": [
   {
    "t": 2.8,
@@ -14,11 +14,11 @@
    "texto": "O que é, o tipo e o cliente"
   },
   {
-   "t": 14.9,
+   "t": 15.0,
    "texto": "Dia e hora"
   },
   {
-   "t": 18.7,
+   "t": 18.8,
    "texto": "Salve: se bater com outro horário, o Hub avisa"
   }
  ]

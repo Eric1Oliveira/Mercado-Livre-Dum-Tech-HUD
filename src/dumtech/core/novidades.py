@@ -40,6 +40,15 @@ class Novidade:
 #: versao -> o que mudou. So entra o que o cliente PERCEBE: correcao interna
 #: nao vira aviso. Escreva como quem explica no balcao, sem termo tecnico.
 VERSOES: dict[str, tuple[Novidade, ...]] = {
+    "1.5.0": (
+        Novidade(
+            "agenda", "Agenda: seus clientes marcam sozinhos",
+            "Na aba Online da Agenda, crie o seu link de agendamento e mande no WhatsApp "
+            "ou ponha na bio do Instagram. O cliente escolhe o serviço, o dia e um horário "
+            "livre, e o compromisso aparece aqui na hora, com o WhatsApp dele. Ele também "
+            "pode cancelar pelo próprio link, dentro do prazo que você escolher.",
+        ),
+    ),
     "1.4.5": (
         Novidade(
             "estoque", "Estoque: etiquetas com código de barras",

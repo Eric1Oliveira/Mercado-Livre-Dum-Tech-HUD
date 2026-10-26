@@ -63,6 +63,29 @@ class ContaTestCase(unittest.TestCase):
         self.assertEqual(self.cliente.chamadas[0][1],
                          {"p_nome": "Joao da Silva", "p_email": "joao@exemplo.com"})
 
+    def test_telefone_vai_so_com_os_digitos(self) -> None:
+        self.service.registrar("Joao", "joao@exemplo.com", "(63) 99999-0000")
+        self.assertEqual(self.cliente.chamadas[0][1]["p_telefone"], "63999990000")
+
+    def test_reenvio_leva_o_telefone(self) -> None:
+        offline = ContaService(self.settings, ClienteFalso(excecao=SemConexao("sem rede")))
+        offline.registrar("Joao", "joao@exemplo.com", "(63) 99999-0000")
+        self.service.reenviar("Joao", "(63) 99999-0000")
+        self.assertEqual(self.cliente.chamadas[-1][1]["p_telefone"], "63999990000")
+
+    def test_telefone_valido(self) -> None:
+        from dumtech.core.documentos import mascara_telefone, telefone_valido
+
+        for bom in ("(63) 99999-0000", "6332258899", "+55 11 98765-4321", "5511987654321"):
+            self.assertTrue(telefone_valido(bom), bom)
+        for ruim in ("", "99999-0000", "(01) 99999-0000", "(10) 3225-8899", "123", "(63) 99999-00001"):
+            self.assertFalse(telefone_valido(ruim), ruim)
+        self.assertEqual(mascara_telefone("63"), "(63")
+        self.assertEqual(mascara_telefone("639999"), "(63) 9999")
+        self.assertEqual(mascara_telefone("6332258899"), "(63) 3225-8899")
+        self.assertEqual(mascara_telefone("63999990000"), "(63) 99999-0000")
+        self.assertEqual(mascara_telefone("639999900001"), "(63) 99999-0000", "para no 11o digito")
+
     def test_cadastro_sobrevive_a_releitura(self) -> None:
         self.service.registrar("Joao", "joao@exemplo.com")
         outro = Settings(self.settings.file_path)

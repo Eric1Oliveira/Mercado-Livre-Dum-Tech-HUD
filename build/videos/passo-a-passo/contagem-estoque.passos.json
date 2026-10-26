@@ -2,27 +2,27 @@
  "duracao": 27.8,
  "passos": [
   {
-   "t": 2.9,
+   "t": 2.8,
    "texto": "Abra o Estoque"
   },
   {
-   "t": 4.9,
+   "t": 4.8,
    "texto": "Vá em Contagem"
   },
   {
-   "t": 6.9,
+   "t": 6.8,
    "texto": "Bipe o produto e diga quantos você contou"
   },
   {
-   "t": 11.2,
+   "t": 11.1,
    "texto": "Clique em Anotar"
   },
   {
-   "t": 12.8,
+   "t": 12.7,
    "texto": "Bipe o produto e diga quantos você contou"
   },
   {
-   "t": 17.3,
+   "t": 17.2,
    "texto": "Clique em Anotar"
   },
   {

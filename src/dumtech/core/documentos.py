@@ -83,6 +83,30 @@ def formatar_telefone(valor: str | None) -> str:
     return (valor or "").strip()
 
 
+def telefone_valido(valor: str | None) -> bool:
+    """Telefone brasileiro com DDD: 10 ou 11 digitos (o 55 na frente e aceito).
+
+    DDD vai de 11 a 99 e nenhum termina em 0 - "(10)" e "(01)" sao erro de
+    digitacao, nao um numero que alguem vai atender.
+    """
+    d = so_digitos(valor)
+    if len(d) in (12, 13) and d.startswith("55"):
+        d = d[2:]
+    return len(d) in (10, 11) and d[0] != "0" and d[1] != "0"
+
+
+def mascara_telefone(valor: str | None) -> str:
+    """O telefone formatado enquanto a pessoa digita: (63) 9, (63) 99999-0..."""
+    d = so_digitos(valor)[:11]
+    if len(d) <= 2:
+        return f"({d}" if d else ""
+    ddd, resto = d[:2], d[2:]
+    if len(resto) <= 4:
+        return f"({ddd}) {resto}"
+    corte = 5 if len(d) == 11 else 4
+    return f"({ddd}) {resto[:corte]}-{resto[corte:]}"
+
+
 def formatar_cep(valor: str | None) -> str:
     d = so_digitos(valor)
     return f"{d[:5]}-{d[5:]}" if len(d) == 8 else (valor or "").strip()
