@@ -19,13 +19,18 @@ from dumtech.apps.agenda.models import (
     MENSAL,
     QUINZENAL,
     VISITA,
+    FAIXA_LOJA,
+    FAIXA_PADRAO,
     FAIXAS,
     HORA_FINAL,
     HORA_INICIAL,
     AgendaError,
     Compromisso,
+    DiaDaGrade,
+    Expediente,
     faixa_por_chave,
     inicio_da_semana,
+    titulo_do_periodo,
 )
 from dumtech.apps.agenda.repository import AgendaRepository
 
@@ -399,3 +404,55 @@ class FaixaDeHorasTestCase(unittest.TestCase):
                 self.assertLess(inicial, final)
                 self.assertTrue(rotulo.strip())
         self.assertEqual(faixa_por_chave("nao existe"), (HORA_INICIAL, HORA_FINAL))
+
+
+class PeriodoEExpedienteTestCase(unittest.TestCase):
+    """O que a grade nova escreve no topo e mede em cada dia."""
+
+    def test_o_periodo_por_extenso(self) -> None:
+        hoje = date(2026, 10, 26)
+        self.assertEqual(titulo_do_periodo(date(2026, 10, 26), 7, hoje),
+                         "26 de outubro – 1 de novembro")
+        self.assertEqual(titulo_do_periodo(date(2026, 10, 5), 7, hoje), "5 – 11 de outubro")
+        self.assertEqual(titulo_do_periodo(date(2026, 10, 26), 1, hoje), "Segunda, 26 de outubro")
+        self.assertEqual(titulo_do_periodo(date(2026, 12, 28), 7, hoje),
+                         "28 de dezembro de 2026 – 3 de janeiro de 2027")
+        self.assertEqual(titulo_do_periodo(date(2027, 3, 1), 3, hoje), "1 – 3 de março de 2027")
+
+    def test_a_grade_abre_no_horario_da_loja(self) -> None:
+        from dumtech.apps.agenda.online import AjustesOnline
+
+        self.assertEqual(FAIXA_PADRAO, FAIXA_LOJA)
+        # seg a sex 9h-18h, sabado ate 13h: uma hora de folga dos dois lados
+        self.assertEqual(AjustesOnline.padrao().expediente().faixa(), (8, 19))
+        self.assertEqual(Expediente().faixa(), faixa_por_chave("comercial"),
+                         "loja sem nenhum dia aberto cai na faixa comercial")
+
+    def test_a_ocupacao_conta_so_o_horario_aberto(self) -> None:
+        # segunda: 9h-12h e 13h-18h = 480 minutos abertos
+        expediente = Expediente(semana=(((540, 720), (780, 1080)),) + ((),) * 6)
+        segunda = date(2026, 10, 26)
+
+        def marcado(hora: str, minutos: int, **campos) -> Compromisso:
+            return Compromisso(titulo="x", inicio=f"2026-10-26T{hora}", duracao_min=minutos,
+                               **campos)
+
+        dia = DiaDaGrade(segunda, [
+            marcado("09:00", 120),                       # 120 dentro
+            marcado("11:30", 120),                       # 30 antes e 30 depois do almoco
+            marcado("15:00", 60, status=CANCELADO),      # devolveu o horario
+        ])
+        self.assertAlmostEqual(expediente.ocupacao(dia), 180 / 480)
+        self.assertIsNone(expediente.ocupacao(DiaDaGrade(date(2026, 11, 1))), "domingo fechado")
+
+    def test_bloqueio_fecha_todas_as_vagas(self) -> None:
+        expediente = Expediente(semana=(((540, 1080),),) + ((),) * 6, vagas=3)
+        dia = DiaDaGrade(date(2026, 10, 26), [
+            Compromisso(id=1, titulo="Reforma", inicio="2026-10-26T09:00", duracao_min=540,
+                        tipo=BLOQUEIO),
+        ])
+        self.assertEqual(expediente.ocupacao(dia), 1.0)
+        um_so = DiaDaGrade(date(2026, 10, 26), [
+            Compromisso(id=2, titulo="Corte", inicio="2026-10-26T09:00", duracao_min=540),
+        ])
+        self.assertAlmostEqual(expediente.ocupacao(um_so), 1 / 3, msg="cabem tres ao mesmo tempo")

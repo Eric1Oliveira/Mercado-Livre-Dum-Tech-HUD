@@ -28,6 +28,12 @@ O CONTROLE E DA DUMTECH
     O servidor diz se a atualizacao pelo Hub esta liberada (`automatica`). Com
     ela desligada - ou sem sha256 publicado - o Hub apenas avisa e leva o
     cliente para a pagina de download.
+
+ATUALIZACAO SILENCIOSA (`silenciosa`, desde a 1.5.1)
+    Para mudanca pequena, que nao vale um "Atualizar": o Hub baixa em segundo
+    plano, nao mostra pilula nem faixa, e instala quando a pessoa fecha o
+    programa (sem `/reabrir`). As mesmas tres conferencias valem. Quem nunca
+    fecha o Hub ve o aviso normal depois de `DIAS_EM_SILENCIO` dias.
 """
 
 from __future__ import annotations
@@ -41,6 +47,7 @@ import tempfile
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from typing import Any, Callable
 
@@ -67,6 +74,10 @@ PEDACO = 256 * 1024
 #: instalador maior que isto e coisa errada - nem comeca a baixar
 TAMANHO_MAXIMO = 300 * 1024 * 1024
 
+#: atualizacao silenciosa que nao instalou nesse prazo (o Hub nunca foi
+#: fechado, so o Windows desligado) passa a ser avisada como qualquer outra
+DIAS_EM_SILENCIO = 7
+
 
 class AtualizacaoError(Exception):
     """Erro com mensagem pronta para a tela."""
@@ -88,6 +99,8 @@ class Atualizacao:
     #: o botao "Baixar e instalar" aparece? (decisao da DumTech, no painel)
     automatica: bool = False
     tamanho: int = 0
+    #: instala sozinha ao fechar o Hub, sem aviso (so vale se `automatica`)
+    silenciosa: bool = False
 
     @property
     def tamanho_texto(self) -> str:
@@ -152,6 +165,7 @@ def abrir_manifesto(pacote: Any) -> Atualizacao | None:
         obrigatoria=bool(dados.get("obrigatoria")),
         automatica=automatica,
         tamanho=int(dados.get("tamanho") or 0),
+        silenciosa=automatica and bool(dados.get("silenciosa")),
     )
 
 
@@ -169,11 +183,29 @@ def para_avisar(settings, instalada: str) -> Atualizacao | None:
     Atualizacao obrigatoria (correcao de seguranca) nao se dispensa.
     """
     aviso = disponivel(settings, instalada)
-    if aviso is None:
+    if aviso is None or em_silencio(settings, aviso):
         return None
     if not aviso.obrigatoria and foi_dispensada(settings, aviso.versao):
         return None
     return aviso
+
+
+def em_silencio(settings, aviso: Atualizacao, hoje: date | None = None) -> bool:
+    """Esta versao instala sozinha, sem aviso nenhum na tela?
+
+    So onde o Hub consegue se instalar (programa instalado, Windows) e so
+    durante `DIAS_EM_SILENCIO` dias desde que ela chegou (`guardar` anota).
+    """
+    if not aviso.silenciosa or not pode_atualizar_aqui():
+        return False
+    marca = settings.get(SECAO, "silenciosa") or {}
+    if not isinstance(marca, dict) or marca.get("versao") != aviso.versao:
+        return True     # acabou de chegar
+    try:
+        desde = date.fromisoformat(str(marca.get("desde", "")))
+    except ValueError:
+        return True
+    return ((hoje or date.today()) - desde).days < DIAS_EM_SILENCIO
 
 
 def pasta_de_download(paths=None) -> Path:
@@ -218,10 +250,16 @@ class AtualizacaoService:
         if not resposta:
             return None
         pacote = resposta.get("assinado")
-        if abrir_manifesto(pacote) is None:
+        aviso = abrir_manifesto(pacote)
+        if aviso is None:
             logger.warning("Atualizacao ignorada: %s", motivo_da_recusa(pacote))
             return None
         self.settings.set(SECAO, "assinado", pacote)
+        # o prazo do silencio conta de quando ESTA versao chegou aqui
+        marca = self.settings.get(SECAO, "silenciosa") or {}
+        if aviso.silenciosa and (not isinstance(marca, dict) or marca.get("versao") != aviso.versao):
+            self.settings.set(SECAO, "silenciosa",
+                              {"versao": aviso.versao, "desde": date.today().isoformat()})
         self.settings.save()
         return disponivel(self.settings, self.instalada)
 
@@ -291,11 +329,15 @@ class AtualizacaoService:
         return destino
 
     # ------------------------------------------------------------ instalar ----
-    def instalar(self, instalador: Path, aviso: Atualizacao | None = None) -> None:
+    def instalar(self, instalador: Path, aviso: Atualizacao | None = None,
+                 reabrir: bool = True) -> None:
         """Roda o instalador em silencio. Quem chama fecha o Hub logo depois.
 
         Confere a impressao digital DE NOVO, imediatamente antes de executar: o
         arquivo pode ter sido trocado entre o download e este momento.
+
+        `reabrir=False` e a atualizacao silenciosa: a pessoa fechou o Hub
+        porque quis, entao ele nao reaparece sozinho no fim.
         """
         instalador = Path(instalador)
         if not instalador.is_file():
@@ -308,9 +350,10 @@ class AtualizacaoService:
                 "O instalador foi alterado depois do download - nada foi executado.",
                 "impressao_digital")
 
+        argumentos = [a for a in ARGUMENTOS if reabrir or not a.startswith("/reabrir")]
         try:
             subprocess.Popen(
-                [str(instalador), *ARGUMENTOS],
+                [str(instalador), *argumentos],
                 close_fds=True,
                 creationflags=getattr(subprocess, "DETACHED_PROCESS", 0)
                 | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0),

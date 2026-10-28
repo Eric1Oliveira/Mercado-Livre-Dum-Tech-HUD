@@ -131,8 +131,8 @@ class ClienteNoBlocoTestCase(unittest.TestCase):
         self.compromisso = Compromisso(id=1, titulo="Corte e escova",
                                        cliente="Maria Souza", inicio=quando)
 
-    def _textos(self, altura: float, compromisso=None):
-        return self.grade._textos(QRectF(0, 0, 180, altura), compromisso or self.compromisso)
+    def _textos(self, altura: float, compromisso=None, largura: float = 180):
+        return self.grade._textos(QRectF(0, 0, largura, altura), compromisso or self.compromisso)
 
     def test_bloco_alto_mostra_a_cliente_embaixo_do_titulo(self) -> None:
         textos = self._textos(90)
@@ -145,18 +145,23 @@ class ClienteNoBlocoTestCase(unittest.TestCase):
                                 "a cliente vem embaixo do titulo")
         self.assertLessEqual(cliente[0].bottom(), 90, "e dentro do bloco")
 
-    def test_bloco_medio_leva_a_cliente_ao_lado_do_horario(self) -> None:
-        textos = self._textos(32)
-        hora = textos[0]
+    def test_bloco_medio_poe_a_cliente_embaixo_do_servico(self) -> None:
+        textos = self._textos(40)
+        hora, titulo = textos[0], next(t for t in textos if t[2] == "Corte e escova")
         cliente = next(t for t in textos if t[3])
-        self.assertIn("Maria Souza", cliente[2])
-        self.assertEqual(cliente[0].top(), hora[0].top(), "mesma linha do horario")
+        self.assertEqual(titulo[0].top(), hora[0].top(), "horario e servico na mesma linha")
+        self.assertEqual(cliente[2], "Maria Souza")
+        self.assertGreaterEqual(cliente[0].top(), titulo[0].bottom())
 
     def test_bloco_baixo_poe_tudo_numa_linha(self) -> None:
-        textos = self._textos(20)
-        self.assertEqual(len(textos), 1)
-        self.assertIn("Corte e escova", textos[0][2])
-        self.assertIn("Maria Souza", textos[0][2])
+        textos = self._textos(20, largura=320)
+        self.assertEqual({t[0].top() for t in textos}, {textos[0][0].top()}, "uma linha so")
+        junto = " ".join(t[2] for t in textos)
+        self.assertIn("Corte e escova", junto)
+        self.assertIn("Maria Souza", junto)
+        # sem espaco, o nome encolhe com reticencias em vez de cortar a letra
+        apertado = " ".join(t[2] for t in self._textos(20))
+        self.assertTrue(apertado.endswith("…"), apertado)
 
     def test_sem_cliente_nao_sobra_linha_vazia(self) -> None:
         sem = Compromisso(id=2, titulo="Almoco", inicio=self.compromisso.inicio)

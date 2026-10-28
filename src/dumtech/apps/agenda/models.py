@@ -82,7 +82,10 @@ FAIXAS = (
     ("Comercial (7h às 20h)", "comercial", 7, 20),
     ("Estendido (6h às 23h)", "estendido", 6, 23),
 )
-FAIXA_PADRAO = "dia"
+#: a faixa que segue o horario de atendimento da loja (aba Online, `Expediente`).
+#: E a que a grade abre: o dia inteiro espremia cada hora numa tirinha
+FAIXA_LOJA = "loja"
+FAIXA_PADRAO = FAIXA_LOJA
 
 
 def faixa_por_chave(chave: str) -> tuple[int, int]:
@@ -115,6 +118,29 @@ def faixa_das_horas(compromissos, inicial: int = HORA_INICIAL,
 
 DIAS_SEMANA = ("Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo")
 DIAS_CURTOS = ("Seg", "Ter", "Qua", "Qui", "Sex", "Sab", "Dom")
+MESES = ("janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho",
+         "agosto", "setembro", "outubro", "novembro", "dezembro")
+
+
+def titulo_do_periodo(inicio: date, dias: int, hoje: date | None = None) -> str:
+    """O periodo da grade por extenso: "26 de outubro – 1 de novembro".
+
+    O ano so aparece quando nao e o corrente (ou quando o periodo vira o ano).
+    """
+    hoje = hoje or date.today()
+    fim = inicio + timedelta(days=max(dias, 1) - 1)
+
+    def extenso(dia: date, com_ano: bool) -> str:
+        texto = f"{dia.day} de {MESES[dia.month - 1]}"
+        return f"{texto} de {dia.year}" if com_ano else texto
+
+    if dias <= 1:
+        return f"{DIAS_SEMANA[inicio.weekday()]}, {extenso(inicio, inicio.year != hoje.year)}"
+    vira_o_ano = inicio.year != fim.year
+    com_ano = vira_o_ano or fim.year != hoje.year
+    if (inicio.year, inicio.month) == (fim.year, fim.month):
+        return f"{inicio.day} – {extenso(fim, com_ano)}"
+    return f"{extenso(inicio, vira_o_ano)} – {extenso(fim, com_ano)}"
 
 #: duracoes comuns, em minutos
 DURACOES = ((15, "15 min"), (30, "30 min"), (45, "45 min"), (60, "1 hora"),
@@ -340,6 +366,51 @@ class Grade:
             if not any(candidato.choca_com(c) for c in do_dia.ocupados):
                 return time(hora)
         return None
+
+
+@dataclass(frozen=True)
+class Expediente:
+    """O horario da loja na semana: os pedacos abertos de cada dia, em minutos.
+
+    Vem do horario de atendimento da aba Online. A grade usa para abrir na
+    faixa certa, sombrear o que esta fechado e medir quanto cada dia ja encheu.
+    """
+
+    #: segunda a domingo; dia fechado e tupla vazia
+    semana: tuple[tuple[tuple[int, int], ...], ...] = ((),) * 7
+    #: quantos atendimentos cabem ao mesmo tempo (cadeiras, salas)
+    vagas: int = 1
+
+    def aberto(self, dia: date) -> tuple[tuple[int, int], ...]:
+        return self.semana[dia.weekday()] if len(self.semana) == 7 else ()
+
+    def faixa(self) -> tuple[int, int]:
+        """As horas da grade: da primeira abertura a ultima, com uma de folga."""
+        pedacos = [pedaco for dia in self.semana for pedaco in dia]
+        if not pedacos:
+            return faixa_por_chave("comercial")
+        inicio = min(de for de, _ in pedacos) // 60
+        fim = -(-max(ate for _, ate in pedacos) // 60)
+        return max(0, inicio - 1), min(24, fim + 1)
+
+    def ocupacao(self, dia: DiaDaGrade) -> float | None:
+        """Quanto do horario aberto do dia ja esta tomado, de 0 a 1. Fechado: None."""
+        abertos = self.aberto(dia.data)
+        vagas = max(self.vagas, 1)
+        total = sum(ate - de for de, ate in abertos) * vagas
+        if total <= 0:
+            return None
+        tomado = 0
+        for compromisso in dia.ocupados:
+            comeco = compromisso.inicio_dt
+            if comeco is None or comeco.date() != dia.data:
+                continue
+            inicio = comeco.hour * 60 + comeco.minute
+            fim = min(inicio + int(compromisso.duracao_min or 0), 24 * 60)
+            dentro = sum(max(0, min(fim, ate) - max(inicio, de)) for de, ate in abertos)
+            # bloqueio fecha a loja inteira naquele pedaco
+            tomado += dentro * (vagas if compromisso.e_bloqueio else 1)
+        return min(1.0, tomado / total)
 
 
 @dataclass

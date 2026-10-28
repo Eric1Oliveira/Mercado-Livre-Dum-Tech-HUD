@@ -15,6 +15,7 @@ from ....ui.widgets.crud_view import CrudView
 from ....ui.widgets.comprovante import ComprovanteDialog
 from ....ui.widgets.mensagem import mandar
 from ....ui.widgets.table import DIREITA
+from .. import financeiro
 from ..models import PENDENTE, STATUS_LABEL, Venda
 from ..recibo import comprovante
 from ..repository import VendasRepository
@@ -178,16 +179,13 @@ class VendasView(CrudView):
         )
         if not dialogo.exec():
             return
-        self.repository.receber_pendente(venda.id, dialogo.pagamentos)
+        recebida = self.repository.receber_pendente(venda.id, dialogo.pagamentos)
         # a conta que a ponte criou tem que fechar junto, senao o Financeiro
-        # continua cobrando uma venda que ja foi paga
-        quitada = self.contas is not None and self.contas.quitar(venda.numero)
+        # continua cobrando uma venda que ja foi paga; e a venda que veio da
+        # proposta, sem conta nenhuma, entra ja recebida
+        recado = financeiro.registrar(self.contas, recebida)
         self.refresh()
-        self.mostrar_aviso(
-            f"Venda {venda.numero} recebida."
-            + ("  A conta no Financeiro foi quitada." if quitada else ""),
-            "success",
-        )
+        self.mostrar_aviso(f"Venda {venda.numero} recebida.{recado}", "success")
         self.data_changed.emit()
 
     def _devolver(self) -> None:

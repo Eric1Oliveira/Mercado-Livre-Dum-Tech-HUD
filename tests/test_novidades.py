@@ -15,7 +15,7 @@ from PySide6.QtWidgets import QApplication, QLabel
 
 from dumtech import __version__
 from dumtech.core import novidades
-from dumtech.core.config import Settings
+from dumtech.core.config import MemoryPreferences, Settings
 from dumtech.core.conta import Conta, ContaService
 from dumtech.core.comunicados import Comunicado, ComunicadosService
 from dumtech.core.licensing import LicenseService
@@ -94,6 +94,14 @@ class TextoDasVersoesTestCase(unittest.TestCase):
                     self.assertTrue(not item.app_id or item.app_id in existentes,
                                     f"modulo '{item.app_id}' nao existe: ninguem veria o aviso")
                     self.assertTrue(item.titulo.strip())
+
+    def test_toda_tela_nova_e_de_um_modulo_que_existe(self) -> None:
+        existentes = {e.app_id for e in AppRegistry().entries}
+        for chave in novidades.TELAS_NOVAS:
+            app_id, _, titulo = chave.partition("/")
+            with self.subTest(chave=chave):
+                self.assertIn(app_id, existentes, "a etiqueta nunca apareceria")
+                self.assertTrue(titulo.strip())
 
     def test_nenhuma_nota_de_versao_futura(self) -> None:
         for versao in novidades.VERSOES:
@@ -194,6 +202,50 @@ class NovidadesDialogTestCase(unittest.TestCase):
         self.assertEqual(janela.botao_ok.text().strip(), "OK, entendi")
         janela.botao_ok.click()
         self.assertEqual(janela.result(), NovidadesDialog.DialogCode.Accepted)
+
+
+class TelasNovasTestCase(unittest.TestCase):
+    """A etiqueta "Novo" na aba fica ate a pessoa abrir a tela uma vez."""
+
+    def setUp(self) -> None:
+        self.app = QApplication.instance() or QApplication([])
+        self.enterContext(mock.patch.object(novidades, "TELAS_NOVAS", frozenset({"agenda/Online"})))
+        self.prefs = MemoryPreferences()
+
+    def test_a_etiqueta_fica_ate_a_primeira_visita(self) -> None:
+        self.assertTrue(novidades.tela_nova(self.prefs, "agenda", "Online"))
+        novidades.marcar_tela_vista(self.prefs, "agenda", "Online")
+        novidades.marcar_tela_vista(self.prefs, "agenda", "Online")
+        self.assertFalse(novidades.tela_nova(self.prefs, "agenda", "Online"))
+        self.assertEqual(self.prefs.get(novidades.TELAS_VISTAS), ["agenda/Online"])
+
+    def test_so_as_telas_da_lista_tem_etiqueta(self) -> None:
+        self.assertFalse(novidades.tela_nova(self.prefs, "agenda", "Compromissos"))
+        self.assertFalse(novidades.tela_nova(self.prefs, "vendas", "Online"),
+                         "mesmo titulo em outro modulo nao e a tela nova")
+
+    def test_a_aba_mostra_novo_e_volta_ao_normal_ao_abrir_a_tela(self) -> None:
+        from dumtech.hub.workspace import ContextBar
+        from dumtech.ui.theme import apply_window_theme, current_palette
+
+        barra = ContextBar(AppRegistry().get("agenda").manifest)
+        self.addCleanup(barra.deleteLater)
+        apply_window_theme(barra, current_palette())   # a folha reserva o espaco da etiqueta
+        barra.build_tabs(["Agenda", "Compromissos", "Online"], (2,))
+        vistas: list[int] = []
+        barra.nova_vista.connect(vistas.append)
+
+        aba = barra._tabs[2]
+        self.assertTrue(aba.novo)
+        self.assertFalse(barra._tabs[1].novo)
+        com_etiqueta = aba.sizeHint().width()
+
+        barra.select(2)
+        self.assertFalse(aba.novo)
+        self.assertLess(aba.sizeHint().width(), com_etiqueta, "sem a etiqueta, sem o espaco dela")
+        barra.select(0)
+        barra.select(2)
+        self.assertEqual(vistas, [2], "avisa uma vez so")
 
 
 if __name__ == "__main__":

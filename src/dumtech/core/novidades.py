@@ -14,6 +14,11 @@ AS REGRAS
 
 O texto mora aqui, no codigo, e nao no servidor: chega junto com a versao,
 funciona sem internet e nao depende de ninguem lembrar de cadastrar.
+
+TELAS NOVAS
+    A aba de uma tela nova ganha a etiqueta "Novo" ate a pessoa abrir a tela
+    uma vez (`TELAS_NOVAS`). Nao precisa de janela nem de versao com aviso:
+    serve tambem para a atualizacao silenciosa.
 """
 
 from __future__ import annotations
@@ -40,6 +45,22 @@ class Novidade:
 #: versao -> o que mudou. So entra o que o cliente PERCEBE: correcao interna
 #: nao vira aviso. Escreva como quem explica no balcao, sem termo tecnico.
 VERSOES: dict[str, tuple[Novidade, ...]] = {
+    "1.5.4": (
+        Novidade(
+            "vendas", "Toda venda cai no Financeiro",
+            "Venda paga na hora (dinheiro, Pix ou cartão) já entra no Financeiro como "
+            "recebida. Venda a prazo continua virando conta a receber e fecha sozinha "
+            "quando o cliente paga.",
+        ),
+    ),
+    "1.5.1": (
+        Novidade(
+            "", "Melhorias pequenas agora chegam sozinhas",
+            "Quando sair um ajuste pequeno, o Hub baixa sozinho e instala quando você "
+            "fechar o programa. Na próxima vez que abrir, já está atualizado, sem clicar "
+            "em nada. E tela nova aparece com a etiqueta Novo até você abrir.",
+        ),
+    ),
     "1.5.0": (
         Novidade(
             "agenda", "Agenda: seus clientes marcam sozinhos",
@@ -144,3 +165,31 @@ def marcar_vista(settings, instalada: str) -> None:
         return
     settings.set(SECAO, "vista", str(instalada))
     settings.save()
+
+
+# ---------------------------------------------------------------- telas novas --
+#: "app_id/Titulo da aba" que mostram "Novo" ate a primeira visita.
+#: Tire daqui quando a tela deixar de ser novidade.
+TELAS_NOVAS: frozenset[str] = frozenset({"agenda/Online", "agenda/Serviços"})
+
+#: nas preferencias de cada aplicativo: as telas novas que ja foram abertas
+TELAS_VISTAS = "telas_vistas"
+
+
+def _vistas(prefs) -> list[str]:
+    vistas = prefs.get(TELAS_VISTAS) or []
+    return list(vistas) if isinstance(vistas, list) else []
+
+
+def tela_nova(prefs, app_id: str, titulo: str) -> bool:
+    """A aba desta tela ainda mostra a etiqueta "Novo"?"""
+    chave = f"{app_id}/{titulo}"
+    return chave in TELAS_NOVAS and chave not in _vistas(prefs)
+
+
+def marcar_tela_vista(prefs, app_id: str, titulo: str) -> None:
+    """A pessoa abriu a tela: a etiqueta some e nao volta."""
+    vistas = _vistas(prefs)
+    chave = f"{app_id}/{titulo}"
+    if chave not in vistas:
+        prefs.set(TELAS_VISTAS, [*vistas, chave])

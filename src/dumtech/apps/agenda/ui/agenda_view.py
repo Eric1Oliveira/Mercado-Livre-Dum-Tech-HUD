@@ -12,6 +12,7 @@ from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import QComboBox, QHBoxLayout, QScrollArea, QVBoxLayout, QWidget
 
 from ....core import confirmacoes
+from ....ui import format as fmt
 from ....ui import icons
 from ....ui.theme import Space, current_palette
 from ....ui.widgets.buttons import Button
@@ -21,6 +22,7 @@ from ..models import (
     AGENDADO,
     CANCELADO,
     CONCLUIDO,
+    FAIXA_LOJA,
     FAIXA_PADRAO,
     FAIXAS,
     TIPO_LABEL,
@@ -28,7 +30,9 @@ from ..models import (
     Compromisso,
     faixa_por_chave,
     inicio_da_semana,
+    titulo_do_periodo,
 )
+from ..online import Online
 from ..repository import AgendaRepository
 
 MODOS = (("Semana", 7), ("Dia", 1), ("Próximos 3 dias", 3))
@@ -68,7 +72,9 @@ class AgendaView(QWidget):
 
         titulos = QVBoxLayout()
         titulos.setSpacing(2)
-        titulos.addWidget(label("Agenda", "title"))
+        # o nome do modulo ja esta na barra de cima: aqui vai o periodo na tela
+        self.titulo = label("", "title")
+        titulos.addWidget(self.titulo)
         self.subtitulo = label("", "subtitle")
         titulos.addWidget(self.subtitulo)
         linha.addLayout(titulos)
@@ -101,6 +107,8 @@ class AgendaView(QWidget):
         # faixa que ela mostra vazia e escolha de quem usa.
         self.faixa = QComboBox()
         self.faixa.setToolTip("Faixa de horas que a grade mostra")
+        # o texto com as horas da loja e escrito no refresh (o horario muda na aba Online)
+        self.faixa.addItem("Horário da loja", FAIXA_LOJA)
         for rotulo, chave, _, _ in FAIXAS:
             self.faixa.addItem(rotulo, chave)
         guardada = str(self._preferencia("faixa", FAIXA_PADRAO))
@@ -140,6 +148,8 @@ class AgendaView(QWidget):
         self.area.setFrameShape(QScrollArea.Shape.NoFrame)
         self.area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.area.setWidget(self.grade)
+        # o cabecalho dos dias acompanha a rolagem: a grade redesenha inteira
+        self.area.verticalScrollBar().valueChanged.connect(lambda _valor: self.grade.update())
         card.body.addWidget(self.area)
         return card
 
@@ -149,8 +159,10 @@ class AgendaView(QWidget):
         Com o dia inteiro na tela nem sempre cabem as 24 linhas. Abrir em
         00:00 mostraria a madrugada vazia e esconderia a manha, entao a tela
         se posiciona no primeiro compromisso da semana - ou na hora de agora,
-        se nao houver nenhum.
+        se nao houver nenhum. A hora alvo fica logo abaixo do cabecalho fixo.
         """
+        from .grade import CABECALHO
+
         grade = self.grade.grade
         horas = [c.inicio_dt.hour for dia in grade.dias for c in dia.compromissos
                  if c.inicio_dt is not None]
@@ -161,7 +173,7 @@ class AgendaView(QWidget):
         else:
             alvo = 8
         barra = self.area.verticalScrollBar()
-        barra.setValue(min(self.grade.y_da_hora_cheia(max(alvo - 1, 0)),
+        barra.setValue(min(self.grade.y_da_hora_cheia(max(alvo - 1, 0)) - CABECALHO,
                            barra.maximum()))
 
     def _rodape(self) -> QHBoxLayout:
@@ -169,7 +181,7 @@ class AgendaView(QWidget):
         linha.setSpacing(Space.md)
 
         for tipo, rotulo in TIPO_LABEL.items():
-            linha.addWidget(tone_label(f"■ {rotulo}", TIPO_TOM[tipo], "caption"))
+            linha.addWidget(tone_label(f"● {rotulo}", TIPO_TOM[tipo], "caption"))
         linha.addStretch(1)
 
         self.aviso = label("Clique num horário vago para marcar ali.", "muted")
@@ -187,25 +199,26 @@ class AgendaView(QWidget):
     # ------------------------------------------------------------------- dados
     def refresh(self) -> None:
         dias = self.modo.currentData() or 7
-        inicial, final = faixa_por_chave(self.faixa.currentData() or FAIXA_PADRAO)
+        # o horario de atendimento da aba Online: faixa, sombra do fechado e ocupacao
+        expediente = Online(self.repository).ajustes().expediente()
+        loja = expediente.faixa()
+        self.faixa.setItemText(0, f"Horário da loja ({loja[0]}h às {loja[1]}h)")
+        chave = self.faixa.currentData() or FAIXA_PADRAO
+        inicial, final = loja if chave == FAIXA_LOJA else faixa_por_chave(chave)
         grade = self.repository.grade(self.primeiro_dia, dias=dias,
                                       hora_inicial=inicial, hora_final=final)
         self.grade.selecao = self.selecionado
-        self.grade.set_grade(grade)
+        self.grade.set_grade(grade, expediente)
         # depois que o layout assentar: antes disso a barra ainda nao tem
         # tamanho e o valor seria descartado. Com `self` como contexto, o Qt
         # cancela o disparo se a tela morrer antes - sem isso o retorno cai
         # num widget destruido e derruba o processamento de eventos.
         QTimer.singleShot(0, self, self._posicionar_a_grade)
 
-        ultimo = self.primeiro_dia + timedelta(days=dias - 1)
-        if dias == 1:
-            periodo = self.primeiro_dia.strftime("%d/%m/%Y")
-        else:
-            periodo = (f"{self.primeiro_dia.strftime('%d/%m')}"
-                       f" a {ultimo.strftime('%d/%m/%Y')}")
+        self.titulo.setText(titulo_do_periodo(self.primeiro_dia, dias))
         resumo = self.repository.resumo()
-        texto = f"{periodo}  ·  {grade.total} na tela"
+        texto = (fmt.contagem(grade.total, "compromisso", "compromissos")
+                 if grade.total else "Nenhum compromisso")
         if resumo.atrasados:
             texto += f"  ·  {resumo.atrasados} sem fechar"
         self.subtitulo.setText(texto)

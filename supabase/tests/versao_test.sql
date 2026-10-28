@@ -69,6 +69,14 @@ begin
     assert not (r->>'automatica')::boolean, 'o freio do painel nao valeu: ' || r::text;
     update public.hub_versoes set automatica = true where id = 1;
 
+    -- versao silenciosa (20261026150000): nasce desligada e so liga de proposito
+    r := public.dumtech_hub_versao(v_chave, v_maquina, '1.2.1');
+    assert not (r->>'silenciosa')::boolean, 'silenciosa tinha que nascer desligada: ' || r::text;
+    update public.hub_versoes set silenciosa = true where id = 1;
+    r := public.dumtech_hub_versao(v_chave, v_maquina, '1.2.1');
+    assert (r->>'silenciosa')::boolean, 'silenciosa nao voltou: ' || r::text;
+    update public.hub_versoes set silenciosa = false where id = 1;
+
     -- ---------------------------------------------------------------------
     -- a impressao digital da licenca (20260921120000): e ela que faz mudanca
     -- do painel chegar em minutos

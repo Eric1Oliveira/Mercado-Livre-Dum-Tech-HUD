@@ -1101,6 +1101,12 @@ ViewTab:hover, ViewTab:checked {{
 ViewTab:focus {{
     border: 1px solid {p.accent};
 }}
+/* tela nova: a aba abre espaco a direita para a etiqueta "Novo", que ela
+   mesma pinta (`ViewTab.FOLGA_NOVO`) */
+ViewTab[novo="true"], ViewTab[novo="true"]:hover,
+ViewTab[novo="true"]:pressed, ViewTab[novo="true"]:checked {{
+    padding-right: 52px;
+}}
 """
 
 

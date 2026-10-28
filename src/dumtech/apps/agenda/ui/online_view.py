@@ -3,7 +3,8 @@
 DE CIMA PARA BAIXO
     1. O link: ligado ou pausado, o endereco grande, Copiar / Enviar no
        WhatsApp / Abrir, o QR para imprimir e colar no balcao.
-    2. Servicos, horario de atendimento e regras - o que a pagina oferece.
+    2. Horario de atendimento e regras - o que a pagina oferece. Os servicos
+       tem aba propria (`servicos_view.py`), que publica por esta aqui.
     3. Salvar e publicar.
 
 Na primeira vez, nada disso: um cartao explica o que o link faz e cria tudo
@@ -43,8 +44,8 @@ from ....ui.widgets.buttons import Button
 from ....ui.widgets.common import Card, IconBadge, Pill, label, repolish, separator
 from ....ui.widgets.confirmar import confirmar
 from ....ui.widgets.qr import pixmap as qr_pixmap
-from ..models import DIAS_SEMANA, DURACOES, AgendaError
-from ..online import CORES, PASSOS, AjustesOnline, Dia, Online, Servico, logo_em_data_uri
+from ..models import DIAS_SEMANA, AgendaError
+from ..online import CORES, AjustesOnline, Dia, Online, logo_em_data_uri
 
 LADO_QR = 132
 
@@ -53,10 +54,6 @@ ANTECEDENCIAS = ((0, "Sem antecedência"), (30, "30 minutos"), (60, "1 hora"), (
 JANELAS = ((7, "7 dias"), (14, "14 dias"), (30, "30 dias"), (60, "60 dias"), (90, "90 dias"))
 CANCELAMENTOS = ((0, "Até a hora marcada"), (60, "Até 1 hora antes"), (180, "Até 3 horas antes"),
                  (720, "Até 12 horas antes"), (1440, "Até 1 dia antes"), (2880, "Até 2 dias antes"))
-
-
-def _rotulo_passo(minutos: int) -> str:
-    return "1 hora" if minutos == 60 else f"{minutos} min"
 
 
 def _qtime(minutos: int) -> QTime:
@@ -78,13 +75,6 @@ def _hora(minutos: int) -> QTimeEdit:
     campo.setAlignment(Qt.AlignmentFlag.AlignCenter)
     campo.setMinimumWidth(92)
     return campo
-
-
-def _escolha_com_extra(opcoes, atual: int):
-    """Combo com as opcoes de sempre - e o valor de agora, se for diferente."""
-    if atual not in {valor for valor, _ in opcoes}:
-        opcoes = (*opcoes, (atual, f"{atual} min"))
-    return form.escolha([(rotulo, valor) for valor, rotulo in opcoes], atual)
 
 
 class Amostra(QAbstractButton):
@@ -115,79 +105,6 @@ class Amostra(QAbstractButton):
         raio = self.LADO / 2 - (2 if self.isChecked() else 0)
         pintor.drawEllipse(centro, raio, raio)
         pintor.end()
-
-
-class EditorDeServicos(QWidget):
-    """Os servicos da pagina: nome, duracao e preco (opcional)."""
-
-    MAXIMO = 20
-
-    def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self._linhas: list[tuple[str, QWidget, object, object, object]] = []
-        self.coluna = QVBoxLayout(self)
-        self.coluna.setContentsMargins(0, 0, 0, 0)
-        self.coluna.setSpacing(Space.sm)
-        cabeca = QHBoxLayout()
-        cabeca.setSpacing(10)
-        for texto, peso in (("Serviço", 5), ("Duração", 2), ("Preço (opcional)", 2)):
-            cabeca.addWidget(label(texto, "field"), peso)
-        cabeca.addSpacing(36)
-        self.coluna.addLayout(cabeca)
-        self.lista = QVBoxLayout()
-        self.lista.setSpacing(Space.xs)
-        self.coluna.addLayout(self.lista)
-        self.botao_mais = Button("Adicionar serviço", "plus", "ghost")
-        self.botao_mais.clicked.connect(lambda: self.adicionar(Servico(self._novo_id(), "", 60)))
-        self.coluna.addWidget(self.botao_mais, 0, Qt.AlignmentFlag.AlignLeft)
-
-    def _novo_id(self) -> str:
-        return AjustesOnline(servicos=[Servico(i, "") for i, *_ in self._linhas]).novo_id_de_servico()
-
-    def preencher(self, servicos: list[Servico]) -> None:
-        for _, linha, *_ in self._linhas:
-            linha.deleteLater()
-        self._linhas = []
-        for servico in servicos:
-            self.adicionar(servico)
-
-    def adicionar(self, servico: Servico) -> None:
-        linha = QWidget()
-        caixa = QHBoxLayout(linha)
-        caixa.setContentsMargins(0, 0, 0, 0)
-        caixa.setSpacing(10)
-        nome = form.texto(servico.nome, "Ex.: Corte feminino")
-        nome.setMaxLength(80)
-        duracao = _escolha_com_extra(tuple((m, r) for m, r in DURACOES if m <= 720), int(servico.duracao))
-        preco = form.dinheiro(servico.preco or 0)
-        preco.setSpecialValueText("Sem preço")
-        tirar = Button("", "trash", "ghost")
-        tirar.setToolTip("Tirar este serviço")
-        tirar.setFixedWidth(36)
-        caixa.addWidget(nome, 5)
-        caixa.addWidget(duracao, 2)
-        caixa.addWidget(preco, 2)
-        caixa.addWidget(tirar)
-        registro = (servico.id, linha, nome, duracao, preco)
-        tirar.clicked.connect(lambda: self._tirar(registro))
-        self._linhas.append(registro)
-        self.lista.addWidget(linha)
-        self.botao_mais.setEnabled(len(self._linhas) < self.MAXIMO)
-        if not servico.nome:
-            nome.setFocus()
-
-    def _tirar(self, registro) -> None:
-        if registro in self._linhas:
-            self._linhas.remove(registro)
-            registro[1].deleteLater()
-        self.botao_mais.setEnabled(len(self._linhas) < self.MAXIMO)
-
-    def servicos(self) -> list[Servico]:
-        return [
-            Servico(id_, nome.text().strip(), int(duracao.currentData() or 60),
-                    round(preco.value(), 2) if preco.value() > 0 else None)
-            for id_, _, nome, duracao, preco in self._linhas
-        ]
 
 
 class EditorDeHorario(QWidget):
@@ -252,6 +169,8 @@ class OnlineView(QWidget):
     """O link de agendamento: criar, mandar, ajustar e pausar."""
 
     data_changed = Signal()
+    #: deu certo?, a frase para o dono - a aba Servicos publica por aqui
+    publicacao = Signal(bool, str)
 
     def __init__(self, repository, servidor=None, empresa=None, paths=None,
                  parent: QWidget | None = None) -> None:
@@ -282,10 +201,9 @@ class OnlineView(QWidget):
         coluna.addWidget(self._cartao_link())
         lado_a_lado = QHBoxLayout()
         lado_a_lado.setSpacing(Space.md)
-        lado_a_lado.addWidget(self._cartao_servicos(), 5)
         lado_a_lado.addWidget(self._cartao_horario(), 6)
+        lado_a_lado.addWidget(self._cartao_regras(), 5)
         coluna.addLayout(lado_a_lado)
-        coluna.addWidget(self._cartao_regras())
         coluna.addLayout(self._rodape())
         raiz.addWidget(self.conteudo)
         raiz.addStretch(1)
@@ -375,7 +293,8 @@ class OnlineView(QWidget):
         esquerda.addWidget(self.estado)
         self.origem_dos_dados = label(
             "Nome, logotipo, endereço e WhatsApp da página vêm de Minha empresa "
-            "(menu da empresa, no canto de cima).", "dim")
+            "(menu da empresa, no canto de cima). Os serviços e o tempo de cada um "
+            "ficam na aba Serviços.", "dim")
         self.origem_dos_dados.setWordWrap(True)
         esquerda.addWidget(self.origem_dos_dados)
         linha.addLayout(esquerda, 1)
@@ -393,18 +312,6 @@ class OnlineView(QWidget):
         linha.addLayout(direita)
 
         card.body.addLayout(linha)
-        return card
-
-    def _cartao_servicos(self) -> Card:
-        card = Card(padding=Space.lg)
-        card.body.addWidget(label("Serviços", "section"))
-        dica = label("O que o cliente escolhe. A duração decide quais horários cabem.", "muted")
-        dica.setWordWrap(True)
-        card.body.addWidget(dica)
-        card.body.addWidget(separator())
-        self.servicos = EditorDeServicos()
-        card.body.addWidget(self.servicos)
-        card.body.addStretch(1)
         return card
 
     def _cartao_horario(self) -> Card:
@@ -429,13 +336,11 @@ class OnlineView(QWidget):
 
         self.vagas = form.inteiro(1, minimo=1, maximo=10)
         self.vagas.setToolTip("Quantos clientes você atende ao mesmo tempo")
-        self.passo = form.escolha([(_rotulo_passo(m), m) for m in PASSOS], 30)
         self.antecedencia = form.escolha([(r, v) for v, r in ANTECEDENCIAS], 120)
         self.janela = form.escolha([(r, v) for v, r in JANELAS], 30)
         self.cancelar = form.escolha([(r, v) for v, r in CANCELAMENTOS], 180)
         grade.addWidget(form.campo("Vagas por horário", self.vagas), 0, 0)
-        grade.addWidget(form.campo("Horários a cada", self.passo), 0, 1)
-        grade.addWidget(form.campo("Antecedência mínima", self.antecedencia), 0, 2)
+        grade.addWidget(form.campo("Antecedência mínima", self.antecedencia), 0, 1)
         grade.addWidget(form.campo("Agenda aberta por", self.janela), 1, 0)
         grade.addWidget(form.campo("Cliente cancela", self.cancelar), 1, 1)
 
@@ -456,10 +361,11 @@ class OnlineView(QWidget):
             self._amostras[chave] = amostra
             fila.addWidget(amostra)
         fila.addStretch(1)
-        grade.addWidget(form.campo("Cor da página", cores), 2, 2)
-        for coluna in range(3):
+        grade.addWidget(form.campo("Cor da página", cores), 3, 0, 1, 2)
+        for coluna in range(2):
             grade.setColumnStretch(coluna, 1)
         card.body.addLayout(grade)
+        card.body.addStretch(1)
         return card
 
     def _rodape(self) -> QHBoxLayout:
@@ -494,11 +400,10 @@ class OnlineView(QWidget):
     def _preencher(self) -> None:
         self._preenchido = True
         ajustes = self.online.ajustes()
-        self.servicos.preencher(ajustes.servicos)
         self.horario.preencher(ajustes.semana)
         self.vagas.setValue(ajustes.vagas)
-        for campo, valor in ((self.passo, ajustes.passo), (self.antecedencia, ajustes.antecedencia),
-                             (self.janela, ajustes.dias), (self.cancelar, ajustes.cancelar_ate)):
+        for campo, valor in ((self.antecedencia, ajustes.antecedencia), (self.janela, ajustes.dias),
+                             (self.cancelar, ajustes.cancelar_ate)):
             indice = campo.findData(valor)
             if indice < 0:
                 campo.addItem(f"{valor}", valor)
@@ -534,10 +439,12 @@ class OnlineView(QWidget):
 
     def _ler(self) -> AjustesOnline:
         cor = next((chave for chave, amostra in self._amostras.items() if amostra.isChecked()), "violeta")
+        # os servicos sao da aba Servicos: daqui vao como estao gravados
+        guardado = self.online.ajustes()
         return AjustesOnline(
-            servicos=self.servicos.servicos(),
+            servicos=guardado.servicos,
             semana=self.horario.semana(),
-            passo=int(self.passo.currentData()),
+            passo=guardado.passo,
             vagas=self.vagas.value(),
             antecedencia=int(self.antecedencia.currentData()),
             dias=int(self.janela.currentData()),
@@ -548,8 +455,11 @@ class OnlineView(QWidget):
 
     # ------------------------------------------------------------------- acoes
     def criar(self) -> None:
-        """O link nasce funcionando: o basico preenchido e publicado na hora."""
-        self.online.salvar(AjustesOnline.padrao(), ativo=True)
+        """O link nasce funcionando: o basico preenchido e publicado na hora.
+
+        Servicos montados antes na aba Servicos ja entram; sem eles, o padrao.
+        """
+        self.online.salvar(self.online.ajustes(), ativo=True)
         self.refresh()
         self.publicar()
 
@@ -587,7 +497,9 @@ class OnlineView(QWidget):
         if self._publicando:
             return
         if not self._pode_publicar():
-            self._dizer(self.aviso, "Salvo. Ative a sua licença para publicar o link.", "warning")
+            texto = "Salvo. Ative a sua licença para publicar o link."
+            self._dizer(self.aviso, texto, "warning")
+            self.publicacao.emit(False, texto)
             return
         logo = ""
         if self.empresa is not None and self.paths is not None:
@@ -605,7 +517,9 @@ class OnlineView(QWidget):
         self.botao_salvar.setEnabled(True)
         self.botao_criar.setEnabled(True)
         self.online.registrar_salvo(params, resposta)
-        self._dizer(self.aviso, "Publicado. Quem abrir o link já vê o que você mudou.", "success")
+        texto = "Publicado. Quem abrir o link já vê o que você mudou."
+        self._dizer(self.aviso, texto, "success")
+        self.publicacao.emit(True, texto)
         self._mostrar_link()
         self.data_changed.emit()
 
@@ -616,6 +530,7 @@ class OnlineView(QWidget):
         texto = str(erro) if isinstance(erro, OnlineError) else "Não foi possível publicar agora."
         self.online.anotar_erro(texto)
         self._dizer(self.aviso, f"Salvo aqui. {texto}", "warning")
+        self.publicacao.emit(False, f"Salvo aqui. {texto}")
         self._mostrar_link()
 
     def copiar(self) -> None:

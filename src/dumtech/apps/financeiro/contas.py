@@ -79,7 +79,7 @@ class ContasFinanceiro:
         eventos.avisar(APP_ID)
         return int(criado.id)
 
-    def quitar(self, documento: str) -> bool:
+    def quitar(self, documento: str, forma: str = "") -> bool:
         """Fecha a conta que nasceu deste documento - o cliente pagou."""
         achado = self._achar(documento)
         if achado is None:
@@ -87,7 +87,7 @@ class ContasFinanceiro:
         lancamento = self.repository.obter(int(achado["id"]))
         if lancamento is None or lancamento.pago:
             return False
-        self.repository.quitar(lancamento.id)
+        self.repository.quitar(lancamento.id, forma=forma)
         eventos.avisar(APP_ID)
         return True
 

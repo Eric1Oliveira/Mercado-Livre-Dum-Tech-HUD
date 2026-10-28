@@ -487,6 +487,14 @@ class HubWindow(QMainWindow):
         self.loja = LojaService()
         self.uso_service = UsoService(self.hub_store)
         self.atualizacao_service = AtualizacaoService(self.settings, __version__)
+        #: atualizacao silenciosa ja baixada e conferida: (instalador, aviso)
+        self._silenciosa = None
+        self._baixando_em_silencio = ""
+        #: o Windows esta desligando: instalar agora deixaria o programa pela metade
+        self._windows_saindo = False
+        app = QGuiApplication.instance()
+        if app is not None:
+            app.commitDataRequest.connect(self._windows_desligando)
         # sem carregar aqui: o `_go(PAGINA_INICIO)` do construtor ja carrega
         self.home_view = HomeView(self.registry, self.hub_store,
                                   paths=get_paths(),
@@ -893,8 +901,8 @@ class HubWindow(QMainWindow):
     #: A parte online dos aplicativos (o link de agendamento): de quanto em
     #: quanto tempo o Hub CONFERE se ha o que publicar ou buscar. Conferir e
     #: local e barato; a rede so e chamada quando a agenda mudou ou quando ja
-    #: passou o intervalo do proprio modulo (1 minuto na Agenda).
-    ONLINE_INTERVALO_MS = 15 * 1000
+    #: passou o intervalo do proprio modulo (20 s na Agenda).
+    ONLINE_INTERVALO_MS = 10 * 1000
     #: depois de uma escrita, espera a rajada de avisos acabar antes de montar.
     #: Curto de proposito: vendeu no balcao, o celular do dono ja sabe. Uma
     #: rajada vira um envio so - o resumo sem mudanca nao viaja.
@@ -1048,8 +1056,13 @@ class HubWindow(QMainWindow):
         Ela nao obedece ao "Lembrar em 3 dias" (isso e da faixa do Inicio):
         enquanto houver versao nova, o caminho para atualizar fica a vista. E a
         cada versao que chega - e a cada abertura do Hub - ela chama uma vez.
+
+        Versao silenciosa nao aparece: baixa agora e instala quando o Hub fechar.
         """
         aviso = nucleo_atualizacao.disponivel(self.settings, __version__)
+        if aviso is not None and nucleo_atualizacao.em_silencio(self.settings, aviso):
+            self._preparar_em_silencio(aviso)
+            aviso = None
         existe = aviso is not None
         chegou = existe and aviso.versao != self.botao_atualizar.versao
         self.botao_atualizar.setVisible(existe)
@@ -1080,6 +1093,55 @@ class HubWindow(QMainWindow):
         logger.info("Atualizacao em andamento: fechando o Hub")
         self._atualizando = True
         QTimer.singleShot(400, self, self.close)
+
+    def _preparar_em_silencio(self, aviso) -> None:
+        """Baixa a versao silenciosa em segundo plano (uma vez por versao)."""
+        pronta = self._silenciosa
+        if (pronta is not None and pronta[1].versao == aviso.versao) \
+                or self._baixando_em_silencio == aviso.versao:
+            return
+        self._baixando_em_silencio = aviso.versao
+        servico = self.atualizacao_service
+
+        def baixar():
+            # fechar o Hub no meio interrompe o download (nao segura a saida)
+            caminho = servico.baixar(
+                aviso, parar=lambda: getattr(self, "_preparo_parado", False))
+            servico.limpar(manter=caminho.name)
+            return caminho
+
+        def baixou(caminho) -> None:
+            self._baixando_em_silencio = ""
+            self._silenciosa = (caminho, aviso)
+
+        def falhou(erro) -> None:
+            self._baixando_em_silencio = ""
+            logger.info("Atualizacao silenciosa %s nao baixou: %s", aviso.versao, erro)
+
+        tasks.executar(self, baixar, baixou, falhou)
+
+    def _instalar_em_silencio(self) -> None:
+        """O Hub esta fechando com uma versao silenciosa pronta: instala agora.
+
+        Sem `/reabrir` - a pessoa fechou porque quis; na proxima abertura ja e
+        a versao nova. Com o Windows desligando nao instala: o instalador seria
+        cortado no meio. Fica para o proximo fechamento.
+        """
+        pronta = self._silenciosa
+        if pronta is None or getattr(self, "_atualizando", False) or self._windows_saindo:
+            return
+        instalador, aviso = pronta
+        atual = nucleo_atualizacao.disponivel(self.settings, __version__)
+        if atual is None or atual.versao != aviso.versao:
+            return      # chegou outra versao depois do download
+        try:
+            self.atualizacao_service.instalar(instalador, aviso, reabrir=False)
+            logger.info("Atualizacao silenciosa %s instalando", aviso.versao)
+        except nucleo_atualizacao.AtualizacaoError as erro:
+            logger.warning("Atualizacao silenciosa %s nao instalou: %s", aviso.versao, erro)
+
+    def _windows_desligando(self, _sessao) -> None:
+        self._windows_saindo = True
 
     def _baixar_versao(self) -> None:
         """A faixa do Inicio: abre a mesma janela de atualizacao."""
@@ -1455,4 +1517,5 @@ class HubWindow(QMainWindow):
         self.launcher.close_all()
         self.hub_store.close()
         self.contacts.close()
+        self._instalar_em_silencio()
         super().closeEvent(event)

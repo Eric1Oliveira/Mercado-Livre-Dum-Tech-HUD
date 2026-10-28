@@ -66,7 +66,7 @@ class Contas(Protocol):
         mesmo documento nao pode dobrar a divida.
         """
 
-    def quitar(self, documento: str) -> bool:
+    def quitar(self, documento: str, forma: str = "") -> bool:
         """Da baixa na conta criada por este documento.
 
         Sem isto a ponte criaria uma divida que ninguem fecha: o cliente volta,

@@ -18,6 +18,7 @@ import os
 import tempfile
 import threading
 import unittest
+from datetime import date, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from unittest import mock
@@ -29,8 +30,10 @@ from dumtech.core.atualizacao import (
     Atualizacao,
     AtualizacaoError,
     AtualizacaoService,
+    DIAS_EM_SILENCIO,
     abrir_manifesto,
     disponivel,
+    em_silencio,
     para_avisar,
 )
 from dumtech.core.config import Settings
@@ -193,6 +196,57 @@ class AvisoTestCase(Base):
         self.assertIsNotNone(para_avisar(self.settings, "1.2.1"))
 
 
+# ================================================== a versao silenciosa ====
+class SilenciosaTestCase(Base):
+    URL = "https://dumtechsolution.com/baixar/DumTech-Hub-Setup.exe"
+
+    def setUp(self) -> None:
+        super().setUp()
+        # so o programa instalado se instala sozinho: aqui, finge que e ele
+        self.enterContext(mock.patch.object(nucleo, "pode_atualizar_aqui", return_value=True))
+
+    def guardar(self, versao: str = "1.3.0", **extras):
+        return self.servico().guardar({"ok": True, "assinado": pacote_atualizacao(
+            versao, self.URL, sha(INSTALADOR), **extras)})
+
+    def test_so_e_silenciosa_quando_o_hub_consegue_instalar(self) -> None:
+        self.assertTrue(abrir_manifesto(pacote_atualizacao(
+            "1.3.0", self.URL, sha(INSTALADOR), silenciosa=True)).silenciosa)
+        self.assertFalse(abrir_manifesto(pacote_atualizacao(
+            "1.3.0", self.URL, "", silenciosa=True)).silenciosa,
+            "sem sha256 o Hub nao instala: o cliente tem de ser avisado")
+        self.assertFalse(abrir_manifesto(pacote_atualizacao(
+            "1.3.0", self.URL, sha(INSTALADOR))).silenciosa)
+
+    def test_nao_aparece_na_tela_mas_continua_disponivel(self) -> None:
+        self.guardar(silenciosa=True)
+        self.assertIsNone(para_avisar(self.settings, "1.2.1"))
+        self.assertIsNotNone(disponivel(self.settings, "1.2.1"))
+
+    def test_quem_nunca_fecha_o_hub_ve_o_aviso_depois_do_prazo(self) -> None:
+        self.guardar(silenciosa=True)
+        aviso = disponivel(self.settings, "1.2.1")
+        hoje = date.today()
+        self.assertTrue(em_silencio(self.settings, aviso, hoje + timedelta(DIAS_EM_SILENCIO - 1)))
+        self.assertFalse(em_silencio(self.settings, aviso, hoje + timedelta(DIAS_EM_SILENCIO)))
+
+    def test_o_prazo_conta_de_quando_a_versao_chegou(self) -> None:
+        self.guardar(silenciosa=True)
+        primeira = self.settings.get("versao", "silenciosa")
+        self.settings.set("versao", "silenciosa", {**primeira, "desde": "2020-01-01"})
+        self.guardar(silenciosa=True)            # a mesma versao, 2 minutos depois
+        self.assertEqual(self.settings.get("versao", "silenciosa")["desde"], "2020-01-01")
+
+        self.guardar("1.4.0", silenciosa=True)   # versao nova, prazo novo
+        self.assertEqual(self.settings.get("versao", "silenciosa"),
+                         {"versao": "1.4.0", "desde": date.today().isoformat()})
+
+    def test_em_desenvolvimento_avisa_como_sempre(self) -> None:
+        self.guardar(silenciosa=True)
+        with mock.patch.object(nucleo, "pode_atualizar_aqui", return_value=False):
+            self.assertIsNotNone(para_avisar(self.settings, "1.2.1"))
+
+
 # ============================================================== o servico ===
 class ServicoTestCase(Base):
     URL = "https://dumtechsolution.com/baixar/DumTech-Hub-Setup.exe"
@@ -298,6 +352,15 @@ class InstalarTestCase(Base):
         self.assertIn("/VERYSILENT", argumentos)
         self.assertIn("/reabrir=1", argumentos)
         self.assertIn("/NORESTART", argumentos)
+
+    def test_silenciosa_instala_sem_reabrir_o_hub(self) -> None:
+        """A pessoa fechou o Hub porque quis: ele nao reaparece sozinho."""
+        with mock.patch.object(nucleo.subprocess, "Popen") as popen:
+            self.servico_.instalar(self.caminho, self.aviso, reabrir=False)
+
+        argumentos = popen.call_args[0][0]
+        self.assertIn("/VERYSILENT", argumentos)
+        self.assertNotIn("/reabrir=1", argumentos)
 
     def test_arquivo_trocado_depois_do_download_nao_executa(self) -> None:
         """A janela entre baixar e abrir tambem e conferida."""
@@ -465,6 +528,59 @@ class RelogioNoHubTestCase(Base):
         hub.atualizacao_service = mock.Mock(buscar=mock.Mock(return_value=None))
         hub.conferir_versao(True)          # DUMTECH_LICENCA_LOCAL=1 nos testes
         self.assertFalse(hub.atualizacao_service.buscar.called)
+
+
+class SilenciosaNoHubTestCase(Base):
+    """Versao silenciosa: nada na tela, baixa sozinha e instala ao fechar."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.servidor = Servidor()
+        self.addCleanup(self.servidor.parar)
+        self.enterContext(mock.patch.object(nucleo, "pode_atualizar_aqui", return_value=True))
+
+    def hub(self, **extras):
+        from dumtech.hub.main_window import HubWindow
+
+        from .test_porta_entrada import esperar_tarefas
+
+        settings = Settings(self.raiz / "hub-janela.json")
+        settings.set("versao", "assinado", pacote_atualizacao(
+            "9.9.0", self.servidor.url, sha(INSTALADOR), tamanho=len(INSTALADOR), **extras))
+        janela = HubWindow(settings=settings)
+        janela.launcher.notify = lambda *args: None
+        janela.atualizacao_service.paths = self.paths
+        self.addCleanup(janela.deleteLater)
+        janela._atualizar_botao_versao()
+        esperar_tarefas(_app)
+        return janela
+
+    def test_nao_mostra_nada_e_instala_ao_fechar_sem_reabrir(self) -> None:
+        hub = self.hub(silenciosa=True)
+        self.assertTrue(hub.botao_atualizar.isHidden(), "versao silenciosa nao chama ninguem")
+        self.assertIsNotNone(hub._silenciosa, "o instalador ja devia estar baixado")
+
+        with mock.patch.object(nucleo.subprocess, "Popen") as popen:
+            hub.close()
+
+        argumentos = popen.call_args[0][0]
+        self.assertEqual(argumentos[0], str(hub._silenciosa[0]))
+        self.assertNotIn("/reabrir=1", argumentos)
+
+    def test_com_o_windows_desligando_nao_instala(self) -> None:
+        hub = self.hub(silenciosa=True)
+        hub._windows_desligando(None)
+        with mock.patch.object(nucleo.subprocess, "Popen") as popen:
+            hub.close()
+        self.assertFalse(popen.called, "instalador cortado no meio estraga o programa")
+
+    def test_versao_normal_continua_com_o_botao(self) -> None:
+        hub = self.hub()
+        self.assertFalse(hub.botao_atualizar.isHidden())
+        self.assertIsNone(hub._silenciosa)
+        with mock.patch.object(nucleo.subprocess, "Popen") as popen:
+            hub.close()
+        self.assertFalse(popen.called, "versao normal so instala com o clique")
 
 
 if __name__ == "__main__":

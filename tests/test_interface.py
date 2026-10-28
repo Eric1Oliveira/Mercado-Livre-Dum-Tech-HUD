@@ -853,21 +853,49 @@ class GradeDaAgendaTestCase(unittest.TestCase):
 
     def test_agenda_comeca_pela_grade_e_tem_o_link_online(self) -> None:
         self.assertEqual(
-            [v.title for v in self.casca.views], ["Agenda", "Compromissos", "Online"]
+            [v.title for v in self.casca.views], ["Agenda", "Compromissos", "Serviços", "Online"]
         )
 
     def test_a_grade_desenha_uma_coluna_por_dia_da_semana(self) -> None:
         vista = self.casca.agenda_view
         vista.refresh()
         self.assertEqual(len(vista.grade.grade.dias), 7)
-        self.assertIn("0 na tela", vista.subtitulo.text())
+        self.assertIn("Nenhum compromisso", vista.subtitulo.text())
+
+    def test_o_titulo_e_o_periodo_e_a_grade_abre_no_horario_da_loja(self) -> None:
+        from dumtech.apps.agenda.models import titulo_do_periodo
+
+        vista = self.casca.agenda_view
+        vista.refresh()
+        self.assertEqual(vista.titulo.text(), titulo_do_periodo(vista.primeiro_dia, 7))
+        self.assertEqual(vista.faixa.currentData(), "loja")
+        self.assertIn("8h às 19h", vista.faixa.currentText())
+        self.assertEqual((vista.grade.grade.hora_inicial, vista.grade.grade.hora_final), (8, 19))
+        self.assertIsNotNone(vista.grade.expediente)
 
     def test_o_compromisso_aparece_na_grade(self) -> None:
         self._marcar()
         vista = self.casca.agenda_view
         vista.refresh()
         self.assertEqual(vista.grade.grade.total, 1)
-        self.assertIn("1 na tela", vista.subtitulo.text())
+        self.assertIn("1 compromisso", vista.subtitulo.text())
+
+    def test_o_cabecalho_dos_dias_fica_parado_ao_rolar(self) -> None:
+        """Rolou a grade: o cabecalho cobre o topo, e clicar nele nao marca nada."""
+        from PySide6.QtCore import QPointF
+
+        from dumtech.apps.agenda.ui.grade import CABECALHO, GUTTER
+
+        vista = self.casca.agenda_view
+        vista.faixa.setCurrentIndex(vista.faixa.findData("dia"))
+        grade = vista.grade
+        grade.resize(700, 1600)
+        grade.move(0, -400)                      # o que a area de rolagem faz
+        no_cabecalho = QPointF(GUTTER + 20, 400 + CABECALHO / 2)
+        logo_abaixo = QPointF(GUTTER + 20, 400 + CABECALHO + 6)
+        self.assertEqual(grade._momento_em(no_cabecalho), "")
+        self.assertIsNone(grade._bloco_em(no_cabecalho))
+        self.assertTrue(grade._momento_em(logo_abaixo))
 
     def test_navegar_troca_a_semana_e_hoje_volta(self) -> None:
         from datetime import timedelta

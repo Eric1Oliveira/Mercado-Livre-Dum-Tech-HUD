@@ -63,6 +63,9 @@ function cartaoVersao(atual, ativacoes) {
       versao: numero, url: url.valor().trim(), notas: notas.valor().trim(),
       sha256: impressao, tamanho: Number(tamanho.valor().trim() || 0) || 0,
       obrigatoria: obrigatoria.checked, automatica: automatica.checked,
+      // versao silenciosa so sai pelo lancar_versao.ps1 -Silenciosa: publicar
+      // por aqui e sempre com aviso (nao herda o silencio da anterior)
+      silenciosa: false,
       atualizado_em: new Date().toISOString(),
     });
   }, { feito: "Versao publicada. O botao aparece no Hub do cliente em ate 2 minutos (Hub 1.2.2 ou anterior: quando o programa for aberto de novo).",

@@ -64,6 +64,8 @@ export function conteudoDaAtualizacao(
     tamanho: Number(dados.tamanho ?? 0),
     obrigatoria: Boolean(dados.obrigatoria),
     automatica: Boolean(dados.automatica),
+    // instala sozinha ao fechar o Hub (1.5.1+) - so se ele puder instalar
+    silenciosa: Boolean(dados.automatica) && Boolean(dados.silenciosa),
     emitido_em: agora.toISOString(),
   };
 }
@@ -129,6 +131,7 @@ export async function tratar(
       notas: manifesto.notas,
       obrigatoria: Boolean(manifesto.obrigatoria),
       automatica,
+      silenciosa: automatica && Boolean(manifesto.silenciosa),
       sha256: automatica ? String(manifesto.sha256).toLowerCase() : "",
       tamanho: Number(manifesto.tamanho ?? 0),
       licenca,

@@ -8,7 +8,8 @@ Vendas de estar no Estoque.
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QRectF, Qt, Signal
+from PySide6.QtGui import QColor, QFontMetricsF, QPainter
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -17,12 +18,13 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ..core import novidades
 from ..core.app_module import AppManifest
 from ..ui.app_shell import AppSurface
-from ..ui.theme import Radius, Space, font_for
+from ..ui.theme import Radius, Space, current_palette, font_for
 from ..ui.widgets.buttons import Button
 from ..ui import format as fmt
-from ..ui.widgets.common import IconBadge, Pill, label
+from ..ui.widgets.common import IconBadge, Pill, label, repolish
 from ..ui.widgets.indicador import PILULA, Indicador
 from ..ui.widgets.pilha import Pilha
 
@@ -35,11 +37,17 @@ class ViewTab(QPushButton):
     O seletor e um trilho cinza com o segmento escolhido em branco - a aba
     sublinhada ja e do topo (qual aplicativo), entao aqui a forma e outra
     (qual tela). Dois niveis de navegacao com a mesma cara se confundem.
+
+    Tela nova ganha a etiqueta "Novo" na cor do aplicativo, logo depois do nome.
     """
+
+    #: espaco a direita que a folha reserva para a etiqueta (`ViewTab[novo]`)
+    FOLGA_NOVO = 52
 
     def __init__(self, texto: str, accent: str, parent: QWidget | None = None) -> None:
         super().__init__(texto, parent)
         self._accent = accent
+        self._novo = False
         self.setCheckable(True)
         self.setAutoExclusive(True)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -50,6 +58,37 @@ class ViewTab(QPushButton):
         # folha propria em cada aba custava um setStyleSheet por aba a cada
         # troca de tema
 
+    @property
+    def novo(self) -> bool:
+        return self._novo
+
+    def set_novo(self, novo: bool) -> None:
+        if novo == self._novo:
+            return
+        self._novo = novo
+        self.setProperty("novo", novo)
+        repolish(self)
+        self.updateGeometry()
+
+    def paintEvent(self, event) -> None:  # noqa: N802 (Qt)
+        super().paintEvent(event)
+        if not self._novo:
+            return
+        fonte = font_for("kbd")
+        largura = QFontMetricsF(fonte).horizontalAdvance("Novo") + 12
+        altura = 16.0
+        etiqueta = QRectF(self.width() - self.FOLGA_NOVO + 5,
+                          (self.height() - altura) / 2, largura, altura)
+        pintor = QPainter(self)
+        pintor.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        pintor.setPen(Qt.PenStyle.NoPen)
+        pintor.setBrush(QColor(self._accent))
+        pintor.drawRoundedRect(etiqueta, altura / 2, altura / 2)
+        pintor.setFont(fonte)
+        pintor.setPen(QColor(current_palette().on_accent))
+        pintor.drawText(etiqueta, int(Qt.AlignmentFlag.AlignCenter), "Novo")
+        pintor.end()
+
 
 class ContextBar(QFrame):
     """Diz em qual aplicativo voce esta e quais telas ele tem."""
@@ -58,6 +97,8 @@ class ContextBar(QFrame):
     close_requested = Signal()
     #: "Comprar" de um modulo em teste gratis
     comprar_requested = Signal()
+    #: a tela marcada "Novo" foi aberta pela primeira vez (o indice dela)
+    nova_vista = Signal(int)
 
     def __init__(self, manifest: AppManifest, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -102,9 +143,10 @@ class ContextBar(QFrame):
 
         self._tabs: list[ViewTab] = []
 
-    def build_tabs(self, titulos: list[str]) -> None:
+    def build_tabs(self, titulos: list[str], novas: tuple[int, ...] = ()) -> None:
         for indice, titulo in enumerate(titulos):
             aba = ViewTab(titulo, self.manifest.accent, self.trilho)
+            aba.set_novo(indice in novas)
             aba.clicked.connect(lambda _=False, i=indice: self.view_selected.emit(i))
             self.tabs.addWidget(aba)
             self.indicador.registrar(aba)
@@ -126,8 +168,12 @@ class ContextBar(QFrame):
 
     def select(self, indice: int) -> None:
         if 0 <= indice < len(self._tabs):
-            self._tabs[indice].setChecked(True)
-            self.indicador.selecionar(self._tabs[indice])
+            aba = self._tabs[indice]
+            aba.setChecked(True)
+            self.indicador.selecionar(aba)
+            if aba.novo:
+                aba.set_novo(False)
+                self.nova_vista.emit(indice)
 
 
 class AppPage(QWidget):
@@ -147,7 +193,13 @@ class AppPage(QWidget):
         coluna.setSpacing(0)
 
         self.bar = ContextBar(self.manifest, self)
-        self.bar.build_tabs([v.title for v in surface.views])
+        titulos = [v.title for v in surface.views]
+        app_id = self.manifest.app_id
+        self.bar.build_tabs(titulos, tuple(
+            i for i, titulo in enumerate(titulos)
+            if novidades.tela_nova(surface.prefs, app_id, titulo)))
+        self.bar.nova_vista.connect(
+            lambda i: novidades.marcar_tela_vista(surface.prefs, app_id, titulos[i]))
         self.bar.view_selected.connect(surface.show_view)
         self.bar.close_requested.connect(
             lambda: self.close_requested.emit(self.manifest.app_id)

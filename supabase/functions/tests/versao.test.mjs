@@ -124,9 +124,24 @@ test("o conteudo assinado tem o carimbo de uso", () => {
   const c = conteudoDaAtualizacao(PUBLICADA, { kid: "k1", agora: new Date(0) });
   assert.deepEqual(Object.keys(c), [
     "v", "kid", "uso", "versao", "url", "sha256", "tamanho", "obrigatoria",
-    "automatica", "emitido_em",
+    "automatica", "silenciosa", "emitido_em",
   ]);
   assert.equal(c.uso, "atualizacao");
+});
+
+test("versao silenciosa vai dentro do pacote assinado", async () => {
+  const r = await tratar(ambiente({ ...PUBLICADA, silenciosa: true }), { versao: "1.2.1" }, "");
+  assert.equal(r.corpo.silenciosa, true);
+  assert.equal(abrir(r.corpo.assinado).silenciosa, true);
+
+  const normal = await tratar(ambiente(PUBLICADA), { versao: "1.2.1" }, "");
+  assert.equal(abrir(normal.corpo.assinado).silenciosa, false);
+});
+
+test("sem instalacao pelo Hub nao existe silencio: o cliente tem de ser avisado", async () => {
+  const r = await tratar(ambiente({ ...PUBLICADA, silenciosa: true, sha256: "" }), { versao: "1.2.1" }, "");
+  assert.equal(r.corpo.silenciosa, false);
+  assert.equal(abrir(r.corpo.assinado).silenciosa, false);
 });
 
 test("a impressao da licenca passa para o Hub, fora do pacote assinado", async () => {

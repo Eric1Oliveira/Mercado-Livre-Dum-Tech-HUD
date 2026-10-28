@@ -29,7 +29,7 @@ from typing import Callable
 
 from ...core.documentos import so_digitos
 from ...core.online import Resultado
-from .models import DIAS_CURTOS, DIAS_SEMANA, AgendaError
+from .models import DIAS_CURTOS, DIAS_SEMANA, AgendaError, Expediente
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +54,8 @@ CORES = (
 COR_PADRAO = "violeta"
 
 PASSOS = (10, 15, 20, 30, 45, 60)
+#: o "Horarios a cada" do link antes da aba Servicos, para quem nunca mexeu
+PASSO_PADRAO = 30
 MAXIMO_SERVICOS = 20
 MAXIMO_VAGAS = 10
 MAXIMO_DIAS = 90
@@ -76,6 +78,27 @@ CHAVE_ERRO = "online.erro"
 
 
 # ------------------------------------------------------------------ ajustes --
+def passo_padrao(duracao: int, limite: int = PASSO_PADRAO) -> int:
+    """De quanto em quanto tempo o servico aparece, se o dono nao escolheu.
+
+    No tempo dele - a barba de 15 min, de 15 em 15 -, arredondado para baixo
+    na lista de passos e sem passar de `limite` (o passo geral do link). E a
+    regra do servidor para link de Hub antigo (`dumtech_agenda_passo`).
+    """
+    cabem = [passo for passo in PASSOS if passo <= int(duracao)]
+    return min(max(cabem) if cabem else PASSOS[0], int(limite))
+
+
+def horarios_no_dia(intervalos, duracao: int, passo: int) -> list[int]:
+    """Os inicios (minutos do dia) que o link oferece num dia sem ninguem.
+
+    A conta do servidor (`dumtech_agenda_livres`) sem os ocupados: cabe inteiro
+    num pedaco aberto, de `passo` em `passo` a partir do comeco do pedaco.
+    """
+    return [inicio for de, ate in intervalos
+            for inicio in range(int(de), int(ate) - int(duracao) + 1, int(passo))]
+
+
 @dataclass
 class Servico:
     id: str
@@ -83,6 +106,9 @@ class Servico:
     duracao: int = 60
     #: None = a pagina nao mostra preco
     preco: float | None = None
+    #: de quanto em quanto tempo aparece no link (um de PASSOS). 0 = ninguem
+    #: escolheu (gravado antes da aba Servicos): vale o `passo_padrao`
+    passo: int = 0
 
 
 @dataclass
@@ -110,7 +136,9 @@ class AjustesOnline:
     servicos: list[Servico] = field(default_factory=list)
     #: segunda a domingo
     semana: list[Dia] = field(default_factory=list)
-    passo: int = 30
+    #: o passo geral de antes da aba Servicos. Saiu da tela: e o teto do
+    #: padrao de cada servico, e o servidor ainda o exige
+    passo: int = PASSO_PADRAO
     vagas: int = 1
     antecedencia: int = 120
     dias: int = 30
@@ -126,6 +154,18 @@ class AjustesOnline:
         semana.append(Dia(aberto=False))
         return cls(servicos=[Servico("s1", "Atendimento", 60)], semana=semana)
 
+    def expediente(self) -> Expediente:
+        """O horario de atendimento do jeito que a grade da Agenda usa."""
+        semana = self.semana if len(self.semana) == 7 else AjustesOnline.padrao().semana
+        return Expediente(
+            semana=tuple(tuple((de, ate) for de, ate in dia.intervalos()) for dia in semana),
+            vagas=self.vagas,
+        )
+
+    def passo_de(self, servico: Servico) -> int:
+        """De quanto em quanto tempo o servico aparece no link."""
+        return int(servico.passo) or passo_padrao(servico.duracao, self.passo)
+
     def validar(self) -> None:
         """Erro de preenchimento vira frase para o dono, nao codigo do servidor."""
         if not self.servicos:
@@ -139,6 +179,8 @@ class AjustesOnline:
                 raise AgendaError(f"{servico.nome}: a duração vai de 5 minutos a 12 horas.")
             if servico.preco is not None and servico.preco < 0:
                 raise AgendaError(f"{servico.nome}: o preço não pode ser negativo.")
+            if servico.passo and servico.passo not in PASSOS:
+                raise AgendaError(f"{servico.nome}: escolha de quanto em quanto tempo o horário aparece.")
         if len(self.semana) != 7:
             raise AgendaError("Faltam dias no horário de atendimento.")
         if not any(dia.intervalos() for dia in self.semana):
@@ -265,7 +307,8 @@ def config_do_servidor(ajustes: AjustesOnline, empresa, logo: str = "") -> dict:
         "cor": ajustes.cor,
         "servicos": [
             {"id": s.id, "nome": s.nome.strip()[:80], "duracao": int(s.duracao),
-             "preco": None if s.preco is None else round(float(s.preco), 2)}
+             "preco": None if s.preco is None else round(float(s.preco), 2),
+             "passo": ajustes.passo_de(s)}
             for s in ajustes.servicos
         ],
         "semana": [dia.intervalos() for dia in ajustes.semana],
@@ -316,7 +359,9 @@ class Online:
 
     @property
     def criado(self) -> bool:
-        return bool(self.repository.ajuste(CHAVE_AJUSTES))
+        # os servicos podem estar gravados antes do link (aba Servicos): quem
+        # diz que o link existe e o ligado/pausado, gravado so ao criar
+        return bool(self.repository.ajuste(CHAVE_ATIVO))
 
     def ajustes(self) -> AjustesOnline:
         texto = self.repository.ajuste(CHAVE_AJUSTES)
@@ -354,6 +399,13 @@ class Online:
         ajustes.validar()
         self.repository.definir_ajuste(CHAVE_AJUSTES, ajustes.para_json())
         self.repository.definir_ajuste(CHAVE_ATIVO, "1" if ativo else "0")
+
+    def salvar_servicos(self, servicos: list[Servico]) -> None:
+        """So os servicos (aba Servicos): o resto dos ajustes e o link ficam como estao."""
+        ajustes = self.ajustes()
+        ajustes.servicos = list(servicos)
+        ajustes.validar()
+        self.repository.definir_ajuste(CHAVE_AJUSTES, ajustes.para_json())
 
     def pedir_endereco_novo(self) -> None:
         self.repository.definir_ajuste(CHAVE_NOVO_ENDERECO, "1")
@@ -395,12 +447,15 @@ class Online:
 class Sincronia:
     """A conversa periodica com o servidor (contrato de `core/online.py`).
 
-    Publica os ocupados quando a agenda muda, busca a cada minuto o que os
-    clientes marcaram, e confirma o recebimento junto com os ocupados novos.
+    Publica os ocupados quando a agenda muda, busca a cada 20 segundos o que
+    os clientes marcaram, e confirma o recebimento junto com os ocupados novos.
     """
 
-    #: mesmo sem mudanca, pergunta ao servidor de quanto em quanto tempo
-    INTERVALO_S = 60
+    #: mesmo sem mudanca, pergunta ao servidor de quanto em quanto tempo. Um
+    #: minuto era lento demais: o cliente marcava e o dono reabria o Hub achando
+    #: que nao tinha chegado. Com o relogio do Hub (10 s), da uma conversa a cada
+    #: 20 s - 180 por hora, dentro do limite do servidor (240).
+    INTERVALO_S = 18
     #: depois de um erro: sem internet tenta logo; recusa do servidor, bem depois
     ESPERA_REDE_S = 60
     ESPERA_RECUSA_S = 10 * 60

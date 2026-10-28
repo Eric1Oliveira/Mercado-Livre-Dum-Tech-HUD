@@ -21,11 +21,15 @@
 #   -SemAvisar      sobe o arquivo mas NAO registra: voce libera pelo painel quando
 #                   quiser (Seguranca > Versao do DumTech Hub - os dados ficam impressos)
 #   -Obrigatoria    marca como atualizacao importante
+#   -Silenciosa     mudanca pequena: o Hub (1.5.1+) baixa sozinho e instala quando
+#                   o cliente fecha o programa - sem botao, sem "O que mudou".
+#                   Hub mais antigo mostra o botao como sempre.
 #   No painel da para desligar "Atualizar pelo Hub" a qualquer momento.
 param(
   [Parameter(Mandatory = $true)][string]$Notas,
   [switch]$SemAvisar,
   [switch]$Obrigatoria,
+  [switch]$Silenciosa,
   # Pula a bateria de testes. Use SO quando voce acabou de rodar
   # tools\verificar_tudo.ps1 e nao mexeu em codigo depois. Economiza ~4 min
   # dos ~6 do lancamento. O que sai daqui vai para computador de cliente: na
@@ -33,6 +37,9 @@ param(
   [switch]$Rapido
 )
 $ErrorActionPreference = "Stop"
+if ($Silenciosa -and $Obrigatoria) {
+  throw "Escolha uma: -Obrigatoria avisa o cliente, -Silenciosa nao avisa nada."
+}
 $raiz = Split-Path -Parent $PSScriptRoot
 Set-Location $raiz
 
@@ -135,9 +142,10 @@ if ($SemAvisar) {
 # 5. registra - por ultimo, depois de o arquivo estar comprovadamente no ar
 $notasSql = $Notas.Replace("'", "''")
 $obrig = if ($Obrigatoria) { "true" } else { "false" }
+$quieta = if ($Silenciosa) { "true" } else { "false" }
 $sql = "update public.hub_versoes set versao = '$versao', url = '$url', sha256 = '$sha', " +
        "tamanho = $tamanho, notas = '$notasSql', obrigatoria = $obrig, automatica = true, " +
-       "atualizado_em = now() where id = 1"
+       "silenciosa = $quieta, atualizado_em = now() where id = 1"
 npx supabase db query --linked $sql | Out-Null
 if ($LASTEXITCODE -ne 0) {
   throw "Nao consegui registrar (o CLI do Supabase esta na conta certa?). O arquivo ja esta no ar: registre pelo painel."
@@ -145,5 +153,10 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host ""
 Write-Host "Versao $versao lancada." -ForegroundColor Green
-Write-Host "  Hubs 1.2.3 ou mais novos mostram o botao em ate 2 minutos."
-Write-Host "  Hub 1.2.2: quando o programa for aberto de novo."
+if ($Silenciosa) {
+  Write-Host "  Hubs 1.5.1 ou mais novos baixam sozinhos e instalam quando forem fechados."
+  Write-Host "  Hubs mais antigos mostram o botao em ate 2 minutos."
+} else {
+  Write-Host "  Hubs 1.2.3 ou mais novos mostram o botao em ate 2 minutos."
+  Write-Host "  Hub 1.2.2: quando o programa for aberto de novo."
+}

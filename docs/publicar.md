@@ -18,6 +18,11 @@ painel, e a estrutura do banco não muda: a versão é só uma linha de dados.
 
 - `-SemAvisar` publica o arquivo sem registrar; você libera pelo painel depois.
 - `-Obrigatoria` marca como atualização importante.
+- `-Silenciosa` é para ajuste pequeno: o Hub (1.5.1 ou mais novo) baixa sozinho
+  e instala quando o cliente fecha o programa, sem botão e sem "O que mudou"
+  (não escreva novidade para ela em `core/novidades.py`). Hub mais antigo mostra
+  o botão como sempre, e quem nunca fecha o Hub vê o botão depois de 7 dias.
+  Tela nova pode ganhar a etiqueta "Novo" em `TELAS_NOVAS`, no mesmo arquivo.
 - No painel (Segurança › Versão do DumTech Hub) dá para desligar "Atualizar pelo
   Hub" a qualquer momento.
 

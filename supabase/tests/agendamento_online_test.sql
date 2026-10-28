@@ -265,7 +265,7 @@ begin
     assert not has_table_privilege('anon', 'public.agenda_links', 'select');
     assert not has_table_privilege('anon', 'public.agenda_reservas', 'select');
     assert not has_table_privilege('authenticated', 'public.agenda_reservas', 'select');
-    assert not has_function_privilege('anon', 'public.dumtech_agenda_livres(uuid, integer, date, date)', 'execute');
+    assert not has_function_privilege('anon', 'public.dumtech_agenda_livres(uuid, integer, integer, date, date)', 'execute');
     assert not has_function_privilege('anon', 'public.dumtech_agenda_faxina()', 'execute');
     assert has_function_privilege('anon', 'public.dumtech_agenda_pagina(text)', 'execute');
     raise notice '9. permissoes ...................... ok';

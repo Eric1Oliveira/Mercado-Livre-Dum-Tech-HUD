@@ -34,7 +34,8 @@ from ....ui.widgets.busca_catalogo import BuscaCatalogo
 from ....ui.widgets.common import Card, label, repolish, tone_label
 from ....ui.widgets.foto import FotoProduto, miniatura, miniatura_vazia
 from ....ui.widgets.table import DIREITA, DataTable
-from ..models import PENDENTE, ItemVenda, Venda, VendaError, quantidade_texto
+from .. import financeiro
+from ..models import ItemVenda, Venda, VendaError, quantidade_texto
 from ..repository import VendasRepository
 from .pagamento_dialog import PagamentoDialog
 
@@ -490,29 +491,8 @@ class BalcaoView(QWidget):
         self.data_changed.emit()
 
     def _lancar_no_financeiro(self, venda) -> str:
-        """Venda a prazo e conta a receber - o dono nao pode digitar duas vezes.
-
-        So a venda pendente vira conta: o que entrou na gaveta agora nao e
-        divida de ninguem. E o documento marca a conta, entao a mesma venda
-        nunca vira duas.
-        """
-        from ....core.contas import AReceber
-
-        if self.contas is None or venda.status != PENDENTE:
-            return ""
-        try:
-            if self.contas.ja_lancado(venda.numero):
-                return ""
-            self.contas.lancar(AReceber(
-                descricao=f"Venda {venda.numero}",
-                valor=venda.total, vencimento=venda.data,
-                cliente=venda.cliente, categoria="Vendas",
-                documento=venda.numero,
-            ))
-        except Exception:  # noqa: BLE001 - a venda ja esta gravada; a ponte nao
-            logger.exception("Nao foi possivel lancar a venda no Financeiro")
-            return "  Não consegui lançar no Financeiro - lance na mão."
-        return "  Conta a receber criada no Financeiro."
+        """A prazo vira conta a receber; a vista entra ja recebida."""
+        return financeiro.registrar(self.contas, venda)
 
     def _anunciar(self, venda, extra: str = "") -> None:
         recado = f"Venda {venda.numero} concluída: {fmt.moeda(venda.total)}.{extra}"

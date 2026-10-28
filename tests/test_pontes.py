@@ -92,6 +92,58 @@ class ContasTestCase(PonteTestCase):
         self.assertFalse(ponte.quitar("VEN-2026-9999"))
 
 
+class VendaNoFinanceiroTestCase(PonteTestCase):
+    """Toda venda cai no Financeiro, nao so a prazo."""
+
+    def _venda(self, status: str, numero: str = "VEN-2026-0001"):
+        from dumtech.apps.vendas.models import ItemVenda, Pagamento, Venda
+
+        return Venda(numero=numero, cliente="Ana", status=status,
+                     itens=[ItemVenda(descricao="Capa", quantidade=2, valor_unitario=50.0)],
+                     pagamentos=[Pagamento(forma="Pix", valor=100.0)])
+
+    def _lancamento(self, ponte, numero: str = "VEN-2026-0001"):
+        achado = ponte._achar(numero)
+        return ponte.repository.obter(int(achado["id"])) if achado else None
+
+    def test_venda_a_vista_entra_ja_recebida(self) -> None:
+        from dumtech.apps.vendas import financeiro
+        from dumtech.apps.vendas.models import CONCLUIDA
+
+        ponte = self.contas()
+        recado = financeiro.registrar(ponte, self._venda(CONCLUIDA))
+
+        lancamento = self._lancamento(ponte)
+        self.assertIn("Recebimento", recado)
+        self.assertEqual(lancamento.valor, 100.0)
+        self.assertTrue(lancamento.pago)
+        # registrar de novo nao dobra a receita
+        financeiro.registrar(ponte, self._venda(CONCLUIDA))
+        self.assertEqual(ponte.repository.obter(lancamento.id).valor, 100.0)
+        self.assertEqual(ponte.database.scalar("SELECT COUNT(*) FROM lancamentos"), 1)
+
+    def test_venda_a_prazo_vira_conta_e_fecha_quando_recebe(self) -> None:
+        from dumtech.apps.vendas import financeiro
+        from dumtech.apps.vendas.models import CONCLUIDA, PENDENTE
+
+        ponte = self.contas()
+        financeiro.registrar(ponte, self._venda(PENDENTE))
+        self.assertFalse(self._lancamento(ponte).pago)
+
+        financeiro.registrar(ponte, self._venda(CONCLUIDA))
+        self.assertTrue(self._lancamento(ponte).pago)
+        self.assertEqual(ponte.database.scalar("SELECT COUNT(*) FROM lancamentos"), 1)
+
+    def test_venda_cancelada_ou_sem_financeiro_nao_passa(self) -> None:
+        from dumtech.apps.vendas import financeiro
+        from dumtech.apps.vendas.models import CANCELADA, CONCLUIDA
+
+        ponte = self.contas()
+        self.assertEqual(financeiro.registrar(ponte, self._venda(CANCELADA)), "")
+        self.assertIsNone(self._lancamento(ponte))
+        self.assertEqual(financeiro.registrar(None, self._venda(CONCLUIDA)), "")
+
+
 class PedidoTestCase(PonteTestCase):
     def _pedido(self, **campos) -> Pedido:
         dados = dict(
