@@ -45,6 +45,19 @@ class Novidade:
 #: versao -> o que mudou. So entra o que o cliente PERCEBE: correcao interna
 #: nao vira aviso. Escreva como quem explica no balcao, sem termo tecnico.
 VERSOES: dict[str, tuple[Novidade, ...]] = {
+    "1.6.1": (
+        Novidade(
+            "", "Janelas inteiras em qualquer tela",
+            "Em notebook e tela menor, os cadastros agora abrem do tamanho da tela, com "
+            "Salvar e Cancelar sempre à vista. Quando tem muita coisa, é o meio da janela "
+            "que rola.",
+        ),
+        Novidade(
+            "", "Atualizar ficou mais seguro",
+            "Ao atualizar, aparece uma janelinha mostrando o andamento, e o Hub abre "
+            "sozinho quando termina. Não precisa clicar no ícone.",
+        ),
+    ),
     "1.6.0": (
         Novidade(
             "vendas", "Vendas recorrentes: mensalidade sem esquecer",

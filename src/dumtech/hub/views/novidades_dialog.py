@@ -13,6 +13,7 @@ from PySide6.QtWidgets import QDialog, QHBoxLayout, QVBoxLayout, QWidget
 from ...ui.theme import Space, apply_window_theme, palette_for
 from ...ui.widgets.buttons import Button
 from ...ui.widgets.common import IconBadge, Pill, label, separator
+from ...ui.widgets.rolagem import rolavel_no_dialogo
 
 LARGURA = 480
 
@@ -55,11 +56,16 @@ class NovidadesDialog(QDialog):
         titulo.setWordWrap(True)
         raiz.addWidget(titulo)
 
-        lista = QVBoxLayout()
+        # quem pulou versoes recebe a lista de todas: num notebook ela passava
+        # da tela e levava o "OK, entendi" junto. A lista rola; o botao fica
+        itens = QWidget()
+        lista = QVBoxLayout(itens)
+        lista.setContentsMargins(0, 0, 0, 0)
         lista.setSpacing(Space.md)
         for novidade in novidades:
             lista.addLayout(self._linha(novidade, modulos.get(novidade.app_id)))
-        raiz.addLayout(lista)
+        lista.addStretch(1)
+        raiz.addWidget(rolavel_no_dialogo(itens), 1)
 
         raiz.addSpacing(Space.xs)
         raiz.addWidget(separator())

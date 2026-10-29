@@ -431,6 +431,9 @@ QDialog {{
 QDialog QStackedWidget {{
     background-color: transparent;
 }}
+QScrollArea#MioloDialogo {{
+    background-color: transparent;
+}}
 
 QToolTip {{
     background-color: {p.text};

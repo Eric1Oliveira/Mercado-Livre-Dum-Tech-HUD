@@ -10,6 +10,7 @@ from PySide6.QtCore import (
     QDate,
     QDateTime,
     QLocale,
+    QSize,
     QSortFilterProxyModel,
     QStringListModel,
     Qt,
@@ -28,16 +29,17 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QPlainTextEdit,
-    QScrollArea,
     QSpinBox,
     QVBoxLayout,
     QWidget,
 )
 
 from .. import format as fmt
+from ..tela import caber_na_tela
 from ..theme import Control, Space, apply_window_theme, palette_for
 from .buttons import Button
 from .common import label, separator
+from .rolagem import rolavel_no_dialogo
 
 
 # ------------------------------------------------------------------- campos ---
@@ -349,12 +351,11 @@ class FormDialog(QDialog):
         self.setWindowTitle(titulo)
         self.setModal(True)
         self.setMinimumWidth(largura)
-        # formulario comprido (a ficha da oficina) nao pode passar da tela: com
-        # rolagem, o cabecalho e os botoes ficam parados e o meio desliza. Sem
-        # uma altura inicial, a area de rolagem nasce apertada e esconde tudo.
-        self._rolagem = rolagem
-        if rolagem:
-            self.resize(largura, 760)
+        self._largura = largura
+        # `rolagem` ficou so por compatibilidade: todo formulario rola agora.
+        # Num notebook o cadastro mais simples ja passava da tela e o Salvar
+        # sumia; com o miolo rolando, cabecalho e botoes ficam sempre a vista
+        self._ajustado = False
 
         raiz = QVBoxLayout(self)
         raiz.setContentsMargins(28, 26, 28, 24)
@@ -381,17 +382,10 @@ class FormDialog(QDialog):
         miolo.addLayout(self.extras)
         miolo.addStretch(1)
 
-        if rolagem:
-            interno = QWidget()
-            interno.setLayout(miolo)
-            area = QScrollArea()
-            area.setWidgetResizable(True)
-            area.setFrameShape(QScrollArea.Shape.NoFrame)
-            area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-            area.setWidget(interno)
-            raiz.addWidget(area, 1)
-        else:
-            raiz.addLayout(miolo)
+        self._interno = QWidget()
+        self._interno.setLayout(miolo)
+        self._area = rolavel_no_dialogo(self._interno)
+        raiz.addWidget(self._area, 1)
 
         rodape = QHBoxLayout()
         rodape.setSpacing(Space.sm + 2)
@@ -408,6 +402,34 @@ class FormDialog(QDialog):
         raiz.addLayout(rodape)
 
         apply_window_theme(self, palette_for(parent))
+
+    def showEvent(self, evento) -> None:  # noqa: N802 (Qt)
+        # so na primeira vez: a subclasse ja montou os campos, e quem reabre o
+        # mesmo dialogo encontra o tamanho que deixou
+        if not self._ajustado:
+            self._ajustado = True
+            self.resize(self._tamanho_natural())
+            caber_na_tela(self, centralizar=True)
+        super().showEvent(evento)
+
+    def _tamanho_natural(self) -> QSize:
+        """O tamanho em que tudo aparece sem rolar (a tela ainda pode aparar).
+
+        A area de rolagem nao serve de regua: o Qt limita o "tamanho ideal"
+        dela a algumas linhas, e o dialogo nascia apertado. A conta e feita com
+        o conteudo de verdade, na largura em que ele vai ficar.
+        """
+        margens = self.layout().contentsMargins()
+        lados = margens.left() + margens.right()
+        # a largura de sempre; so cresce se o conteudo nao couber nela
+        largura = max(self._largura, self.minimumWidth(),
+                      self._interno.minimumSizeHint().width() + lados)
+        miolo = self._interno.layout()
+        altura = (miolo.totalHeightForWidth(largura - lados) if miolo.hasHeightForWidth()
+                  else self._interno.sizeHint().height())
+        moldura = self.layout().sizeHint().height() - self._area.sizeHint().height()
+        # a margem extra evita uma barra de rolagem por arredondamento
+        return QSize(largura, altura + moldura + 2)
 
     def add_row(self, rotulo: str, campo) -> None:
         # o rotulo e apoio, nao conteudo: tom baixo, peso medio - o que se le

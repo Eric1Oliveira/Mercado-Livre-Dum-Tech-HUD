@@ -45,3 +45,12 @@ class Rolagem(QScrollArea):
 def rolavel(tela: QWidget) -> Rolagem:
     """Atalho: `rolavel(minha_tela)` no lugar de montar a area na mao."""
     return Rolagem(tela)
+
+
+def rolavel_no_dialogo(conteudo: QWidget) -> Rolagem:
+    """A mesma rolagem, sem fundo proprio: dentro de um dialogo ela some na
+    janela (o fundo das paginas, mais escuro, virava uma caixa no meio)."""
+    area = Rolagem(conteudo)
+    area.setObjectName("MioloDialogo")
+    conteudo.setAutoFillBackground(False)
+    return area

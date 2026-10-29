@@ -34,6 +34,7 @@ from ...ui import tasks
 from ...ui.theme import Space, apply_window_theme, palette_for
 from ...ui.widgets.buttons import Button
 from ...ui.widgets.common import IconBadge, label, repolish, separator
+from ...ui.widgets.rolagem import rolavel_no_dialogo
 
 LARGURA = 480
 
@@ -82,7 +83,9 @@ class AtualizacaoDialog(QDialog):
         if aviso.notas:
             notas = label(aviso.notas, "body")
             notas.setWordWrap(True)
-            raiz.addWidget(notas)
+            notas.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+            # nota comprida rola: o botao de instalar nunca sai da tela
+            raiz.addWidget(rolavel_no_dialogo(notas), 1)
 
         raiz.addWidget(separator())
         self.explica = label(self._explicacao(), "dim")

@@ -266,6 +266,9 @@ class _Vigia(QObject):
 
             chrome.pintar(obj, palette_for(obj))
             if isinstance(obj, QDialog):
+                from .tela import caber_na_tela
+
+                caber_na_tela(obj)
                 abrir_janela(obj)
         return False
 
