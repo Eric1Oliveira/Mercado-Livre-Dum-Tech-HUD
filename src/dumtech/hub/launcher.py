@@ -217,6 +217,24 @@ class AppLauncher(QObject):
                 encontrados.append(ponte)
         return encontrados
 
+    def desatualizados(self) -> list[str]:
+        """Montados com uma ponte que a licenca acabou de ligar ou desligar.
+
+        A casca recebe as pontes (catalogo, contas, destinos) quando nasce. Se
+        o Estoque entra na licenca depois - compra, teste gratis -, o Vendas
+        que ja estava montado continuava sem catalogo ate o Hub reiniciar: o
+        produto do Estoque nao aparecia na venda. O inverso tambem conta: um
+        modulo que saiu da licenca nao pode continuar sendo usado por ponte.
+        """
+        velhos = []
+        for app_id, surface in [*self._open.items(), *self._preparados.items()]:
+            antes = surface.context
+            if ((antes.catalog is None) != (self.catalog(app_id) is None)
+                    or (antes.contas is None) != (self.contas(app_id) is None)
+                    or len(antes.destinos) != len(self.destinos(app_id))):
+                velhos.append(app_id)
+        return velhos
+
     def _ponte(self, app_id: str, modulo: str, funcao: str):
         """Abre (uma vez) a porta que outro aplicativo publicou.
 

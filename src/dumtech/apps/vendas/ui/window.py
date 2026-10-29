@@ -42,5 +42,9 @@ class VendasWindow(AppWindow):
         for tela in (self.balcao_view, self.vendas_view, self.caixa_view):
             tela.data_changed.connect(self.refresh_all)
 
+    def tem_trabalho_aberto(self) -> bool:
+        # a venda do balcao so vai para o banco ao receber
+        return bool(self.balcao_view.itens)
+
     def teardown(self) -> None:
         self.database.close()

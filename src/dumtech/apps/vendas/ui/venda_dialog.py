@@ -13,6 +13,7 @@ from ....ui import format as fmt
 from ....ui.widgets import form
 from ....ui.widgets.form import FormDialog
 from ....ui.widgets.items_editor import ItemsEditor
+from .. import financeiro
 from ..models import CONCLUIDA, FORMAS, STATUS_OPCOES, ItemVenda, Venda
 from ..repository import VendasRepository, pagamento_unico
 
@@ -27,10 +28,17 @@ class VendaDialog(FormDialog):
         venda: Venda | None = None,
         clientes: list[str] | None = None,
         parent: QWidget | None = None,
+        contas=None,
     ) -> None:
         self.repository = repository
+        #: ponte com o Financeiro; None quando a licenca nao o libera
+        self.contas = contas
         self.venda = venda or Venda(numero=repository.proximo_numero())
         self.editando = venda is not None
+        #: o Financeiro so ouve falar da venda nova ou da que mudou de situacao
+        self._status_antes = self.venda.status if self.editando else None
+        #: o que a tela mostra depois de fechar ("" = nada a dizer)
+        self.recado = ""
         super().__init__(
             f"Venda {self.venda.numero}" if self.editando else "Lançar venda",
             "Itens vendidos, pagamento e total",
@@ -52,7 +60,10 @@ class VendaDialog(FormDialog):
         self.status = form.escolha(STATUS_OPCOES, self.venda.status)
         self.add_row("Pagamento", form.linha(self.forma, "Situação", self.status))
 
-        self.itens = ItemsEditor()
+        # com o Estoque na licenca, o item sugere produto e baixa o saldo
+        self.itens = ItemsEditor(
+            catalogo=repository.catalogo if repository.tem_catalogo else None
+        )
         # o editor nao mostra a ligacao com o Estoque, mas nao pode perde-la
         self.itens.set_items([
             {
@@ -110,4 +121,11 @@ class VendaDialog(FormDialog):
             if self.venda.status == CONCLUIDA
             else []
         )
-        self.repository.salvar(self.venda)
+        # paga agora: baixa o estoque ja; pendente baixa quando o cliente pagar
+        self.venda = self.repository.lancar(self.venda)
+        recado = ""
+        if self.venda.status != self._status_antes:
+            recado = financeiro.registrar(self.contas, self.venda)
+        if self.venda.avisos:
+            recado += f"  Confira o estoque: {'; '.join(self.venda.avisos)}"
+        self.recado = recado.strip()

@@ -22,6 +22,7 @@ from PySide6.QtGui import (
     QShortcut,
 )
 from PySide6.QtWidgets import (
+    QApplication,
     QDialog,
     QFrame,
     QHBoxLayout,
@@ -757,6 +758,7 @@ class HubWindow(QMainWindow):
             if not self.license_service.allows(app_id):
                 self.workspace.unmount(app_id)
         self.launcher.close_blocked()
+        self._remontar_desatualizados()
         self.workspace.marcar_testes(self.license_service.current)
         self.refresh_rail()
         self.home_view.refresh()
@@ -766,6 +768,27 @@ class HubWindow(QMainWindow):
         self._tarefas_de_rede(forcar=True)
         if self.stack.currentIndex() == PAGINA_APP and not self.workspace.mounted:
             self._go(PAGINA_INICIO)
+
+    def _remontar_desatualizados(self) -> None:
+        """Modulo que entrou ou saiu da licenca chega em quem ja estava montado.
+
+        Desmontar e o caminho seguro: na proxima vez que a pessoa abrir, a casca
+        nasce de novo com as pontes certas. Fica como esta so o que se perderia
+        - o aplicativo na frente da pessoa, o que tem trabalho fora do banco
+        (carrinho do balcao) e qualquer um com dialogo aberto por cima.
+        """
+        atual = self.workspace.current_app if self.stack.currentIndex() == PAGINA_APP else None
+        dialogo_aberto = QApplication.activeModalWidget() is not None
+        for app_id in self.launcher.desatualizados():
+            if app_id in self.launcher.preparados:
+                self.workspace.unmount(app_id)
+                self.launcher.descartar_preparado(app_id)
+                continue
+            surface = self.launcher.get(app_id)
+            if app_id == atual or dialogo_aberto or surface.tem_trabalho_aberto():
+                continue
+            self.workspace.unmount(app_id)
+            self.launcher.close(app_id)
 
     def _toggle_theme(self) -> None:
         """Troca o tema da plataforma - com o circulo nascendo do botao de tema.

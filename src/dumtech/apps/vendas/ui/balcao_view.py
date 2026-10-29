@@ -238,6 +238,9 @@ class BalcaoView(QWidget):
             )
         else:
             self.bipe.setPlaceholderText("Bipe o código de barras ou digite o produto...")
+        # a casca troca `self.clientes` quando alguem cadastra cliente; o campo
+        # nasceu com a lista da abertura e so mostra a nova se receber de novo
+        self.cliente.completer().definir(self.clientes)
         self._imagens.clear()  # a foto pode ter mudado no Estoque
         self._preencher()
 

@@ -136,6 +136,17 @@ class PagamentosMixin:
         salva.avisos = self._baixar_uma_vez(salva)
         return salva
 
+    def lancar(self, venda: Venda) -> Venda:
+        """O caminho do "Lancar venda": grava e, se ja esta paga, baixa o estoque.
+
+        Venda pendente nao tira nada agora - sai quando o cliente pagar, em
+        `receber_pendente`, igual a que vem da proposta. Salvar de novo a mesma
+        venda nao baixa outra vez.
+        """
+        salva = self.salvar(venda)
+        salva.avisos = self._baixar_uma_vez(salva) if salva.status == CONCLUIDA else []
+        return salva
+
     def _baixar_uma_vez(self, venda: Venda) -> list[str]:
         """Da baixa no estoque se esta venda ainda nao deu. Anota que deu."""
         linha = self.db.query_one("SELECT baixa_estoque FROM vendas WHERE id = ?", (venda.id,))

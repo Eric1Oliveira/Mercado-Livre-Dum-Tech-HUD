@@ -137,7 +137,26 @@ class VendasView(CrudView):
 
     # ------------------------------------------------------------------- acoes
     def abrir_dialogo(self, venda: Venda | None):
-        return VendaDialog(self.repository, venda, self.clientes, self)
+        return VendaDialog(self.repository, venda, self.clientes, self, contas=self.contas)
+
+    def novo(self) -> None:
+        self._lancar(None)
+
+    def editar(self) -> None:
+        venda = self.registro_selecionado()
+        if venda is not None:
+            self._lancar(venda)
+
+    def _lancar(self, venda: Venda | None) -> None:
+        """Como o da casa, mas conta o que aconteceu no Estoque e no Financeiro."""
+        dialogo = self.abrir_dialogo(venda)
+        if not dialogo.exec():
+            return
+        self.refresh()
+        if dialogo.recado:
+            tom = "warning" if dialogo.venda.avisos else "success"
+            self.mostrar_aviso(f"Venda {dialogo.venda.numero} salva. {dialogo.recado}", tom)
+        self.data_changed.emit()
 
     def excluir(self, venda: Venda) -> None:
         self.repository.excluir(venda.id)

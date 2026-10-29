@@ -245,6 +245,31 @@ class OrcamentoLevaOProdutoTestCase(PonteBase):
         self.vendas.receber_pendente(venda.id, [Pagamento(forma="Dinheiro", valor=150, recebido=150)])
         self.assertEqual(self._saldo(self.fonte.id), 9)           # e nao sai de novo
 
+    def test_venda_lancada_a_mao_ja_paga_baixa_o_estoque(self) -> None:
+        from dumtech.apps.vendas.models import CONCLUIDA as PAGA
+        from dumtech.apps.vendas.models import ItemVenda, Venda
+        venda = self.vendas.lancar(Venda(
+            numero=self.vendas.proximo_numero(), cliente="Joao", status=PAGA,
+            itens=[ItemVenda(descricao="Fonte 19V", quantidade=2, valor_unitario=150,
+                             produto_id=self.fonte.id, codigo=self.fonte.codigo)]))
+        self.assertEqual(self._saldo(self.fonte.id), 8)
+        # salvar de novo (editar a observacao, por exemplo) nao tira outra vez
+        self.vendas.lancar(venda)
+        self.assertEqual(self._saldo(self.fonte.id), 8)
+        # e cancelar devolve exatamente o que saiu
+        self.vendas.cancelar(venda.id, "teste")
+        self.assertEqual(self._saldo(self.fonte.id), 10)
+
+    def test_venda_lancada_a_mao_pendente_so_baixa_ao_receber(self) -> None:
+        from dumtech.apps.vendas.models import PENDENTE, ItemVenda, Pagamento, Venda
+        venda = self.vendas.lancar(Venda(
+            numero=self.vendas.proximo_numero(), cliente="Joao", status=PENDENTE,
+            itens=[ItemVenda(descricao="Fonte 19V", quantidade=1, valor_unitario=150,
+                             produto_id=self.fonte.id, codigo=self.fonte.codigo)]))
+        self.assertEqual(self._saldo(self.fonte.id), 10)
+        self.vendas.receber_pendente(venda.id, [Pagamento(forma="Pix", valor=150)])
+        self.assertEqual(self._saldo(self.fonte.id), 9)
+
     def test_proposta_vira_ordem_com_a_peca_do_estoque(self) -> None:
         numero = self.destino_ordens.abrir(self._pedido())
         ordem = [o for o in self.ordens.listar() if o.numero == numero][0]

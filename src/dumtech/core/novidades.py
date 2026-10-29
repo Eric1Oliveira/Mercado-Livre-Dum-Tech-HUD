@@ -45,6 +45,14 @@ class Novidade:
 #: versao -> o que mudou. So entra o que o cliente PERCEBE: correcao interna
 #: nao vira aviso. Escreva como quem explica no balcao, sem termo tecnico.
 VERSOES: dict[str, tuple[Novidade, ...]] = {
+    "1.5.5": (
+        Novidade(
+            "vendas", "Lançar venda com os produtos do Estoque",
+            "Em Vendas > Lançar venda, comece a digitar e escolha o produto do Estoque: "
+            "o preço vem sozinho e o saldo baixa quando a venda está paga. E o cliente "
+            "cadastrado agora aparece na hora no campo Cliente do Balcão.",
+        ),
+    ),
     "1.5.4": (
         Novidade(
             "vendas", "Toda venda cai no Financeiro",

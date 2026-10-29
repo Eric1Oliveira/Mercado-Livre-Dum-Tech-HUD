@@ -334,6 +334,11 @@ class HubTestCase(unittest.TestCase):
         self.assertIn("Cliente Novo", vendas.clientes)
         self.assertIn("Cliente Novo", vendas.balcao_view.clientes,
                       "a sugestao do balcao e que o vendedor ve")
+        # a lista guardada e uma coisa; o que aparece ao digitar e outra. Era
+        # aqui o furo: a copia mudava e o autocompletar seguia com a velha
+        sugeridos = vendas.balcao_view.cliente.completer().lista.stringList()
+        self.assertIn("Cliente Novo", sugeridos,
+                      "o campo Cliente (opcional) tem que sugerir quem acabou de entrar")
 
     def test_o_aplicativo_da_frente_recarrega_sem_precisar_trocar_de_tela(self) -> None:
         self.assertTrue(self.hub.open_app("financeiro"))

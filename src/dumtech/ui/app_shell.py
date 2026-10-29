@@ -112,6 +112,14 @@ class AppSurface(QWidget):
     def teardown(self) -> None:
         """Fechar recursos ao sair (implementado por cada aplicativo)."""
 
+    def tem_trabalho_aberto(self) -> bool:
+        """Ha algo na tela que se perde se a casca for refeita agora?
+
+        Quem guarda trabalho fora do banco (o carrinho do balcao) responde
+        True, e o Hub deixa a casca como esta em vez de remonta-la.
+        """
+        return False
+
     # -------------------------------------------------------------------- telas
     def add_view(self, title: str, icon_name: str, widget: QWidget) -> QWidget:
         """Guarda a tela e a coloca na pilha dentro de uma area de rolagem.
