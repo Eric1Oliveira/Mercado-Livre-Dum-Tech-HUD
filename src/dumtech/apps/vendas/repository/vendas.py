@@ -110,13 +110,15 @@ class VendasMixin:
             venda.observacoes.strip(),
             int(venda.caixa_id or 0),
             dinheiro(venda.troco),
+            venda.recorrencia.strip(),
         )
         if venda.id is None:
             cursor = self.db.execute(
                 """
                 INSERT INTO vendas (numero, cliente, data, forma_pagamento, status,
-                                    desconto, observacoes, caixa_id, troco, criado_em)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                    desconto, observacoes, caixa_id, troco,
+                                    recorrencia, criado_em)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 valores + (momento,),
             )
@@ -127,7 +129,7 @@ class VendasMixin:
                 """
                 UPDATE vendas SET numero = ?, cliente = ?, data = ?, forma_pagamento = ?,
                                   status = ?, desconto = ?, observacoes = ?,
-                                  caixa_id = ?, troco = ?
+                                  caixa_id = ?, troco = ?, recorrencia = ?
                 WHERE id = ?
                 """,
                 valores + (venda.id,),

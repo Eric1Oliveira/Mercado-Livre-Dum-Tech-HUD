@@ -26,11 +26,15 @@ def registrar(contas, venda) -> str:
         return ""
     try:
         if not contas.ja_lancado(venda.numero):
+            recorrente = bool(venda.recorrencia)
             contas.lancar(AReceber(
-                descricao=f"Venda {venda.numero}",
+                descricao=f"Venda {venda.numero}"
+                          + (f" · recorrente {venda.recorrencia}" if recorrente else ""),
                 valor=venda.total, vencimento=venda.data,
-                cliente=venda.cliente, categoria="Vendas",
+                cliente=venda.cliente,
+                categoria="Vendas recorrentes" if recorrente else "Vendas",
                 documento=venda.numero,
+                recorrencia=venda.recorrencia,
             ))
             if venda.status == PENDENTE:
                 return "  Conta a receber criada no Financeiro."

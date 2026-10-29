@@ -289,7 +289,7 @@ class BalcaoTestCase(unittest.TestCase):
 
     def test_vendas_comeca_pelo_balcao(self) -> None:
         self.assertEqual(
-            [v.title for v in self.casca.views], ["Balcão", "Painel", "Vendas", "Caixa"]
+            [v.title for v in self.casca.views], ["Balcão", "Painel", "Vendas", "Caixa", "Recorrentes"]
         )
 
     def test_item_avulso_entra_na_venda(self) -> None:
@@ -604,7 +604,7 @@ class OficinaTestCase(unittest.TestCase):
 
     def test_ordens_comeca_pelo_quadro(self) -> None:
         self.assertEqual(
-            [v.title for v in self.casca.views], ["Quadro", "Painel", "Ordens de Serviço"]
+            [v.title for v in self.casca.views], ["Quadro", "Painel", "Ordens de Serviço", "Recorrentes"]
         )
 
     def test_cada_ordem_vira_um_cartao_na_faixa_da_etapa(self) -> None:

@@ -6,13 +6,26 @@ em andamento hoje, nao quantas ordens existem no banco.
 
 from __future__ import annotations
 
+import logging
+
 from ....ui.app_shell import AppWindow
+from ....ui.widgets.recorrencias import RecorrenciasView, Textos
+from .. import recorrencias
 from ..database import open_database
 from ..repository import OrdensRepository
 from .bancada_view import BancadaView
 from .dashboard_view import DashboardView
 from .ordem_dialog import OrdemDialog
 from .ordens_view import OrdensView
+
+logger = logging.getLogger(__name__)
+
+TEXTOS_RECORRENCIA = Textos(
+    documento="ordem", documentos="ordens",
+    exemplo="Ex.: Manutenção preventiva do ar-condicionado",
+    antecedencia=recorrencias.ANTECEDENCIA,
+    onde="uma ordem aberta no Quadro",
+)
 
 
 class OrdensWindow(AppWindow):
@@ -23,6 +36,23 @@ class OrdensWindow(AppWindow):
         self.repository = OrdensRepository(self.database,
                                            catalogo=self.context.catalog)
         self.clientes = self.context.contacts.nomes() if self.context.contacts else []
+        self.recorrencias = recorrencias.repositorio(self.database)
+        # a preventiva que chegou com o programa fechado entra ao abrir
+        self.gerar_recorrencias()
+
+    def gerar_recorrencias(self) -> list[str]:
+        """Abre as ordens devidas dos contratos. Nunca impede as Ordens de abrir."""
+        try:
+            return recorrencias.gerar(self.repository, self.context.contas,
+                                      self.context.contacts)
+        except Exception:  # noqa: BLE001 - recorrencia com defeito nao trava o Quadro
+            logger.exception("Falha ao gerar as ordens recorrentes")
+            return []
+
+    def refresh_all(self) -> None:
+        # o Hub aberto de um dia para o outro tambem precisa abrir a de hoje
+        self.gerar_recorrencias()
+        super().refresh_all()
 
     def build_views(self) -> None:
         self.bancada_view = self.add_view(
@@ -42,8 +72,18 @@ class OrdensWindow(AppWindow):
                                          catalogo=self.context.catalog)
         )
 
+        self.recorrentes_view = self.add_view(
+            "Recorrentes", "refresh",
+            RecorrenciasView(self.recorrencias, TEXTOS_RECORRENCIA,
+                             gerar=self.gerar_recorrencias,
+                             contar=lambda contratos: recorrencias.contar_geradas(
+                                 self.repository, contratos),
+                             clientes=self.clientes,
+                             catalogo=self.context.catalog)
+        )
+
         self.bancada_view.abrir_ficha.connect(self.abrir_ficha)
-        for tela in (self.bancada_view, self.ordens_view):
+        for tela in (self.bancada_view, self.ordens_view, self.recorrentes_view):
             tela.data_changed.connect(self.refresh_all)
 
     def abrir_ficha(self, ordem_id: int) -> None:

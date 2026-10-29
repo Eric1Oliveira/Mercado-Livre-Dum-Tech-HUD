@@ -17,7 +17,7 @@ from pathlib import Path
 from ...core import eventos
 from ...core.contas import APagar, AReceber
 from .database import open_database
-from .models import DESPESA, RECEITA, Lancamento
+from .models import DESPESA, RECEITA, RECORRENCIA, Lancamento
 from .repository import FinanceiroRepository
 
 #: marca a origem no proprio lancamento - e assim que a ponte se reconhece
@@ -58,6 +58,10 @@ class ContasFinanceiro:
             vencimento=conta.vencimento,
             observacoes=f"{MARCA}{conta.documento}" if conta.documento else "",
             conta_id=self._conta_padrao(),
+            # as contas do mesmo contrato formam uma serie de recorrencia, como
+            # a que o proprio Financeiro cria: filtro e Painel enxergam igual
+            grupo=f"rec:{conta.recorrencia}" if conta.recorrencia else "",
+            serie=RECORRENCIA if conta.recorrencia else "",
         ))
         eventos.avisar(APP_ID)
         return int(criado.id)

@@ -81,9 +81,11 @@ class DashboardView(QWidget):
         )
         # o cartao mostra os proximos 30 dias; o total em aberto vai na dica,
         # senao a recorrencia do ano inteiro engole o numero que interessa
-        self.card_receber.set_value(
-            fmt.moeda(resumo.a_receber_mes), self._total(resumo.a_receber)
-        )
+        dica = self._total(resumo.a_receber)
+        if resumo.recorrente_mes > CENTAVO:
+            # mensalidade e contrato: o pedaco do numero que se repete todo mes
+            dica = f"{fmt.moeda(resumo.recorrente_mes)} recorrente  ·  {dica}"
+        self.card_receber.set_value(fmt.moeda(resumo.a_receber_mes), dica)
         self.card_pagar.set_value(
             fmt.moeda(resumo.a_pagar_mes), self._total(resumo.a_pagar)
         )

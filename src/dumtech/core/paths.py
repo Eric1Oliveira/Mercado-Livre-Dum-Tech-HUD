@@ -1,4 +1,4 @@
-"""Onde a plataforma DumTech guarda os arquivos no computador do cliente.
+r"""Onde a plataforma DumTech guarda os arquivos no computador do cliente.
 
 Regra geral: o programa pode ser instalado em "Arquivos de Programas" (pasta
 somente leitura), portanto NADA e gravado ao lado do executavel. Todos os dados
@@ -12,11 +12,18 @@ ficam na pasta do usuario:
 
 Durante o desenvolvimento e possivel apontar tudo para outra pasta definindo a
 variavel de ambiente DUMTECH_DATA_DIR (usado tambem pelos testes).
+
+A pasta fica OCULTA no Windows (`ocultar`): cliente curioso que abria a pasta
+e apagava ou "arrumava" um banco transformava o programa em erro na abertura.
+Oculta nao e trancada - o programa, o backup e o suporte continuam lendo e
+gravando normalmente; ela so sai da frente de quem esta navegando.
 """
 
 from __future__ import annotations
 
+import logging
 import os
+import sys
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -26,6 +33,37 @@ APP_FOLDER_NAME = "DumTech Hub"
 
 #: Variavel de ambiente que permite trocar a pasta de dados (dev/testes).
 ENV_DATA_DIR = "DUMTECH_DATA_DIR"
+
+#: atributo "oculto" do Windows (FILE_ATTRIBUTE_HIDDEN)
+_OCULTO = 0x2
+_ATRIBUTO_INVALIDO = 0xFFFFFFFF
+
+logger = logging.getLogger(__name__)
+
+
+def ocultar(pasta: Path) -> bool:
+    """Marca a pasta como oculta no Windows. Nunca levanta.
+
+    So acrescenta o atributo: nada e movido, renomeado ou trancado, entao
+    quem le e grava ali (o proprio programa, o backup) segue igual. Fora do
+    Windows nao faz nada. Devolve True quando a pasta ficou oculta.
+    """
+    if sys.platform != "win32":
+        return False
+    try:
+        import ctypes
+
+        kernel = ctypes.windll.kernel32
+        kernel.GetFileAttributesW.restype = ctypes.c_uint32
+        atuais = kernel.GetFileAttributesW(str(pasta))
+        if atuais == _ATRIBUTO_INVALIDO:
+            return False
+        if atuais & _OCULTO:
+            return True
+        return bool(kernel.SetFileAttributesW(str(pasta), atuais | _OCULTO))
+    except Exception:  # noqa: BLE001 - pasta visivel incomoda, programa parado nao
+        logger.warning("Nao foi possivel ocultar a pasta %s", pasta, exc_info=True)
+        return False
 
 
 def _default_root() -> Path:
@@ -99,7 +137,11 @@ class DataPaths:
 @lru_cache(maxsize=1)
 def get_paths() -> DataPaths:
     """Retorna (e cria) as pastas da plataforma."""
-    return DataPaths(root=_default_root()).ensure()
+    paths = DataPaths(root=_default_root()).ensure()
+    # so a pasta de verdade do cliente: a de teste/desenvolvimento fica a vista
+    if not os.environ.get(ENV_DATA_DIR):
+        ocultar(paths.root)
+    return paths
 
 
 def reset_paths_cache() -> None:

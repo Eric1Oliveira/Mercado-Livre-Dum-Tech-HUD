@@ -24,6 +24,9 @@ from .lancamento_dialog import LancamentoDialog
 #: o filtro de tipo tambem separa a despesa fixa da variavel
 FILTRO_FIXAS = "fixas"
 FILTRO_VARIAVEIS = "variaveis"
+#: receitas que se repetem: as do proprio Financeiro e as que chegam dos
+#: contratos recorrentes do Vendas e das Ordens
+FILTRO_RECORRENTES = "recorrentes"
 
 
 class LancamentosView(CrudView):
@@ -36,7 +39,7 @@ class LancamentosView(CrudView):
     # largura e curta demais para gastar com informacao repetida
     colunas = ["Vencimento", "Descrição", "Cliente", "Categoria", "Valor",
                "Em aberto", "Situação"]
-    larguras = {0: 200, 2: 150, 3: 120, 4: 130, 5: 115, 6: 105}
+    larguras = {0: 200, 2: 150, 3: 150, 4: 130, 5: 115, 6: 105}
 
     def __init__(
         self,
@@ -59,6 +62,7 @@ class LancamentosView(CrudView):
         self.filtro_tipo = QComboBox()
         self.filtro_tipo.addItem("Receitas e despesas", "")
         self.filtro_tipo.addItem("Somente receitas", RECEITA)
+        self.filtro_tipo.addItem("Receitas recorrentes", FILTRO_RECORRENTES)
         self.filtro_tipo.addItem("Somente despesas", DESPESA)
         self.filtro_tipo.addItem("Despesas fixas", FILTRO_FIXAS)
         self.filtro_tipo.addItem("Despesas variáveis", FILTRO_VARIAVEIS)
@@ -100,13 +104,17 @@ class LancamentosView(CrudView):
     def carregar(self) -> list[Lancamento]:
         tipo = self.filtro_tipo.currentData() or ""
         fixa = None
+        serie = ""
         if tipo in (FILTRO_FIXAS, FILTRO_VARIAVEIS):
             tipo, fixa = DESPESA, tipo == FILTRO_FIXAS
+        elif tipo == FILTRO_RECORRENTES:
+            tipo, serie = RECEITA, RECORRENCIA
         return self.repository.listar(
             busca=self.busca.text(),
             tipo=tipo,
             situacao=self.filtro_situacao.currentData() or "",
             fixa=fixa,
+            serie=serie,
         )
 
     def montar_linha(self, lancamento: Lancamento) -> list:

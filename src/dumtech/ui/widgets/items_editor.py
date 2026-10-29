@@ -42,7 +42,7 @@ class ItemsEditor(QWidget):
         entrada = QHBoxLayout()
         entrada.setSpacing(8)
         self.campo_descricao = texto(
-            dica="Produto do estoque ou descrição do item" if catalogo else "Descrição do item"
+            dica="Produto ou descrição" if catalogo else "Descrição do item"
         )
         entrada.addWidget(self.campo_descricao, 3)
         # as casas acompanham a unidade do produto escolhido (KG vende 1,250)

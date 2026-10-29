@@ -348,6 +348,18 @@ class EntregaRegistraPagamentoTestCase(PonteBase):
         self._janela(self.contas).salvar()
         self._conta()
 
+    def test_conta_que_ja_existia_fecha_quando_paga_na_entrega(self) -> None:
+        """A ordem do contrato recorrente nasce com a conta; pagar na hora a quita."""
+        self.contas.lancar(AReceber(descricao=f"Ordem {self.ordem.numero}", valor=300.0,
+                                    vencimento=date.today().isoformat(),
+                                    documento=self.ordem.numero, recorrencia="OSREC-1"))
+        janela = self._janela(self.contas)
+        janela.situacao.setCurrentIndex(janela.situacao.findData(janela.PAGOU))
+        janela.salvar()
+        conta = self._conta()
+        self.assertTrue(conta.pago, "senao o Financeiro seguia cobrando o que foi pago")
+        self.assertIn("quitada", janela.recado_financeiro)
+
     def test_sem_financeiro_a_entrega_e_a_de_sempre(self) -> None:
         janela = self._janela(None)
         self.assertIsNone(janela.situacao)

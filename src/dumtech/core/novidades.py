@@ -45,6 +45,24 @@ class Novidade:
 #: versao -> o que mudou. So entra o que o cliente PERCEBE: correcao interna
 #: nao vira aviso. Escreva como quem explica no balcao, sem termo tecnico.
 VERSOES: dict[str, tuple[Novidade, ...]] = {
+    "1.6.0": (
+        Novidade(
+            "vendas", "Vendas recorrentes: mensalidade sem esquecer",
+            "Na aba Recorrentes do Vendas, cadastre uma vez a venda que se repete "
+            "(mensalidade, fornecimento do mês). Ela aparece sozinha como venda "
+            "pendente e já entra no Financeiro como conta a receber.",
+        ),
+        Novidade(
+            "ordens", "Serviço recorrente na Ordem de Serviço",
+            "Manutenção preventiva, limpeza mensal: cadastre em OS > Recorrentes e a "
+            "ordem abre sozinha no Quadro alguns dias antes, com a cobrança no Financeiro.",
+        ),
+        Novidade(
+            "financeiro", "Financeiro mostra o que é recorrente",
+            "Em Lançamentos, filtre por Receitas recorrentes. No Painel, o A receber "
+            "mostra quanto vem de mensalidades e contratos.",
+        ),
+    ),
     "1.5.5": (
         Novidade(
             "vendas", "Lançar venda com os produtos do Estoque",
@@ -178,7 +196,9 @@ def marcar_vista(settings, instalada: str) -> None:
 # ---------------------------------------------------------------- telas novas --
 #: "app_id/Titulo da aba" que mostram "Novo" ate a primeira visita.
 #: Tire daqui quando a tela deixar de ser novidade.
-TELAS_NOVAS: frozenset[str] = frozenset({"agenda/Online", "agenda/Serviços"})
+TELAS_NOVAS: frozenset[str] = frozenset({
+    "agenda/Online", "agenda/Serviços", "vendas/Recorrentes", "ordens/Recorrentes",
+})
 
 #: nas preferencias de cada aplicativo: as telas novas que ja foram abertas
 TELAS_VISTAS = "telas_vistas"

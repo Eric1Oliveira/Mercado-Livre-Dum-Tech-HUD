@@ -29,6 +29,10 @@ class AReceber:
     #: numero do documento de origem (VEN-2026-0001, OS-2026-0117). E por ele
     #: que a ponte sabe que ja lancou e nao duplica.
     documento: str = ""
+    #: contrato recorrente que gerou a conta (VREC-2026-0001). No Financeiro
+    #: as contas do mesmo contrato viram uma serie de recorrencia - aparecem
+    #: marcadas como recorrentes e somam no "recorrente" do Painel.
+    recorrencia: str = ""
 
 
 @dataclass(frozen=True)

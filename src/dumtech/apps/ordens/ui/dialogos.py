@@ -152,9 +152,18 @@ class EntregaDialog(FormDialog):
         """Leva o valor ao Financeiro. Nunca desfaz a entrega se falhar."""
         from ....core.contas import AReceber
 
-        if self.contas.ja_lancado(self.ordem.numero):
-            return "  A conta desta ordem já existia no Financeiro."
         pagou = self.situacao.currentData() == self.PAGOU
+        if self.contas.ja_lancado(self.ordem.numero):
+            # a ordem de contrato recorrente ja nasce com a conta: pagou na
+            # entrega, e essa conta que fecha - senao o Financeiro seguia cobrando
+            if pagou:
+                try:
+                    if self.contas.quitar(self.ordem.numero, forma=self.forma.currentText()):
+                        return (f"  Recebido em {self.forma.currentText()}: "
+                                "a conta do Financeiro foi quitada.")
+                except Exception as erro:  # noqa: BLE001 - o aparelho ja saiu pela porta
+                    return f"  Não consegui quitar no Financeiro ({erro}) - quite por lá."
+            return "  A conta desta ordem já existia no Financeiro."
         hoje = date.today().isoformat()
         try:
             self.contas.lancar(AReceber(

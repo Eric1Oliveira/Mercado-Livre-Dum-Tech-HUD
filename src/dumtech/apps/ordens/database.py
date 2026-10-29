@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from ...core.database import Database, Migration
+from ...core.recorrencia import TABELA as TABELA_RECORRENCIAS
 
 MIGRATIONS = (
     Migration(
@@ -97,6 +98,19 @@ MIGRATIONS = (
             ALTER TABLE os_itens ADD COLUMN produto_id INTEGER NOT NULL DEFAULT 0;
             ALTER TABLE os_itens ADD COLUMN codigo TEXT NOT NULL DEFAULT '';
             ALTER TABLE ordens ADD COLUMN baixa_estoque TEXT NOT NULL DEFAULT '';
+            """,
+        ),
+    ),
+    Migration(
+        version=4,
+        name="servico recorrente",
+        statements=(
+            # O contrato de manutencao (a preventiva a cada tres meses) e cada
+            # ordem que ele abre, marcada com o numero dele.
+            TABELA_RECORRENCIAS,
+            """
+            ALTER TABLE ordens ADD COLUMN recorrencia TEXT NOT NULL DEFAULT '';
+            CREATE INDEX IF NOT EXISTS idx_ordens_recorrencia ON ordens(recorrencia, prazo);
             """,
         ),
     ),

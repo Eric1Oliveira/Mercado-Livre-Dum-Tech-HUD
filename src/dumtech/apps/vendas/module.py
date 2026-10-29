@@ -24,6 +24,8 @@ def create_window(context: AppContext):
 
 def avisos(paths, config):
     """Venda fechada que ainda nao foi paga."""
+    from datetime import date
+
     from ...core.avisos import Aviso
     from ...ui import format as fmt
     from .database import open_database
@@ -32,7 +34,10 @@ def avisos(paths, config):
 
     banco = open_database(paths.app_db(MANIFEST.app_id))
     try:
-        pendentes = VendasRepository(banco).listar(status=PENDENTE)
+        # a venda recorrente nasce pendente semanas antes da data: so cobra
+        # quando a data chegar
+        pendentes = VendasRepository(banco).listar(status=PENDENTE,
+                                                   fim=date.today().isoformat())
     finally:
         banco.close()
 

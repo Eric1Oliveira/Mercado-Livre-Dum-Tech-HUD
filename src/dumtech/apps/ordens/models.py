@@ -204,6 +204,8 @@ class Ordem:
     aprovado_por: str = ""
     entregue_em: str = ""
     garantia_dias: int = GARANTIA_PADRAO
+    #: numero do contrato recorrente que abriu esta ordem ("" = ordem comum)
+    recorrencia: str = ""
     #: recados da baixa de estoque na entrega (nao vai para o banco)
     avisos: list[str] = field(default_factory=list)
     desconto: float = 0.0
@@ -314,6 +316,7 @@ class Ordem:
         dados["entregue_em"] = dados.get("entregue_em") or ""
         dados["garantia_dias"] = int(dados.get("garantia_dias") or 0)
         dados["desconto"] = float(dados.get("desconto") or 0)
+        dados["recorrencia"] = dados.get("recorrencia") or ""
         return cls(**dados)
 
 

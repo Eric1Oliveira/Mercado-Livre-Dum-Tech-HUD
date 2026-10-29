@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-from ..models import DiaDoFluxo, Projecao, ResumoFinanceiro, ler_data
+from ..models import RECORRENCIA, DiaDoFluxo, Projecao, ResumoFinanceiro, ler_data
 from .comum import SITUACAO_ABERTO, dinheiro
 
 #: quantos dias a tela mostra por padrao
@@ -88,6 +88,8 @@ class FluxoMixin:
             a_pagar=dinheiro(sum(i.em_aberto for i in abertos if not i.e_receita)),
             a_receber_mes=dinheiro(sum(i.em_aberto for i in proximos_30 if i.e_receita)),
             a_pagar_mes=dinheiro(sum(i.em_aberto for i in proximos_30 if not i.e_receita)),
+            recorrente_mes=dinheiro(sum(i.em_aberto for i in proximos_30
+                                        if i.e_receita and i.serie == RECORRENCIA)),
             vencidos_valor=dinheiro(sum(i.em_aberto for i in vencidos)),
             vencidos_quantidade=len(vencidos),
             # o mes conta pela data da BAIXA: e quando o dinheiro andou

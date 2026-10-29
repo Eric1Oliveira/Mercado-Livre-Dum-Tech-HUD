@@ -6,13 +6,26 @@ modulos: quem abre o Vendas abre para vender.
 
 from __future__ import annotations
 
+import logging
+
 from ....ui.app_shell import AppWindow
+from ....ui.widgets.recorrencias import RecorrenciasView, Textos
+from .. import recorrencias
 from ..database import open_database
 from ..repository import VendasRepository
 from .balcao_view import BalcaoView
 from .caixa_view import CaixaView
 from .dashboard_view import DashboardView
 from .vendas_view import VendasView
+
+logger = logging.getLogger(__name__)
+
+TEXTOS_RECORRENCIA = Textos(
+    documento="venda", documentos="vendas",
+    exemplo="Ex.: Mensalidade do plano, fornecimento do mês",
+    antecedencia=recorrencias.ANTECEDENCIA,
+    onde="uma venda pendente",
+)
 
 
 class VendasWindow(AppWindow):
@@ -21,6 +34,22 @@ class VendasWindow(AppWindow):
         # o catalogo so chega quando o cliente tem o DumTech Estoque liberado
         self.repository = VendasRepository(self.database, catalogo=self.context.catalog)
         self.clientes = self.context.contacts.nomes() if self.context.contacts else []
+        self.recorrencias = recorrencias.repositorio(self.database)
+        # a mensalidade que venceu com o programa fechado entra ao abrir
+        self.gerar_recorrencias()
+
+    def gerar_recorrencias(self) -> list[str]:
+        """Cria as vendas devidas dos contratos. Nunca impede o Vendas de abrir."""
+        try:
+            return recorrencias.gerar(self.repository, self.context.contas)
+        except Exception:  # noqa: BLE001 - recorrencia com defeito nao trava o balcao
+            logger.exception("Falha ao gerar as vendas recorrentes")
+            return []
+
+    def refresh_all(self) -> None:
+        # o Hub aberto de um dia para o outro tambem precisa gerar a vez de hoje
+        self.gerar_recorrencias()
+        super().refresh_all()
 
     def build_views(self) -> None:
         self.balcao_view = self.add_view(
@@ -38,8 +67,18 @@ class VendasWindow(AppWindow):
         self.caixa_view = self.add_view(
             "Caixa", "money", CaixaView(self.repository, empresa=self.empresa)
         )
+        self.recorrentes_view = self.add_view(
+            "Recorrentes", "refresh",
+            RecorrenciasView(self.recorrencias, TEXTOS_RECORRENCIA,
+                             gerar=self.gerar_recorrencias,
+                             contar=lambda contratos: recorrencias.contar_geradas(
+                                 self.repository, contratos),
+                             clientes=self.clientes,
+                             catalogo=self.context.catalog)
+        )
 
-        for tela in (self.balcao_view, self.vendas_view, self.caixa_view):
+        for tela in (self.balcao_view, self.vendas_view, self.caixa_view,
+                     self.recorrentes_view):
             tela.data_changed.connect(self.refresh_all)
 
     def tem_trabalho_aberto(self) -> bool:

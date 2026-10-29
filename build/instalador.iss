@@ -53,6 +53,11 @@ Name: "atalho"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:Ad
 ; (arquivo velho esquecido em _internal pode ser carregado no lugar do novo)
 Type: filesandordirs; Name: "{app}\_internal"
 
+[Dirs]
+; as bibliotecas do programa ficam ocultas: apagar uma delas "para limpar"
+; impedia o Hub de abrir. Oculta nao muda nada para o programa.
+Name: "{app}\_internal"; Attribs: hidden
+
 [Files]
 Source: "dist\DumTech Hub\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 

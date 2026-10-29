@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 
 from PySide6 import __version__ as pyside_version
-from PySide6.QtCore import Qt, QUrl
+from PySide6.QtCore import QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
 
@@ -107,19 +107,16 @@ class AboutView(QWidget):
         return card
 
     def _data_card(self, paths) -> Card:
+        # sem o caminho e sem o botao de abrir: a pasta e do programa, e mexer
+        # nos arquivos dela a mao e o jeito mais rapido de perder dado
         card = Card()
         card.body.addWidget(label("Onde ficam os seus dados", "section"))
-        path_label = label(str(paths.root), "muted")
-        path_label.setWordWrap(True)
-        path_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        card.body.addWidget(path_label)
-
-        actions = QHBoxLayout()
-        open_button = Button("Abrir pasta de dados", "external")
-        open_button.clicked.connect(
-            lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(str(paths.root)))
+        texto = label(
+            "Numa pasta protegida deste computador, cuidada pelo próprio DumTech Hub. "
+            "Para guardar uma cópia ou levar os dados para outro computador, use "
+            "Configurações > Backup.",
+            "muted",
         )
-        actions.addWidget(open_button)
-        actions.addStretch(1)
-        card.body.addLayout(actions)
+        texto.setWordWrap(True)
+        card.body.addWidget(texto)
         return card

@@ -326,6 +326,9 @@ class ResumoFinanceiro:
     #: inteiro, o total em aberto vira um numero que nao ajuda a decidir nada
     a_receber_mes: float = 0.0
     a_pagar_mes: float = 0.0
+    #: do a receber em 30 dias, quanto vem de recorrencia (mensalidade,
+    #: contrato) - o dinheiro com que da para contar todo mes
+    recorrente_mes: float = 0.0
     vencidos_valor: float = 0.0
     vencidos_quantidade: int = 0
     recebido_mes: float = 0.0

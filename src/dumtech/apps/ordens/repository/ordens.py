@@ -17,7 +17,7 @@ CAMPOS = """
     numero, cliente, telefone, equipamento, defeito, diagnostico, servico,
     valor, status, tecnico, aberta_em, prazo, concluida_em, observacoes,
     acessorios, condicao, senha, aprovado_em, aprovado_por, entregue_em,
-    garantia_dias, desconto
+    garantia_dias, desconto, recorrencia
 """
 
 
@@ -145,6 +145,7 @@ class OrdensMixin:
             ordem.acessorios.strip(), ordem.condicao.strip(), ordem.senha.strip(),
             ordem.aprovado_em, ordem.aprovado_por.strip(), ordem.entregue_em,
             int(ordem.garantia_dias or 0), dinheiro(ordem.desconto),
+            ordem.recorrencia.strip(),
         )
         if nova:
             colunas = ", ".join(campo.strip() for campo in CAMPOS.split(","))

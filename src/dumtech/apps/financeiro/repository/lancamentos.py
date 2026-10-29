@@ -80,9 +80,13 @@ class LancamentosMixin:
         conta_id: int = 0,
         limite: int = 500,
         fixa: bool | None = None,
+        serie: str = "",
     ) -> list[Lancamento]:
         sql = f"{SELECT_LANCAMENTO} WHERE 1 = 1"
         params: list = []
+        if serie:
+            sql += " AND l.serie = ?"
+            params.append(serie)
         if busca.strip():
             sql += " AND (l.descricao LIKE ? OR l.categoria LIKE ? OR l.cliente LIKE ?)"
             alvo = f"%{busca.strip()}%"

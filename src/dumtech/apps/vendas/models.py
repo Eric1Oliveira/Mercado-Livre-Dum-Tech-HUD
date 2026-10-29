@@ -139,6 +139,8 @@ class Venda:
     troco: float = 0.0
     cancelada_em: str = ""
     motivo_cancelamento: str = ""
+    #: numero do contrato recorrente que gerou esta venda ("" = venda comum)
+    recorrencia: str = ""
     itens: list[ItemVenda] = field(default_factory=list)
     pagamentos: list[Pagamento] = field(default_factory=list)
     #: valor ja devolvido desta venda (calculado na leitura)
@@ -201,6 +203,7 @@ class Venda:
             troco=float(row["troco"] or 0),
             cancelada_em=row["cancelada_em"] or "",
             motivo_cancelamento=row["motivo_cancelamento"] or "",
+            recorrencia=(row["recorrencia"] or "") if "recorrencia" in row.keys() else "",
         )
 
 
