@@ -97,6 +97,7 @@ class FluxoMixin:
             pago_mes=self._movimentado_no_mes(mes, "despesa"),
             pago_fixas_mes=self._movimentado_no_mes(mes, "despesa", fixa=True),
             pago_variaveis_mes=self._movimentado_no_mes(mes, "despesa", fixa=False),
+            cancelado_mes=self._cancelado_no_mes(mes),
             saldo_contas=self.saldo_total(),
             proximos=sorted(
                 (i for i in abertos if not i.vencido), key=lambda i: i.vencimento
@@ -121,6 +122,13 @@ class FluxoMixin:
             sql += " AND l.fixa = ?"
             params.append(int(fixa))
         return dinheiro(self.db.scalar(sql, params, default=0.0))
+
+    def _cancelado_no_mes(self, mes: str) -> float:
+        return dinheiro(self.db.scalar(
+            "SELECT COALESCE(SUM(valor), 0) FROM lancamentos"
+            " WHERE tipo = 'receita' AND cancelado_em LIKE ?",
+            (f"{mes}%",), default=0.0,
+        ))
 
     def _despesas_por_categoria(self, mes: str, limite: int) -> list[tuple[str, float]]:
         """As despesas pagas neste mes, por categoria."""

@@ -65,13 +65,18 @@ class DashboardView(QWidget):
     def refresh(self) -> None:
         resumo = self.repository.resumo(limite_listas=5)
 
-        self.card_hoje.set_value(fmt.moeda(resumo.total_hoje))
+        self.card_hoje.set_value(
+            fmt.moeda(resumo.total_hoje),
+            f"{fmt.moeda(resumo.cancelado_hoje)} cancelado" if resumo.cancelado_hoje else "",
+        )
         self._preencher_caixa(resumo)
         self.card_mes.set_value(
             fmt.moeda(resumo.total_mes),
             f"{resumo.vendas_mes} venda(s)"
             + (f"  ·  {fmt.moeda(resumo.devolvido_mes)} devolvido"
-               if resumo.devolvido_mes else ""),
+               if resumo.devolvido_mes else "")
+            + (f"  ·  {fmt.moeda(resumo.cancelado_mes)} cancelado"
+               if resumo.cancelado_mes else ""),
         )
         self.card_ticket.set_value(fmt.moeda(resumo.ticket_medio), "por venda no mês")
 

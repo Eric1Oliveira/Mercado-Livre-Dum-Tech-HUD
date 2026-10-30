@@ -19,7 +19,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ....core.pagamentos import formas_do_balcao
+from ....core.contas import MAXIMO_PARCELAS
+from ....core.pagamentos import PARCELADO, formas_do_balcao
 from ....ui import format as fmt
 from ....ui.theme import Space, apply_window_theme, palette_for
 from ....ui.widgets import form
@@ -27,8 +28,17 @@ from ....ui.widgets.buttons import Button
 from ....ui.widgets.common import Card, label, repolish, separator, tone_label
 from ....ui.widgets.painel_pix import PainelPix, destino_pix
 from ....ui.widgets.table import DIREITA, DataTable
-from ..models import DINHEIRO, PIX, Pagamento, VendaError
+from ..models import DINHEIRO, PARCELAS_PADRAO, PIX, Pagamento, VendaError
 from ..repository.comum import CENTAVO, dinheiro
+
+
+def nota_parcelas(valor: float, parcelas: int) -> str:
+    """O que vai acontecer com o dinheiro, dito antes de acontecer."""
+    return (
+        f"{parcelas}x de {fmt.moeda(dinheiro(valor / parcelas))}. A 1ª vence na data da "
+        "venda e as outras, todo mês: cada parcela vira uma conta a receber no Financeiro."
+    )
+
 
 #: lado do QR na tela. Cabe no dialogo e o celular le a 40cm sem esforco.
 
@@ -43,6 +53,8 @@ class PagamentoDialog(QDialog):
         conferir=None,
         parent: QWidget | None = None,
         empresa=None,
+        parcelavel: bool = False,
+        cliente: str = "",
     ) -> None:
         super().__init__(parent)
         self.total = dinheiro(total)
@@ -50,6 +62,11 @@ class PagamentoDialog(QDialog):
         self._conferir = conferir
         #: de onde sai a chave Pix; None quando o dialogo roda sem Hub
         self.empresa = empresa
+        #: so quem sabe levar as parcelas ao Financeiro oferece esta forma
+        self.parcelavel = parcelavel
+        #: parcela sem cliente nao tem de quem cobrar; o aviso vem antes de fechar
+        #: a venda, porque a esta altura outra linha ja pode ter sido paga
+        self.cliente = cliente.strip()
         self.pagamentos: list[Pagamento] = []
 
         self.setWindowTitle("Receber")
@@ -69,6 +86,11 @@ class PagamentoDialog(QDialog):
         raiz.addWidget(self._painel_total())
         raiz.addWidget(separator())
         raiz.addWidget(self._linha_lancamento())
+
+        self.nota_parcelas = label("", "dim")
+        self.nota_parcelas.setWordWrap(True)
+        self.nota_parcelas.setVisible(False)
+        raiz.addWidget(self.nota_parcelas)
 
         raiz.addWidget(self._painel_pix())
 
@@ -106,7 +128,9 @@ class PagamentoDialog(QDialog):
         self.forma = QComboBox()
         self.forma.setEditable(True)
         # so as formas liberadas em Configuracoes > Pagamentos
-        self.forma.addItems(formas_do_balcao(getattr(self.empresa, "formas_ocultas", ())))
+        self.forma.addItems(formas_do_balcao(
+            getattr(self.empresa, "formas_ocultas", ()), self.parcelavel
+        ))
         self.forma.setCurrentText(DINHEIRO)
         self.forma.currentTextChanged.connect(self._forma_mudou)
         linha.addWidget(form.campo("Forma", self.forma), 3)
@@ -116,7 +140,15 @@ class PagamentoDialog(QDialog):
         linha.addWidget(form.campo("Valor", self.valor), 2)
 
         self.recebido = form.dinheiro(self.total)
-        linha.addWidget(form.campo("Recebido", self.recebido), 2)
+        self.campo_recebido = form.campo("Recebido", self.recebido)
+        linha.addWidget(self.campo_recebido, 2)
+
+        # no lugar do Recebido: parcelado nao da troco, e o dialogo nao cresce
+        self.parcelas = form.inteiro(PARCELAS_PADRAO, minimo=2, maximo=MAXIMO_PARCELAS)
+        self.parcelas.valueChanged.connect(self._atualizar_parcelas)
+        self.campo_parcelas = form.campo("Parcelas", self.parcelas)
+        self.campo_parcelas.setVisible(False)
+        linha.addWidget(self.campo_parcelas, 2)
 
         self.botao_lancar = Button("Lançar", "plus")
         self.botao_lancar.clicked.connect(self._lancar)
@@ -220,18 +252,33 @@ class PagamentoDialog(QDialog):
     def _em_dinheiro(self) -> bool:
         return self.forma.currentText().strip() == DINHEIRO
 
+    def _em_parcelado(self) -> bool:
+        return (self.parcelavel
+                and self.forma.currentText().strip().casefold() == PARCELADO.casefold())
+
     # ------------------------------------------------------------------- acoes
     def _forma_mudou(self, _texto: str = "") -> None:
         # so dinheiro tem troco: nas outras formas o recebido acompanha o valor
         self.recebido.setEnabled(self._em_dinheiro())
         if not self._em_dinheiro():
             self.recebido.setValue(self.valor.value())
+        self.campo_recebido.setVisible(not self._em_parcelado())
+        self.campo_parcelas.setVisible(self._em_parcelado())
+        self._atualizar_parcelas()
         self._atualizar_pix()
 
     def _valor_mudou(self, valor: float) -> None:
         if not self._em_dinheiro() or self.recebido.value() < valor:
             self.recebido.setValue(valor)
+        self._atualizar_parcelas()
         self._atualizar_pix()
+
+    def _atualizar_parcelas(self, _quantas: int = 0) -> None:
+        self.nota_parcelas.setVisible(self._em_parcelado())
+        if self._em_parcelado():
+            self.nota_parcelas.setText(
+                nota_parcelas(self.valor.value(), self.parcelas.value())
+            )
 
     def _lancar(self) -> None:
         valor = dinheiro(self.valor.value())
@@ -243,9 +290,20 @@ class PagamentoDialog(QDialog):
             self._dizer("O recebido não cobre o valor lançado.", "danger")
             return
 
-        self.pagamentos.append(
-            Pagamento(forma=self.forma.currentText().strip(), valor=valor, recebido=recebido)
-        )
+        parcelado = self._em_parcelado()
+        if parcelado and not self.cliente:
+            self._dizer("Para parcelar, feche esta janela e informe o cliente.", "danger")
+            return
+        if parcelado and any(p.parcelado for p in self.pagamentos):
+            self._dizer("Esta venda já tem uma linha parcelada.", "danger")
+            return
+
+        self.pagamentos.append(Pagamento(
+            forma=PARCELADO if parcelado else self.forma.currentText().strip(),
+            valor=valor,
+            recebido=recebido,
+            parcelas=self.parcelas.value() if parcelado else 0,
+        ))
         self._atualizar()
 
     def _remover(self) -> None:
@@ -268,7 +326,7 @@ class PagamentoDialog(QDialog):
         self.tabela.fill(
             [
                 [
-                    self.tabela.cell(p.forma),
+                    self.tabela.cell(p.rotulo),
                     self.tabela.cell(fmt.moeda(p.valor), DIREITA, bold=True),
                     self.tabela.cell(
                         fmt.moeda(p.recebido) if p.em_dinheiro else "-", DIREITA

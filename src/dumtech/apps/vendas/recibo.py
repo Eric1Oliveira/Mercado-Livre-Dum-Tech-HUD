@@ -43,7 +43,7 @@ def comprovante(venda: Venda, empresa=None) -> str:
     linhas.append("")
 
     for pagamento in venda.pagamentos:
-        linhas.append(lado_a_lado(pagamento.forma, fmt.moeda(pagamento.valor)))
+        linhas.append(lado_a_lado(pagamento.rotulo, fmt.moeda(pagamento.valor)))
         if pagamento.em_dinheiro and pagamento.recebido > pagamento.valor:
             linhas.append(lado_a_lado("  Recebido", fmt.moeda(pagamento.recebido)))
     if venda.troco:

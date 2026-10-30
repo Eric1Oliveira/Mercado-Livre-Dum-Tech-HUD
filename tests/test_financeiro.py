@@ -434,7 +434,7 @@ class MigracaoTestCase(unittest.TestCase):
         db = open_database(arquivo)
         self.addCleanup(db.close)
         repo = FinanceiroRepository(db)
-        self.assertEqual(db.schema_version, 3)
+        self.assertEqual(db.schema_version, 4)
 
         paga = repo.obter(1)
         self.assertEqual(paga.descricao, "Venda antiga")

@@ -12,6 +12,7 @@ SITUACAO_ABERTO = "aberto"
 SITUACAO_PAGO = "pago"
 SITUACAO_VENCIDO = "vencido"
 SITUACAO_PARCIAL = "parcial"
+SITUACAO_CANCELADO = "cancelado"
 
 #: soma o que ja foi baixado de cada lancamento, sem gravar isso duas vezes
 BAIXADO = """

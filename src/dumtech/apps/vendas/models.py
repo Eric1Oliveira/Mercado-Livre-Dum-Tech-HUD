@@ -7,7 +7,7 @@ from datetime import date, datetime, timedelta
 from sqlite3 import Row
 
 from ...core.errors import RegraError
-from ...core.pagamentos import DINHEIRO, FORMAS, PIX  # noqa: F401 - a lista mora la
+from ...core.pagamentos import DINHEIRO, FORMAS, PARCELADO, PIX  # noqa: F401 - a lista mora la
 
 CONCLUIDA = "concluida"
 PENDENTE = "pendente"
@@ -39,6 +39,9 @@ TIPO_LABEL = {TIPO_SANGRIA: "Sangria", TIPO_SUPRIMENTO: "Suprimento"}
 
 #: Diferenca de caixa que nao vale discussao (arredondamento de centavo).
 TOLERANCIA = 0.005
+
+#: O que o campo de parcelas ja traz: o caso comum e a mensalidade de um ano.
+PARCELAS_PADRAO = 12
 
 
 class VendaError(RegraError):
@@ -109,10 +112,21 @@ class Pagamento:
     valor: float = 0.0
     #: o que a pessoa entregou (so faz sentido em dinheiro)
     recebido: float = 0.0
+    #: em quantas vezes esta linha foi dividida; cada vez e uma conta no Financeiro
+    parcelas: int = 0
 
     @property
     def em_dinheiro(self) -> bool:
         return self.forma == DINHEIRO
+
+    @property
+    def parcelado(self) -> bool:
+        return self.parcelas > 1
+
+    @property
+    def rotulo(self) -> str:
+        """A forma como a pessoa le: Pix, Parcelado 12x."""
+        return f"{self.forma} {self.parcelas}x" if self.parcelado else self.forma
 
     @classmethod
     def from_row(cls, row: Row) -> "Pagamento":
@@ -121,6 +135,7 @@ class Pagamento:
             forma=row["forma"],
             valor=float(row["valor"]),
             recebido=float(row["recebido"] or 0),
+            parcelas=int(row["parcelas"] or 0),
         )
 
 
@@ -170,6 +185,11 @@ class Venda:
         return round(sum(p.valor for p in self.pagamentos), 2)
 
     @property
+    def parcelamento(self) -> Pagamento | None:
+        """A linha parcelada do pagamento, se houver (so pode haver uma)."""
+        return next((p for p in self.pagamentos if p.parcelado), None)
+
+    @property
     def conta(self) -> bool:
         """Vendas canceladas nao somam em relatorio nenhum."""
         return self.status != CANCELADA
@@ -184,7 +204,7 @@ class Venda:
 
     @property
     def resumo_pagamento(self) -> str:
-        formas = [p.forma for p in self.pagamentos if p.valor > 0]
+        formas = [p.rotulo for p in self.pagamentos if p.valor > 0]
         return " + ".join(dict.fromkeys(formas)) if formas else self.forma_pagamento
 
     @classmethod
@@ -347,6 +367,9 @@ class ResumoVendas:
     total_hoje: float = 0.0
     ticket_medio: float = 0.0
     devolvido_mes: float = 0.0
+    #: canceladas nao somam, mas o dono precisa ver que aconteceram
+    cancelado_hoje: float = 0.0
+    cancelado_mes: float = 0.0
     caixa: Caixa | None = None
     ultimas: list[Venda] = field(default_factory=list)
     por_forma: list[tuple[str, float]] = field(default_factory=list)

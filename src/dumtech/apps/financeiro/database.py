@@ -104,6 +104,17 @@ MIGRATIONS = (
             """,
         ),
     ),
+    Migration(
+        version=4,
+        name="lancamento cancelado",
+        statements=(
+            # a venda cancelada sai das contas, mas a linha fica: sumir sem
+            # rastro e o que faz o dono perguntar para onde foi o dinheiro
+            """
+            ALTER TABLE lancamentos ADD COLUMN cancelado_em TEXT NOT NULL DEFAULT '';
+            """,
+        ),
+    ),
 )
 
 

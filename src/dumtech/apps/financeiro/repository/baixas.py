@@ -63,6 +63,8 @@ class BaixasMixin:
         lancamento = self.obter(lancamento_id)
         if lancamento is None:
             raise FinanceiroError("Lançamento não encontrado.")
+        if lancamento.cancelado:
+            raise FinanceiroError("Este lançamento foi cancelado: não há o que receber.")
 
         valor = dinheiro(valor) or lancamento.em_aberto
         if valor <= 0:
@@ -134,6 +136,51 @@ class BaixasMixin:
             conn.execute(
                 "UPDATE lancamentos SET pago_em = NULL WHERE id = ?", (lancamento_id,)
             )
+
+    def cancelar(self, lancamento_id: int, motivo: str = "", quando: str = "") -> None:
+        """Tira o lancamento das contas sem apagar o registro.
+
+        O que tinha sido baixado volta, porque o dinheiro nao ficou; a linha
+        continua na lista, marcada, com o motivo nas observacoes. `quando` e
+        para o cancelamento que aconteceu antes (sem ele, e agora).
+        """
+        lancamento = self.obter(lancamento_id)
+        if lancamento is None:
+            raise FinanceiroError("Lançamento não encontrado.")
+        motivo = motivo.strip()
+        observacoes = lancamento.observacoes
+        if motivo:
+            observacoes = f"{observacoes}\nCancelado: {motivo}".strip()
+        with self.db.transaction() as conn:
+            conn.execute("DELETE FROM baixas WHERE lancamento_id = ?", (lancamento_id,))
+            conn.execute(
+                "UPDATE lancamentos SET pago_em = NULL, cancelado_em = ?, observacoes = ?"
+                " WHERE id = ?",
+                (quando or agora(), observacoes, lancamento_id),
+            )
+
+    def abater(self, lancamento_id: int, valor: float, nota: str = "") -> None:
+        """A conta encolhe: este tanto nao sera mais cobrado.
+
+        Sem sobrar nada para cobrar, vira cancelamento; se o que sobrou ja
+        estava pago, a conta fecha sozinha. `nota` vai para as observacoes,
+        porque valor que muda sem explicacao e o que faz o dono desconfiar.
+        """
+        lancamento = self.obter(lancamento_id)
+        if lancamento is None:
+            raise FinanceiroError("Lançamento não encontrado.")
+        novo = dinheiro(lancamento.valor - valor)
+        if novo <= 0:
+            self.cancelar(lancamento_id, nota)
+            return
+        lancamento.valor = novo
+        observacoes = f"{lancamento.observacoes}\n{nota}".strip()
+        with self.db.transaction() as conn:
+            conn.execute(
+                "UPDATE lancamentos SET valor = ?, observacoes = ? WHERE id = ?",
+                (novo, observacoes, lancamento_id),
+            )
+            self._recalcular_situacao(conn, lancamento)
 
     def alternar_pagamento(self, lancamento_id: int) -> Lancamento:
         """O botao de um clique: quita tudo, ou desfaz tudo se ja estava pago."""

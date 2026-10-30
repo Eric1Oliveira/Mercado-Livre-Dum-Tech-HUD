@@ -45,7 +45,9 @@ class VendasRepository(VendasMixin, PagamentosMixin, CaixaMixin, DevolucoesMixin
     def resumo(self, limite_listas: int = 6) -> ResumoVendas:
         hoje = date.today().isoformat()
         mes = date.today().strftime("%Y-%m")
-        vendas = [v for v in self.listar() if v.conta]
+        todas = self.listar()
+        vendas = [v for v in todas if v.conta]
+        canceladas = [v for v in todas if not v.conta]
         do_mes = [v for v in vendas if (v.data or "")[:7] == mes]
         total_mes = sum(v.total for v in do_mes)
 
@@ -67,6 +69,10 @@ class VendasRepository(VendasMixin, PagamentosMixin, CaixaMixin, DevolucoesMixin
             total_hoje=round(sum(v.total for v in vendas if v.data == hoje), 2),
             ticket_medio=round((total_mes / len(do_mes)) if do_mes else 0.0, 2),
             devolvido_mes=round(devolvido, 2),
+            cancelado_hoje=round(sum(v.total for v in canceladas if v.data == hoje), 2),
+            cancelado_mes=round(
+                sum(v.total for v in canceladas if (v.data or "")[:7] == mes), 2
+            ),
             caixa=self.caixa_aberto(),
             ultimas=vendas[:limite_listas],
             por_forma=sorted(por_forma.items(), key=lambda item: -item[1])[:limite_listas],

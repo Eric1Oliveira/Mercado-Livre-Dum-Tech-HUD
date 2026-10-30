@@ -473,6 +473,8 @@ class BalcaoView(QWidget):
             conferir=self.repository.conferir_pagamento,
             parent=self,
             empresa=self.empresa,
+            parcelavel=self.contas is not None,
+            cliente=self.cliente.text(),
         )
         if not dialogo.exec():
             return

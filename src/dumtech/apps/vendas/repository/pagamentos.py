@@ -12,6 +12,7 @@ from ....ui import format as fmt
 from ..models import (
     CONCLUIDA,
     DINHEIRO,
+    PARCELADO,
     PENDENTE,
     Pagamento,
     Venda,
@@ -46,10 +47,23 @@ class PagamentosMixin:
         linhas = [p for p in pagamentos if dinheiro(p.valor) > 0]
         if not linhas:
             raise VendaError("Informe como esta venda foi paga.")
+        if sum(p.parcelado for p in linhas) > 1:
+            raise VendaError("Uma venda só pode ter uma linha parcelada.")
+        # a parte que sobra do parcelado entra como paga na hora: prazo nao foi
+        if any(p.parcelado for p in linhas) and any(
+            p.forma.strip().lower() == "prazo" for p in linhas
+        ):
+            raise VendaError("Parcelado não combina com Prazo: inclua o valor nas parcelas.")
 
         for pagamento in linhas:
             if not pagamento.forma.strip():
                 raise VendaError("Toda linha de pagamento precisa de uma forma.")
+            # digitado onde a forma nao e oferecida, viraria pagamento a vista
+            if (pagamento.forma.strip().casefold() == PARCELADO.casefold()
+                    and not pagamento.parcelado):
+                raise VendaError(
+                    "Parcelado é escolhido ao lançar a venda, com o número de parcelas."
+                )
             if not pagamento.em_dinheiro and pagamento.recebido > pagamento.valor + CENTAVO:
                 raise VendaError(
                     f"{pagamento.forma} não dá troco: o valor recebido não pode "
@@ -80,14 +94,16 @@ class PagamentosMixin:
                     continue
                 conn.execute(
                     """
-                    INSERT INTO pagamentos (venda_id, forma, valor, recebido, criado_em)
-                    VALUES (?, ?, ?, ?, ?)
+                    INSERT INTO pagamentos (venda_id, forma, valor, recebido, parcelas,
+                                            criado_em)
+                    VALUES (?, ?, ?, ?, ?, ?)
                     """,
                     (
                         venda_id,
                         pagamento.forma.strip(),
                         dinheiro(pagamento.valor),
                         dinheiro(pagamento.recebido),
+                        int(pagamento.parcelas or 0),
                         momento,
                     ),
                 )
@@ -149,8 +165,7 @@ class PagamentosMixin:
 
     def _baixar_uma_vez(self, venda: Venda) -> list[str]:
         """Da baixa no estoque se esta venda ainda nao deu. Anota que deu."""
-        linha = self.db.query_one("SELECT baixa_estoque FROM vendas WHERE id = ?", (venda.id,))
-        if linha is not None and str(linha["baixa_estoque"] or "").strip():
+        if self._deu_baixa(venda.id):
             return []
         avisos = self._baixar_do_estoque(venda)
         if self.catalogo is not None:
@@ -160,9 +175,12 @@ class PagamentosMixin:
 
 
 #: usado pela interface para montar a linha padrao (tudo em dinheiro)
-def pagamento_unico(forma: str, valor: float, recebido: float = 0.0) -> Pagamento:
+def pagamento_unico(
+    forma: str, valor: float, recebido: float = 0.0, parcelas: int = 0
+) -> Pagamento:
     return Pagamento(
         forma=forma or DINHEIRO,
         valor=dinheiro(valor),
         recebido=dinheiro(recebido or valor),
+        parcelas=parcelas,
     )

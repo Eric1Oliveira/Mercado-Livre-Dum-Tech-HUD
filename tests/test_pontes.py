@@ -103,8 +103,7 @@ class VendaNoFinanceiroTestCase(PonteTestCase):
                      pagamentos=[Pagamento(forma="Pix", valor=100.0)])
 
     def _lancamento(self, ponte, numero: str = "VEN-2026-0001"):
-        achado = ponte._achar(numero)
-        return ponte.repository.obter(int(achado["id"])) if achado else None
+        return ponte._achar(numero)
 
     def test_venda_a_vista_entra_ja_recebida(self) -> None:
         from dumtech.apps.vendas import financeiro

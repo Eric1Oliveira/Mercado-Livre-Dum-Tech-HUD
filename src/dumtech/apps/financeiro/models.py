@@ -185,6 +185,8 @@ class Lancamento:
     serie: str = ""
     #: despesa que se repete todo mes (aluguel, internet); so vale para despesa
     fixa: bool = False
+    #: quando saiu das contas; a linha fica para o dono ver o que aconteceu
+    cancelado_em: str = ""
     #: quanto ja foi baixado (somado na leitura, nao gravado)
     baixado: float = 0.0
 
@@ -193,8 +195,14 @@ class Lancamento:
         return bool(self.pago_em)
 
     @property
+    def cancelado(self) -> bool:
+        return bool(self.cancelado_em)
+
+    @property
     def em_aberto(self) -> float:
         """Quanto ainda falta receber ou pagar."""
+        if self.cancelado:
+            return 0.0
         return round(max(self.valor - self.baixado, 0.0), 2)
 
     @property
@@ -220,7 +228,7 @@ class Lancamento:
 
     @property
     def vencido(self) -> bool:
-        if self.pago:
+        if self.pago or self.cancelado:
             return False
         quando = ler_data(self.vencimento)
         return quando is not None and quando < date.today()
@@ -232,6 +240,8 @@ class Lancamento:
 
     @property
     def situacao(self) -> str:
+        if self.cancelado:
+            return "Cancelado"
         if self.pago:
             return "Recebido" if self.e_receita else "Pago"
         if self.parcial:
@@ -240,6 +250,8 @@ class Lancamento:
 
     @property
     def tom(self) -> str:
+        if self.cancelado:
+            return "muted"
         if self.pago:
             return "success"
         if self.vencido:
@@ -263,6 +275,7 @@ class Lancamento:
         dados["parcelas"] = int(dados.get("parcelas") or 0)
         dados["serie"] = dados.get("serie") or ""
         dados["fixa"] = bool(dados.get("fixa") or 0)
+        dados["cancelado_em"] = dados.get("cancelado_em") or ""
         lancamento = cls(**dados)
         if "baixado" in campos:
             lancamento.baixado = round(float(row["baixado"] or 0), 2)
@@ -336,6 +349,8 @@ class ResumoFinanceiro:
     #: o pago no mes separado entre o que e fixo e o que varia
     pago_fixas_mes: float = 0.0
     pago_variaveis_mes: float = 0.0
+    #: receita que saiu das contas neste mes (venda cancelada)
+    cancelado_mes: float = 0.0
     saldo_contas: float = 0.0
     proximos: list[Lancamento] = field(default_factory=list)
     atrasados: list[Lancamento] = field(default_factory=list)

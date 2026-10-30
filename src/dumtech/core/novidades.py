@@ -45,6 +45,32 @@ class Novidade:
 #: versao -> o que mudou. So entra o que o cliente PERCEBE: correcao interna
 #: nao vira aviso. Escreva como quem explica no balcao, sem termo tecnico.
 VERSOES: dict[str, tuple[Novidade, ...]] = {
+    "1.8.0": (
+        Novidade(
+            "vendas", "Venda parcelada: uma venda, uma conta por mês",
+            "Na forma de pagamento, escolha Parcelado e diga em quantas vezes (12 meses, "
+            "por exemplo). Cada parcela vira uma conta a receber no Financeiro, com o "
+            "vencimento do mês dela. É só dar baixa quando o cliente pagar.",
+        ),
+        Novidade(
+            "vendas", "Venda cancelada agora aparece no Financeiro",
+            "Cancelou uma venda, o valor sai das contas e a linha fica marcada como "
+            "Cancelado, com o motivo. Os painéis mostram quanto foi cancelado. As vendas "
+            "que você já tinha cancelado foram acertadas sozinhas.",
+        ),
+        Novidade(
+            "vendas", "Devolução também chega ao Financeiro",
+            "O valor devolvido entra como saída no dia da devolução. A venda que ainda "
+            "não foi paga é resolvida no botão Cancelar venda, e cancelar pela edição da "
+            "venda deixou de existir: agora é sempre pelo botão, com o motivo.",
+        ),
+        Novidade(
+            "financeiro", "Saldo disponível acompanha as vendas",
+            "A partir de agora, venda recebida soma no saldo da conta. O que entrou "
+            "antes desta versão não muda: se precisar, acerte em Contas bancárias, no "
+            "saldo inicial.",
+        ),
+    ),
     "1.7.0": (
         Novidade(
             "clientes", "Parceiros: quem indica clientes para você",

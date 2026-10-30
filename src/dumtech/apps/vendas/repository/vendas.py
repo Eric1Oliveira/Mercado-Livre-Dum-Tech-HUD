@@ -159,19 +159,22 @@ class VendasMixin:
         if venda.status == CANCELADA:
             raise VendaError(f"A venda {venda.numero} já está cancelada.")
 
+        venda.cancelada_em = agora()
         self.db.execute(
             "UPDATE vendas SET status = ?, cancelada_em = ?, motivo_cancelamento = ?"
             " WHERE id = ?",
-            (CANCELADA, agora(), motivo, venda_id),
+            (CANCELADA, venda.cancelada_em, motivo, venda_id),
         )
         venda.status = CANCELADA
         venda.motivo_cancelamento = motivo
-        # o que ja tinha voltado por devolucao nao volta de novo
-        venda.avisos = self._devolver_ao_estoque(
-            [(item, item.restante) for item in venda.itens],
-            documento=venda.numero,
-            motivo=f"Cancelamento: {motivo}",
-        )
+        # a venda pendente ainda nao tirou nada do estoque: devolver criaria
+        # saldo do nada. E o que ja voltou por devolucao nao volta de novo
+        if self._deu_baixa(venda_id):
+            venda.avisos = self._devolver_ao_estoque(
+                [(item, item.restante) for item in venda.itens],
+                documento=venda.numero,
+                motivo=f"Cancelamento: {motivo}",
+            )
         return venda
 
     def excluir(self, venda_id: int) -> None:
@@ -208,6 +211,11 @@ class VendasMixin:
                 )
 
     # ---------------------------------------------------------------- estoque
+    def _deu_baixa(self, venda_id: int) -> bool:
+        """Esta venda ja tirou do estoque? Quem responde e a marca da baixa."""
+        linha = self.db.query_one("SELECT baixa_estoque FROM vendas WHERE id = ?", (venda_id,))
+        return linha is not None and bool(str(linha["baixa_estoque"] or "").strip())
+
     def _baixar_do_estoque(self, venda: Venda) -> list[str]:
         """Tira do estoque o que a venda levou. Nunca derruba a venda.
 
@@ -264,6 +272,12 @@ class VendasMixin:
                 raise VendaError(f"A quantidade de '{item.descricao}' precisa ser maior que zero.")
         if dinheiro(venda.desconto) > venda.subtotal:
             raise VendaError("O desconto não pode ser maior que o total dos itens.")
+        parcelado = venda.parcelamento
+        if parcelado is not None:
+            if not venda.cliente.strip():
+                raise VendaError("Informe o cliente: cada parcela precisa de alguém para cobrar.")
+            if round(parcelado.valor * 100) < parcelado.parcelas:
+                raise VendaError("O valor é pequeno demais para tantas parcelas.")
         # regravar os itens apagaria as linhas da devolucao junto (CASCADE):
         # depois que mercadoria voltou, a venda vira historico
         if venda.id is not None and self.total_devolvido(venda.id) > 0:

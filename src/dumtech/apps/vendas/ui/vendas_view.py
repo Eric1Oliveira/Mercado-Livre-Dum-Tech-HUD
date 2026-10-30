@@ -129,11 +129,16 @@ class VendasView(CrudView):
         self.botao_whatsapp.setEnabled(tem and bool(venda.cliente))
         self.botao_receber.setEnabled(tem and venda.status == PENDENTE)
         self.botao_devolver.setEnabled(
-            tem and venda.conta and any(item.restante > 0 for item in venda.itens)
+            tem and venda.conta and venda.status != PENDENTE
+            and venda.parcelamento is None
+            and any(item.restante > 0 for item in venda.itens)
         )
         self.botao_cancelar.setEnabled(tem and venda.conta)
-        # editar so faz sentido enquanto nada aconteceu depois da venda
-        self.botao_editar.setEnabled(tem and venda.conta and not venda.devolvido)
+        # editar so faz sentido enquanto nada aconteceu depois da venda; a
+        # parcelada ja virou contas no Financeiro, que nao acompanhariam a edicao
+        self.botao_editar.setEnabled(
+            tem and venda.conta and not venda.devolvido and venda.parcelamento is None
+        )
 
     # ------------------------------------------------------------------- acoes
     def abrir_dialogo(self, venda: Venda | None):
@@ -143,8 +148,9 @@ class VendasView(CrudView):
         self._lancar(None)
 
     def editar(self) -> None:
+        # o duplo clique chega aqui sem passar pelo botao
         venda = self.registro_selecionado()
-        if venda is not None:
+        if venda is not None and self.botao_editar.isEnabled():
             self._lancar(venda)
 
     def _lancar(self, venda: Venda | None) -> None:
@@ -215,8 +221,9 @@ class VendasView(CrudView):
         if not dialogo.exec():
             return
         devolucao = dialogo.devolucao
+        no_financeiro = financeiro.devolver(self.contas, venda, devolucao)
         self.refresh()
-        recado = f"Devolução registrada: {fmt.moeda(devolucao.valor)}."
+        recado = f"Devolução registrada: {fmt.moeda(devolucao.valor)}.{no_financeiro}"
         if devolucao.avisos:
             self.mostrar_aviso(f"{recado} {'; '.join(devolucao.avisos)}", "warning")
         else:
@@ -229,15 +236,18 @@ class VendasView(CrudView):
             return
         dialogo = MotivoDialog(
             f"Cancelar a venda {venda.numero}",
-            "O cancelamento devolve os itens ao estoque e some dos relatórios",
+            "As parcelas em aberto são canceladas; as recebidas continuam no Financeiro"
+            if venda.parcelamento is not None else
+            "O cancelamento devolve os itens ao estoque e tira o valor dos totais",
             "Ex.: cliente desistiu",
             self,
         )
         if not dialogo.exec():
             return
         cancelada = self.repository.cancelar(venda.id, dialogo.motivo)
+        no_financeiro = financeiro.registrar(self.contas, cancelada)
         self.refresh()
-        recado = f"Venda {venda.numero} cancelada."
+        recado = f"Venda {venda.numero} cancelada.{no_financeiro}"
         if cancelada.avisos:
             self.mostrar_aviso(f"{recado} {'; '.join(cancelada.avisos)}", "warning")
         else:

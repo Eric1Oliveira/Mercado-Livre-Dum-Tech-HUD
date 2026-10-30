@@ -64,7 +64,10 @@ DINHEIRO = "Dinheiro"
 #: A unica que o balcao sabe cobrar sozinho, mostrando o QR Code na tela.
 PIX = "Pix"
 
-FORMAS = (DINHEIRO, PIX, "Cartao de debito", "Cartao de credito", "Boleto", "Prazo")
+#: Cada parcela vira uma conta a receber: so existe onde ha Financeiro para cobrar.
+PARCELADO = "Parcelado"
+
+FORMAS = (DINHEIRO, PIX, "Cartao de debito", "Cartao de credito", "Boleto", "Prazo", PARCELADO)
 
 SEM_INTERNET = (
     "Você está sem internet. Conecte o computador para mexer em Pagamentos - "
@@ -94,9 +97,15 @@ def formas_ocultas(settings) -> tuple[str, ...]:
     return tuple(str(forma) for forma in valor if str(forma) in FORMAS)
 
 
-def formas_do_balcao(ocultas=()) -> list[str]:
-    """As formas que aparecem no Receber. Esconder todas devolve o Dinheiro."""
-    visiveis = [forma for forma in FORMAS if forma not in set(ocultas or ())]
+def formas_do_balcao(ocultas=(), parcelavel: bool = False) -> list[str]:
+    """As formas que aparecem no Receber. Esconder todas devolve o Dinheiro.
+
+    `parcelavel` diz se a tela sabe levar as parcelas ao Financeiro.
+    """
+    escondidas = set(ocultas or ())
+    if not parcelavel:
+        escondidas.add(PARCELADO)
+    visiveis = [forma for forma in FORMAS if forma not in escondidas]
     return visiveis or [DINHEIRO]
 
 

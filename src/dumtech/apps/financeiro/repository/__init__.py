@@ -17,6 +17,7 @@ from ..models import Baixa, Conta, Lancamento, Projecao, ResumoFinanceiro, Trans
 from .baixas import BaixasMixin
 from .comum import (
     SITUACAO_ABERTO,
+    SITUACAO_CANCELADO,
     SITUACAO_PAGO,
     SITUACAO_PARCIAL,
     SITUACAO_VENCIDO,
@@ -34,6 +35,7 @@ __all__ = [
     "ResumoFinanceiro",
     "Transferencia",
     "SITUACAO_ABERTO",
+    "SITUACAO_CANCELADO",
     "SITUACAO_PAGO",
     "SITUACAO_PARCIAL",
     "SITUACAO_VENCIDO",

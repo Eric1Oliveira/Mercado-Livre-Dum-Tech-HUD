@@ -99,6 +99,10 @@ class DashboardView(QWidget):
         )
 
         self._desenhar_resultado(resumo)
+        self.painel_resultado.set_nota(
+            f"{NOTA_RESULTADO}  ·  {fmt.moeda(resumo.cancelado_mes)} cancelado"
+            if resumo.cancelado_mes > CENTAVO else NOTA_RESULTADO
+        )
 
         self.grafico_contas.set_fatias(fatias_de(
             [(conta.nome, conta.saldo, fmt.moeda(conta.saldo))

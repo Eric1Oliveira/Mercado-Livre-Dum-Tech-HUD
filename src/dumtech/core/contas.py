@@ -16,6 +16,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
+#: teto de seguranca: ninguem parcela em 500x sem querer
+MAXIMO_PARCELAS = 120
+
 
 @dataclass(frozen=True)
 class AReceber:
@@ -70,10 +73,39 @@ class Contas(Protocol):
         mesmo documento nao pode dobrar a divida.
         """
 
+    def lancar_parcelado(self, conta: AReceber, parcelas: int) -> int:
+        """Cria uma conta a receber por mes e devolve quantas nasceram.
+
+        `conta.valor` e o TOTAL e `conta.vencimento` e o da primeira parcela.
+        """
+
     def quitar(self, documento: str, forma: str = "") -> bool:
         """Da baixa na conta criada por este documento.
 
         Sem isto a ponte criaria uma divida que ninguem fecha: o cliente volta,
         paga no balcao, e o Financeiro continuaria cobrando. `False` quando nao
         existe conta daquele documento - situacao normal, nao erro.
+        """
+
+    def cancelar(
+        self, documento: str, motivo: str = "", manter_pagos: bool = False, quando: str = ""
+    ) -> int:
+        """Tira das contas o que nasceu deste documento e devolve quantas sairam.
+
+        A venda cancelada nao deixa dinheiro: a baixa e desfeita e a linha fica
+        marcada como cancelada. Com `manter_pagos`, o que ja foi recebido fica
+        (parcela paga e dinheiro que entrou mesmo). `quando` e a data do
+        cancelamento, se ele nao foi agora. Sem conta daquele documento devolve
+        0 - situacao normal, nao erro.
+        """
+
+    def devolver(
+        self, documento: str, valor: float, data: str, motivo: str = "", cliente: str = ""
+    ) -> bool:
+        """Tira do Financeiro o que o cliente devolveu.
+
+        O que ainda estava em aberto deixa de ser cobrado; o que ja tinha
+        entrado sai como despesa no dia da devolucao, pela conta por onde
+        entrou. `False` quando o documento nunca virou conta: nao ha o que
+        desfazer.
         """

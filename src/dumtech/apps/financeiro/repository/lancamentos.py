@@ -9,7 +9,8 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-from ....core.pagamentos import FORMAS
+from ....core.contas import MAXIMO_PARCELAS
+from ....core.pagamentos import formas_do_balcao
 from ....ui import format as fmt
 from ..models import (
     ANUAL,
@@ -29,6 +30,7 @@ from .comum import (
     BAIXADO,
     SELECT_LANCAMENTO,
     SITUACAO_ABERTO,
+    SITUACAO_CANCELADO,
     SITUACAO_PAGO,
     SITUACAO_PARCIAL,
     SITUACAO_VENCIDO,
@@ -39,8 +41,6 @@ from .comum import (
 
 #: quantas vezes uma recorrencia e gerada quando o usuario nao diz
 REPETICOES_PADRAO = 12
-#: teto de seguranca: ninguem parcela em 500x sem querer
-MAXIMO_PARCELAS = 120
 
 
 def proximo_vencimento(inicio: date, frequencia: str, indice: int) -> date:
@@ -81,9 +81,15 @@ class LancamentosMixin:
         limite: int = 500,
         fixa: bool | None = None,
         serie: str = "",
+        cancelados: bool = False,
     ) -> list[Lancamento]:
+        """Cancelado so vem a pedido: quem soma dinheiro nao pode enxergar."""
         sql = f"{SELECT_LANCAMENTO} WHERE 1 = 1"
         params: list = []
+        if situacao == SITUACAO_CANCELADO:
+            sql += " AND l.cancelado_em <> ''"
+        elif not cancelados:
+            sql += " AND l.cancelado_em = ''"
         if serie:
             sql += " AND l.serie = ?"
             params.append(serie)
@@ -114,7 +120,8 @@ class LancamentosMixin:
         elif situacao == SITUACAO_PARCIAL:
             sql += f" AND l.pago_em IS NULL AND {BAIXADO} > 0"
 
-        sql += " ORDER BY (l.pago_em IS NOT NULL), l.vencimento, l.id DESC LIMIT ?"
+        sql += (" ORDER BY (l.pago_em IS NOT NULL OR l.cancelado_em <> ''),"
+                " l.vencimento, l.id DESC LIMIT ?")
         params.append(int(limite))
         return [Lancamento.from_row(row) for row in self.db.query(sql, params)]
 
@@ -156,7 +163,7 @@ class LancamentosMixin:
             "SELECT DISTINCT forma_pagamento FROM lancamentos "
             "WHERE TRIM(forma_pagamento) <> '' ORDER BY forma_pagamento COLLATE NOCASE"
         )]
-        conhecidas = list(FORMAS)
+        conhecidas = formas_do_balcao()
         vistas, saida = set(), []
         for nome in usadas + conhecidas:
             chave = nome.strip().lower()

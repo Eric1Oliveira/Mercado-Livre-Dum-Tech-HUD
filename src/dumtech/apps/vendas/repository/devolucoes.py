@@ -10,6 +10,7 @@ from __future__ import annotations
 from ..models import (
     CANCELADA,
     DEVOLVIDA,
+    PENDENTE,
     Devolucao,
     ItemDevolucao,
     VendaError,
@@ -72,6 +73,18 @@ class DevolucoesMixin:
             raise VendaError("Venda não encontrada.")
         if venda.status == CANCELADA:
             raise VendaError(f"A venda {venda.numero} está cancelada: não há o que devolver.")
+        # ninguem pagou, entao nao ha dinheiro para voltar da gaveta - e venda com
+        # devolucao nao pode mais ser gravada, entao nunca seria recebida
+        if venda.status == PENDENTE:
+            raise VendaError(
+                f"A venda {venda.numero} ainda não foi paga: cancele a venda "
+                "ou receba antes de devolver."
+            )
+        # o cliente nao pagou na gaveta e as parcelas continuariam cobrando
+        if venda.parcelamento is not None:
+            raise VendaError(
+                f"A venda {venda.numero} é parcelada: cancele a venda para encerrar as parcelas."
+            )
 
         por_id = {item.id: item for item in venda.itens}
         devolvidos: list[ItemDevolucao] = []

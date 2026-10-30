@@ -6,7 +6,7 @@ from datetime import date
 
 from PySide6.QtWidgets import QWidget
 
-from ....core.pagamentos import FORMAS, PIX
+from ....core.pagamentos import PIX, formas_do_balcao
 from ....ui import format as fmt
 from ....ui.widgets import form
 from ....ui.widgets.form import FormDialog
@@ -101,7 +101,9 @@ class EntregaDialog(FormDialog):
         if self.cobrar:
             self.situacao = form.escolha(
                 [("Pagou agora", self.PAGOU), ("Paga depois", self.DEPOIS)], self.PAGOU)
-            self.forma = form.escolha([(f, f) for f in FORMAS if f.lower() != "prazo"], PIX)
+            self.forma = form.escolha(
+                [(f, f) for f in formas_do_balcao() if f.lower() != "prazo"], PIX
+            )
             self.rotulo_forma = form.linha(self.forma)
             self.add_row("Pagamento", self.situacao)
             self.add_row("Forma", self.rotulo_forma)

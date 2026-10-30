@@ -10,7 +10,7 @@ import logging
 
 from ....ui.app_shell import AppWindow
 from ....ui.widgets.recorrencias import RecorrenciasView, Textos
-from .. import recorrencias
+from .. import financeiro, recorrencias
 from ..database import open_database
 from ..repository import VendasRepository
 from .balcao_view import BalcaoView
@@ -37,6 +37,7 @@ class VendasWindow(AppWindow):
         self.recorrencias = recorrencias.repositorio(self.database)
         # a mensalidade que venceu com o programa fechado entra ao abrir
         self.gerar_recorrencias()
+        financeiro.conciliar(self.repository, self.context.contas)
 
     def gerar_recorrencias(self) -> list[str]:
         """Cria as vendas devidas dos contratos. Nunca impede o Vendas de abrir."""

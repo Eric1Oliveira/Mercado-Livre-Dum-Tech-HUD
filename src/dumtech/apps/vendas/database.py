@@ -163,6 +163,17 @@ MIGRATIONS = (
             """,
         ),
     ),
+    Migration(
+        version=5,
+        name="pagamento parcelado",
+        statements=(
+            # as parcelas moram no Financeiro; aqui fica so em quantas vezes a
+            # linha foi dividida, para a venda saber dizer "Parcelado 12x"
+            """
+            ALTER TABLE pagamentos ADD COLUMN parcelas INTEGER NOT NULL DEFAULT 0;
+            """,
+        ),
+    ),
 )
 
 

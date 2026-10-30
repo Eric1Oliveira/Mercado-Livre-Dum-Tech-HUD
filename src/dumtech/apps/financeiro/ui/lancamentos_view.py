@@ -12,6 +12,7 @@ from ....ui.widgets.table import DIREITA
 from ..models import DESPESA, PARCELAMENTO, RECEITA, RECORRENCIA, Lancamento
 from ..repository import (
     SITUACAO_ABERTO,
+    SITUACAO_CANCELADO,
     SITUACAO_PAGO,
     SITUACAO_PARCIAL,
     SITUACAO_VENCIDO,
@@ -75,6 +76,7 @@ class LancamentosView(CrudView):
         self.filtro_situacao.addItem("Vencidos", SITUACAO_VENCIDO)
         self.filtro_situacao.addItem("Recebidos em parte", SITUACAO_PARCIAL)
         self.filtro_situacao.addItem("Pagos/recebidos", SITUACAO_PAGO)
+        self.filtro_situacao.addItem("Cancelados", SITUACAO_CANCELADO)
         self.filtro_situacao.currentIndexChanged.connect(self.refresh)
         layout.addWidget(self.filtro_situacao, 1)
 
@@ -109,16 +111,21 @@ class LancamentosView(CrudView):
             tipo, fixa = DESPESA, tipo == FILTRO_FIXAS
         elif tipo == FILTRO_RECORRENTES:
             tipo, serie = RECEITA, RECORRENCIA
+        situacao = self.filtro_situacao.currentData() or ""
         return self.repository.listar(
             busca=self.busca.text(),
             tipo=tipo,
-            situacao=self.filtro_situacao.currentData() or "",
+            situacao=situacao,
             fixa=fixa,
             serie=serie,
+            # "Todas as situações" inclui a cancelada: e aqui que ela consta
+            cancelados=not situacao,
         )
 
     def montar_linha(self, lancamento: Lancamento) -> list:
         tom = "success" if lancamento.e_receita else "danger"
+        if lancamento.cancelado:
+            tom = "muted"
         sinal = "+" if lancamento.e_receita else "-"
         return [
             self.tabela.cell(
@@ -130,7 +137,8 @@ class LancamentosView(CrudView):
             self.tabela.cell(lancamento.categoria or "-"),
             self.tabela.cell(f"{sinal} {fmt.moeda(lancamento.valor)}", DIREITA, tom, True),
             self.tabela.cell(
-                fmt.moeda(lancamento.em_aberto) if not lancamento.pago else "-",
+                fmt.moeda(lancamento.em_aberto)
+                if not (lancamento.pago or lancamento.cancelado) else "-",
                 DIREITA, "warning" if lancamento.parcial else "",
             ),
             self.tabela.cell(lancamento.situacao, tone=lancamento.tom),
@@ -139,7 +147,7 @@ class LancamentosView(CrudView):
     @staticmethod
     def _vencimento(lancamento: Lancamento) -> str:
         """A data sozinha nao diz se ja passou: o prazo diz."""
-        if lancamento.pago:
+        if lancamento.pago or lancamento.cancelado:
             return fmt.data(lancamento.vencimento)
         return f"{fmt.data(lancamento.vencimento)}  ({fmt.prazo_texto(lancamento.vencimento)})"
 
@@ -147,8 +155,10 @@ class LancamentosView(CrudView):
         super()._atualizar_acoes()
         lancamento = self.registro_selecionado()
         tem = lancamento is not None
-        aberto = tem and not lancamento.pago
-        self.botao_baixar.setEnabled(tem)
+        cancelado = tem and lancamento.cancelado
+        aberto = tem and not lancamento.pago and not cancelado
+        self.botao_editar.setEnabled(tem and not cancelado)
+        self.botao_baixar.setEnabled(tem and not cancelado)
         # cobranca so faz sentido com cliente e com conta em aberto
         self.botao_whatsapp.setEnabled(bool(aberto and lancamento.cliente))
         self.botao_quitar.setEnabled(aberto)
@@ -216,6 +226,8 @@ class LancamentosView(CrudView):
         self.data_changed.emit()
 
     def abrir_dialogo(self, lancamento: Lancamento | None):
+        if lancamento is not None and lancamento.cancelado:
+            return None  # o duplo clique tambem passa por aqui
         return LancamentoDialog(self.repository, lancamento, self.clientes, self)
 
     def excluir(self, lancamento: Lancamento) -> None:
