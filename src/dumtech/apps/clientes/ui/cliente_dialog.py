@@ -69,6 +69,18 @@ class ClienteDialog(FormDialog):
         self.uf.setMaximumWidth(90)
         self.add_row("Cidade", form.linha(self.cidade, "UF", self.uf))
 
+        # quem mandou o cliente: e daqui que sai o "quanto cada parceiro indicou"
+        atual = self.contato.parceiro_id
+        parceiros = [p for p in store.parceiros(incluir_inativos=True)
+                     if p.ativo or p.id == atual]
+        self.parceiro = form.escolha(
+            [("Ninguém - veio por conta própria", None)]
+            + [(p.nome, p.id) for p in parceiros],
+            atual,
+        )
+        self.parceiro.setToolTip("Cadastre os parceiros na tela Parceiros")
+        self.add_row("Indicado por", self.parceiro)
+
         self.observacoes = form.area(self.contato.observacoes, "Anotações gerais sobre o cliente")
         self.add_row("Observações", self.observacoes)
 
@@ -172,6 +184,7 @@ class ClienteDialog(FormDialog):
         self.contato.cidade = self.cidade.currentText()
         self.contato.uf = self.uf.currentData() or ""
         self.contato.observacoes = self.observacoes.toPlainText()
+        self.contato.parceiro_id = self.parceiro.currentData() or None
         if self.editando:
             self.contato.ativo = self.ativo.isChecked()
 

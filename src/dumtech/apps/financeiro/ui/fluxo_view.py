@@ -3,6 +3,11 @@
 O eixo deste modulo e o tempo, entao a tela principal nao e uma lista nem um
 painel de cartoes: e o saldo de hoje, a linha dos proximos 30 dias e, se ela
 cruzar o zero, a data em letras grandes.
+
+O primeiro grafico e o do que JA aconteceu - Entradas e Saidas do mes, pela
+data da baixa -, e so depois vem a projecao, com o periodo escrito no titulo:
+misturar o realizado com o previsto no mesmo desenho fazia o dono ler a
+projecao como se fosse o extrato.
 """
 
 from __future__ import annotations
@@ -15,12 +20,17 @@ from PySide6.QtWidgets import QComboBox, QHBoxLayout, QVBoxLayout, QWidget
 from ....ui import format as fmt
 from ....ui.theme import Space
 from ....ui.widgets.common import Card, FaixaDeNumeros, StatCard, label, repolish, separator, tone_label
+from ....ui.widgets.panels import cabeca_de_painel
 from ....ui.widgets.table import DIREITA, DataTable
 from ..models import CENTAVO, Projecao
 from ..repository import FinanceiroRepository
-from ....ui.graficos import GraficoLinha
+from ....ui.graficos import GraficoBarras, GraficoLinha, fatias_de
 
 COLUNAS = ["Dia", "Descrição", "Valor", "Saldo projetado"]
+
+#: o que o "Saldo atual" soma - dito embaixo do numero, para ninguem
+#: procurar o dinheiro da gaveta fora dele
+CAIXA_E_BANCOS = "Caixa + contas bancárias"
 
 HORIZONTES = (("Próximos 15 dias", 15), ("Próximos 30 dias", 30),
               ("Próximos 60 dias", 60), ("Próximos 90 dias", 90))
@@ -42,7 +52,12 @@ class FluxoView(QWidget):
 
         raiz.addLayout(self._cabecalho())
         raiz.addWidget(self._cartoes())
-        raiz.addWidget(self._card_grafico())
+
+        graficos = QHBoxLayout()
+        graficos.setSpacing(Space.lg)
+        graficos.addWidget(self._card_realizado(), 2)
+        graficos.addWidget(self._card_grafico(), 3)
+        raiz.addLayout(graficos)
 
         colunas = QHBoxLayout()
         colunas.setSpacing(Space.lg)
@@ -58,7 +73,10 @@ class FluxoView(QWidget):
         titulos = QVBoxLayout()
         titulos.setSpacing(2)
         titulos.addWidget(label("Fluxo de caixa", "title"))
-        titulos.addWidget(label("O que entra, o que sai e como fica o saldo", "subtitle"))
+        titulos.addWidget(label(
+            "Acompanhe suas entradas, saídas e o saldo projetado do seu negócio.",
+            "subtitle",
+        ))
         linha.addLayout(titulos)
         linha.addStretch(1)
 
@@ -72,7 +90,8 @@ class FluxoView(QWidget):
 
     def _cartoes(self) -> FaixaDeNumeros:
         linha = FaixaDeNumeros()
-        self.card_hoje = StatCard("Saldo atual", "R$ 0,00", "money", "accent")
+        self.card_hoje = StatCard("Saldo atual", "R$ 0,00", "money", "accent",
+                                  hint=CAIXA_E_BANCOS)
         self.card_entradas = StatCard("Entradas previstas", "R$ 0,00", "in", "success")
         self.card_saidas = StatCard("Saídas previstas", "R$ 0,00", "out", "danger")
         self.card_final = StatCard("Saldo futuro", "R$ 0,00", "chart", "accent")
@@ -81,17 +100,34 @@ class FluxoView(QWidget):
             linha.add(cartao)
         return linha
 
+    def _card_realizado(self) -> Card:
+        """O que ja entrou e o que ja saiu no mes - sem previsao nenhuma."""
+        card = Card(padding=Space.lg)
+        card.body.setSpacing(Space.sm)
+        topo, _nota = cabeca_de_painel("Entradas e saídas", "realizado neste mês")
+        card.body.addLayout(topo)
+
+        self.grafico_realizado = GraficoBarras(largura_rotulo=90)
+        self.grafico_realizado.vazio = "Nada recebido nem pago neste mês ainda."
+        card.body.addWidget(self.grafico_realizado, 1)
+
+        rodape = QHBoxLayout()
+        rodape.addWidget(label("Resultado do mês", "muted"))
+        rodape.addStretch(1)
+        self.resultado = tone_label("", "text", "strong")
+        rodape.addWidget(self.resultado)
+        card.body.addLayout(rodape)
+        return card
+
     def _card_grafico(self) -> Card:
         card = Card(padding=Space.lg)
         card.body.setSpacing(Space.sm)
 
-        topo = QHBoxLayout()
-        topo.addWidget(label("Saldo projetado", "section"))
-        topo.addStretch(1)
-        self.recado = tone_label("", "muted", "strong")
-        self.recado.setAlignment(DIREITA)
-        topo.addWidget(self.recado)
+        topo, self.periodo = cabeca_de_painel("Saldo projetado", "próximos 30 dias")
         card.body.addLayout(topo)
+        self.recado = tone_label("", "muted", "strong")
+        self.recado.setWordWrap(True)
+        card.body.addWidget(self.recado)
 
         self.grafico = GraficoLinha()
         self.grafico.setMinimumHeight(190)
@@ -99,6 +135,8 @@ class FluxoView(QWidget):
         card.body.addWidget(self.grafico, 1)
 
         self.atrasados = label("", "dim")
+        # o cartao divide a linha com o realizado: frase longa quebra, nao empurra a tela
+        self.atrasados.setWordWrap(True)
         card.body.addWidget(self.atrasados)
         return card
 
@@ -126,7 +164,7 @@ class FluxoView(QWidget):
         dias = self.horizonte.currentData() or 30
         self.projecao = self.repository.projecao(dias)
 
-        self.card_hoje.set_value(fmt.moeda(self.projecao.saldo_inicial))
+        self.card_hoje.set_value(fmt.moeda(self.projecao.saldo_inicial), CAIXA_E_BANCOS)
         self.card_entradas.set_value(fmt.moeda(self.projecao.entradas))
         self.card_saidas.set_value(fmt.moeda(self.projecao.saidas))
         negativo = self.projecao.saldo_final < -CENTAVO
@@ -135,10 +173,28 @@ class FluxoView(QWidget):
             fmt.moeda(self.projecao.saldo_final), f"daqui a {dias} dias"
         )
 
+        self.periodo.setText(f"próximos {dias} dias")
+
+        self._desenhar_realizado()
         self._desenhar_grafico()
         self._dizer_o_recado()
         self._preencher_dias()
         self._preencher_contas()
+
+    def _desenhar_realizado(self) -> None:
+        entrou, saiu = self.repository.realizado_no_mes()
+        self.grafico_realizado.set_fatias(fatias_de(
+            [("Entradas", entrou, fmt.moeda(entrou)), ("Saídas", saiu, fmt.moeda(saiu))],
+            tons=["success", "danger"],
+        ) if entrou > CENTAVO or saiu > CENTAVO else [])
+
+        resultado = round(entrou - saiu, 2)
+        sinal = "+ " if resultado > CENTAVO else ("- " if resultado < -CENTAVO else "")
+        self.resultado.setText(f"{sinal}{fmt.moeda(abs(resultado))}")
+        self.resultado.setProperty(
+            "tone", "danger" if resultado < -CENTAVO else "text"
+        )
+        repolish(self.resultado)
 
     def _desenhar_grafico(self) -> None:
         """O saldo dia a dia, com o dia do aperto marcado na linha."""

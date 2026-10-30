@@ -475,6 +475,9 @@ QFrame[role="tile"] {{
     border: 1px solid {p.surface_alt};
     border-radius: {Radius.lg}px;
 }}
+QFrame[role="tile"][clicavel="true"]:hover {{
+    border: 1px solid {p.border};
+}}
 QFrame[role="panel"] {{
     background-color: {p.surface};
     border: 1px solid {p.border_soft};

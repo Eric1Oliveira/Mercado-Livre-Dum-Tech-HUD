@@ -1,8 +1,9 @@
-"""Painel do DumTech Financeiro: o retrato de agora.
+"""Visao geral do DumTech Financeiro: o retrato de agora.
 
-Tres perguntas, nesta ordem: quanto eu tenho, para onde o dinheiro esta indo e
-o que precisa de telefonema hoje. As duas primeiras sao de proporcao, e por isso
-sao desenho; a terceira e uma lista de nomes, e por isso continua lista.
+Tres perguntas, nesta ordem: quanto eu tenho, se o periodo deu lucro ou
+prejuizo e o que precisa de telefonema hoje. As duas primeiras sao de
+tamanho, e por isso sao desenho; a terceira e uma lista de nomes, e por isso
+continua lista.
 """
 
 from __future__ import annotations
@@ -10,7 +11,7 @@ from __future__ import annotations
 from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
 
 from ....ui import format as fmt
-from ....ui.graficos import GraficoBarras, GraficoRosca, fatias_de, maiores
+from ....ui.graficos import GraficoBarras, fatias_de
 from ....ui.theme import Space
 from ....ui.widgets.common import FaixaDeNumeros, StatCard, label
 from ....ui.widgets.panels import ChartPanel, ListPanel
@@ -18,7 +19,7 @@ from ..models import CENTAVO
 from ..repository import FinanceiroRepository
 
 
-NOTA_CATEGORIAS = "despesas pagas no mês"
+NOTA_RESULTADO = "neste mês"
 
 
 class DashboardView(QWidget):
@@ -32,13 +33,13 @@ class DashboardView(QWidget):
 
         titulos = QVBoxLayout()
         titulos.setSpacing(2)
-        titulos.addWidget(label("Painel", "title"))
+        titulos.addWidget(label("Visão geral", "title"))
         titulos.addWidget(label("Contas a receber, a pagar e o resultado do mês",
                                 "subtitle"))
         raiz.addLayout(titulos)
 
         cartoes = FaixaDeNumeros()
-        self.card_saldo = StatCard("Dinheiro em conta", "R$ 0,00", "money", "accent")
+        self.card_saldo = StatCard("Saldo disponível", "R$ 0,00", "money", "accent")
         self.card_receber = StatCard("A receber (30 dias)", "R$ 0,00", "in", "success")
         self.card_pagar = StatCard("A pagar (30 dias)", "R$ 0,00", "out", "danger")
         self.card_vencidos = StatCard("Vencidos", "R$ 0,00", "alert", "warning")
@@ -49,11 +50,14 @@ class DashboardView(QWidget):
 
         desenhos = QHBoxLayout()
         desenhos.setSpacing(Space.lg)
-        self.grafico_categorias = GraficoRosca(titulo_centro="Pago no mês")
-        self.painel_categorias = ChartPanel(
-            "Categoria de despesas", self.grafico_categorias, NOTA_CATEGORIAS
+        # entrou, saiu e o que sobrou: a pergunta "o mes deu lucro?" antes da
+        # pergunta "com o que eu gastei"
+        self.grafico_resultado = GraficoBarras(largura_rotulo=170)
+        self.grafico_resultado.vazio = "Nada recebido nem pago neste mês ainda."
+        self.painel_resultado = ChartPanel(
+            "Resultado financeiro do período", self.grafico_resultado, NOTA_RESULTADO
         )
-        desenhos.addWidget(self.painel_categorias, 3)
+        desenhos.addWidget(self.painel_resultado, 3)
 
         self.grafico_contas = GraficoBarras(largura_rotulo=130)
         self.painel_contas = ChartPanel("Onde o dinheiro está", self.grafico_contas)
@@ -94,17 +98,7 @@ class DashboardView(QWidget):
             f"{resumo.vencidos_quantidade} conta(s)" if resumo.vencidos_quantidade else "",
         )
 
-        categorias = maiores(resumo.por_categoria, 5)
-        self.grafico_categorias.set_fatias(fatias_de(
-            [(nome, valor, fmt.moeda(valor)) for nome, valor in categorias]
-        ))
-        self.grafico_categorias.set_total(fmt.moeda(resumo.pago_mes))
-        # fixa e variavel na mesma linha: o quanto do mes ja estava comprometido
-        self.painel_categorias.set_nota(
-            f"fixas {fmt.moeda(resumo.pago_fixas_mes)}  ·  "
-            f"variáveis {fmt.moeda(resumo.pago_variaveis_mes)}"
-            if resumo.pago_mes > CENTAVO else NOTA_CATEGORIAS
-        )
+        self._desenhar_resultado(resumo)
 
         self.grafico_contas.set_fatias(fatias_de(
             [(conta.nome, conta.saldo, fmt.moeda(conta.saldo))
@@ -133,6 +127,27 @@ class DashboardView(QWidget):
             )
             for item in resumo.proximos
         ])
+
+    def _desenhar_resultado(self, resumo) -> None:
+        """Entradas, saidas e o resultado do mes, pela data da baixa."""
+        if resumo.recebido_mes <= CENTAVO and resumo.pago_mes <= CENTAVO:
+            self.grafico_resultado.set_fatias([])
+            return
+        # fixa e variavel na mesma linha: o quanto do mes ja estava comprometido
+        partes = [f"{nome} {fmt.moeda(valor)}" for nome, valor in (
+            ("fixas", resumo.pago_fixas_mes), ("variáveis", resumo.pago_variaveis_mes),
+        ) if valor > CENTAVO]
+        saidas = "  ·  ".join(["Saídas", ", ".join(partes)]) if partes else "Saídas"
+        resultado = resumo.saldo_mes
+        sinal = "+ " if resultado > CENTAVO else ("- " if resultado < -CENTAVO else "")
+        self.grafico_resultado.set_fatias(fatias_de(
+            [
+                ("Entradas", resumo.recebido_mes, fmt.moeda(resumo.recebido_mes)),
+                (saidas, resumo.pago_mes, fmt.moeda(resumo.pago_mes)),
+                ("Resultado", resultado, f"{sinal}{fmt.moeda(abs(resultado))}"),
+            ],
+            tons=["success", "danger", "danger" if resultado < -CENTAVO else "accent"],
+        ))
 
     @staticmethod
     def _total(valor: float) -> str:

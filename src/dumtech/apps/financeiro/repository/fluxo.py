@@ -106,6 +106,12 @@ class FluxoMixin:
             por_categoria=self._despesas_por_categoria(mes, limite_listas),
         )
 
+    def realizado_no_mes(self, mes: str = "") -> tuple[float, float]:
+        """(entrou, saiu) no mes, pela data da baixa: so o dinheiro que ja andou."""
+        mes = mes or date.today().strftime("%Y-%m")
+        return (self._movimentado_no_mes(mes, "receita"),
+                self._movimentado_no_mes(mes, "despesa"))
+
     def _movimentado_no_mes(self, mes: str, tipo: str, fixa: bool | None = None) -> float:
         sql = ("SELECT COALESCE(SUM(b.valor), 0) FROM baixas b"
                " JOIN lancamentos l ON l.id = b.lancamento_id"

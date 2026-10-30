@@ -211,7 +211,7 @@ class FichaTestCase(unittest.TestCase):
 class MigracaoTestCase(unittest.TestCase):
     """Quem ja tinha clientes na versao 1 nao pode perder nada."""
 
-    def test_v1_vira_v2_mantendo_os_clientes(self) -> None:
+    def test_v1_vira_a_ultima_mantendo_os_clientes(self) -> None:
         import sqlite3
 
         from dumtech.core.contacts import MIGRATIONS
@@ -232,7 +232,8 @@ class MigracaoTestCase(unittest.TestCase):
 
         store = ContactsStore(arquivo)
         self.addCleanup(store.close)
-        self.assertEqual(store.db.schema_version, 2)
+        # da 1 direto para a ultima, passando por todas no caminho
+        self.assertEqual(store.db.schema_version, MIGRATIONS[-1].version)
 
         cliente = store.obter(1)
         self.assertEqual(cliente.nome, "Maria Souza")
@@ -243,6 +244,7 @@ class MigracaoTestCase(unittest.TestCase):
         self.assertTrue(cliente.ativo)
         self.assertEqual(cliente.uf, "")
         self.assertEqual(store.notas(1), [])
+        self.assertIsNone(cliente.parceiro_id)
 
         # e o banco migrado continua funcionando
         store.anotar(1, "Voltou a comprar")

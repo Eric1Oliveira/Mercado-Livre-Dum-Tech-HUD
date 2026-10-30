@@ -6,8 +6,8 @@ muda, a plataforma percorre a janela chamando esse metodo.
 
 from __future__ import annotations
 
-from PySide6.QtCore import QRectF, Qt
-from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen
+from PySide6.QtCore import QRectF, Qt, Signal
+from PySide6.QtGui import QColor, QCursor, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -221,7 +221,13 @@ class StatCard(QFrame):
 
     O tom passa por `tom_visivel`: o numero so fica colorido quando ele pede
     acao. Ver a regra em `ui/theme.py`.
+
+    `tornar_clicavel` transforma o bloco em porta para a lista que ele resume
+    (o "Produtos para reposicao" abre os produtos): mao no cursor, fio sob o
+    mouse e o sinal `clicado`.
     """
+
+    clicado = Signal()
 
     def __init__(
         self,
@@ -267,6 +273,19 @@ class StatCard(QFrame):
         self._tone = tone
         self.value_label.setProperty("tone", tom_visivel(tone))
         repolish(self.value_label)
+
+    def tornar_clicavel(self, dica: str = "") -> None:
+        self._clicavel = True
+        self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.setToolTip(dica)
+        self.setProperty("clicavel", True)
+        repolish(self)
+
+    def mousePressEvent(self, event) -> None:  # noqa: N802 (assinatura do Qt)
+        if getattr(self, "_clicavel", False) and event.button() == Qt.MouseButton.LeftButton:
+            self.clicado.emit()
+            return
+        super().mousePressEvent(event)
 
 
 class FaixaDeNumeros(Card):

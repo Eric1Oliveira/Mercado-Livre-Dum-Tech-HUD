@@ -22,9 +22,11 @@ class FinanceiroWindow(AppWindow):
         self.clientes = self.context.contacts.nomes() if self.context.contacts else []
 
     def build_views(self) -> None:
-        self.fluxo_view = self.add_view("Fluxo", "chart", FluxoView(self.repository))
+        self.fluxo_view = self.add_view(
+            "Fluxo de caixa", "chart", FluxoView(self.repository)
+        )
         self.dashboard_view = self.add_view(
-            "Painel", "dashboard", DashboardView(self.repository)
+            "Visão geral", "dashboard", DashboardView(self.repository)
         )
         self.lancamentos_view = self.add_view(
             "Lançamentos", "money", LancamentosView(self.repository, self.clientes,
@@ -32,7 +34,9 @@ class FinanceiroWindow(AppWindow):
                             contatos=self.context.contacts,
                             empresa=self.empresa)
         )
-        self.contas_view = self.add_view("Contas", "home", ContasView(self.repository))
+        self.contas_view = self.add_view(
+            "Contas bancárias", "home", ContasView(self.repository)
+        )
 
         for tela in (self.lancamentos_view, self.contas_view):
             tela.data_changed.connect(self.refresh_all)

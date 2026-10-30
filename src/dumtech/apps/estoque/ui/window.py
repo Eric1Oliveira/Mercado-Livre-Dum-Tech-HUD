@@ -34,6 +34,7 @@ class EstoqueWindow(AppWindow):
         self.contagem_view = self.add_view("Contagem", "list", ContagemView(self.repository))
 
         for tela in (
+            self.dashboard_view,     # a reposicao registrada pelo Painel
             self.produtos_view,
             self.entradas_view,
             self.movimentacoes_view,

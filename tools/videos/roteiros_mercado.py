@@ -112,7 +112,7 @@ def financeiro(d, hub):
     yield from d.clicar(baixa.botao_salvar, espera=1800)
     if d.tem_dialogo():
         yield from d.fechar_dialogo()
-    yield from aba(d, "Contas", "Em Contas, o saldo do banco e da gaveta, sempre batendo", 2600)
+    yield from aba(d, "Contas bancárias", "Em Contas bancárias, o saldo do banco e da gaveta, sempre batendo", 2600)
     yield from encerramento(d, "Venda fiado e nota de compra viram conta sozinhas - sem digitar duas vezes.")
 
 

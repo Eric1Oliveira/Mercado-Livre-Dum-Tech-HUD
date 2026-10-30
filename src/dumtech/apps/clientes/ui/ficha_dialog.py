@@ -100,6 +100,8 @@ class FichaDialog(QDialog):
         aniversario = ""
         if self.contato.nascimento:
             aniversario = fmt.data(self.contato.nascimento)
+        parceiro = (self.store.obter_parceiro(self.contato.parceiro_id)
+                    if self.contato.parceiro_id else None)
 
         for titulo, valor in (
             ("Telefone", self.contato.telefone_formatado),
@@ -108,6 +110,7 @@ class FichaDialog(QDialog):
             ("Endereço", self.contato.endereco_completo),
             ("Aniversário", aniversario),
             ("Cadastrado em", fmt.data(self.contato.criado_em)),
+            ("Indicado por", parceiro.nome if parceiro else ""),
             ("Observações", self.contato.observacoes),
         ):
             if not (valor or "").strip():

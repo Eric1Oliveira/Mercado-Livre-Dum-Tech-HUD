@@ -431,7 +431,7 @@ class FluxoDeCaixaTestCase(unittest.TestCase):
     def test_financeiro_comeca_pelo_fluxo(self) -> None:
         self.assertEqual(
             [v.title for v in self.casca.views],
-            ["Fluxo", "Painel", "Lançamentos", "Contas"],
+            ["Fluxo de caixa", "Visão geral", "Lançamentos", "Contas bancárias"],
         )
 
     def test_sem_conta_a_tela_ensina_o_proximo_passo(self) -> None:
@@ -481,6 +481,60 @@ class FluxoDeCaixaTestCase(unittest.TestCase):
         fluxo = self.casca.fluxo_view
         fluxo.refresh()
         self.assertIn("Vencidos entram no dia de hoje", fluxo.atrasados.text())
+
+    def test_saldo_atual_diz_o_que_soma(self) -> None:
+        fluxo = self.casca.fluxo_view
+        fluxo.refresh()
+        self.assertEqual(fluxo.card_hoje.title_label.text(), "Saldo atual")
+        self.assertEqual(fluxo.card_hoje.hint_label.text(), "Caixa + contas bancárias")
+
+    def test_primeiro_grafico_e_so_o_que_ja_andou(self) -> None:
+        """Entradas e Saidas do mes pela baixa; o que so vence nao entra."""
+        from dumtech.apps.financeiro.models import Lancamento
+
+        conta = self._conta(0.0)
+        recebida = self.repo.criar(Lancamento(descricao="Servico", valor=500.0,
+                                              vencimento=self._dia(0)))
+        self.repo.baixar(recebida.id, conta_id=conta.id)
+        paga = self._despesa(120.0, 0)
+        self.repo.baixar(paga.id, conta_id=conta.id)
+        self._despesa(900.0, 5)                       # ainda nao saiu
+
+        fluxo = self.casca.fluxo_view
+        fluxo.refresh()
+        fatias = {f.rotulo: f.valor for f in fluxo.grafico_realizado.fatias}
+        self.assertEqual(fatias, {"Entradas": 500.0, "Saídas": 120.0})
+        self.assertEqual(fluxo.resultado.text(), "+ R$ 380,00")
+
+    def test_sem_movimento_o_realizado_diz_em_palavras(self) -> None:
+        fluxo = self.casca.fluxo_view
+        fluxo.refresh()
+        self.assertEqual(fluxo.grafico_realizado.fatias, [])
+
+    def test_grafico_da_projecao_diz_o_periodo(self) -> None:
+        fluxo = self.casca.fluxo_view
+        fluxo.refresh()
+        self.assertEqual(fluxo.periodo.text(), "próximos 30 dias")
+        fluxo.horizonte.setCurrentIndex(fluxo.horizonte.findData(60))
+        self.assertEqual(fluxo.periodo.text(), "próximos 60 dias")
+
+    def test_visao_geral_mostra_o_resultado_do_periodo(self) -> None:
+        from dumtech.apps.financeiro.models import Lancamento
+
+        conta = self._conta(0.0)
+        recebida = self.repo.criar(Lancamento(descricao="Servico", valor=200.0,
+                                              vencimento=self._dia(0)))
+        self.repo.baixar(recebida.id, conta_id=conta.id)
+        paga = self._despesa(450.0, 0)
+        self.repo.baixar(paga.id, conta_id=conta.id)
+
+        visao = self.casca.dashboard_view
+        visao.refresh()
+        self.assertEqual(visao.card_saldo.title_label.text(), "Saldo disponível")
+        fatias = visao.grafico_resultado.fatias
+        self.assertEqual([f.valor for f in fatias], [200.0, 450.0, -250.0])
+        self.assertEqual(fatias[2].texto, "- R$ 250,00")
+        self.assertEqual(fatias[2].tom, "danger")
 
     def test_baixa_parcial_aparece_na_lista(self) -> None:
         from dumtech.apps.financeiro.models import Lancamento

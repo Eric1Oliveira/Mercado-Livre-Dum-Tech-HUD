@@ -50,7 +50,7 @@ class ContasView(QWidget):
         linha = QHBoxLayout()
         titulos = QVBoxLayout()
         titulos.setSpacing(2)
-        titulos.addWidget(label("Contas", "title"))
+        titulos.addWidget(label("Contas bancárias", "title"))
         self.subtitulo = label("", "subtitle")
         titulos.addWidget(self.subtitulo)
         linha.addLayout(titulos)

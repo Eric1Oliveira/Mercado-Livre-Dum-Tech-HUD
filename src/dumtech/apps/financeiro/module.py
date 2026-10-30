@@ -85,10 +85,10 @@ def indicadores(paths):
 
     saldo = resumo.saldo_contas
     return [Indicador(
-        app_id=MANIFEST.app_id, rotulo="Em caixa e banco",
+        app_id=MANIFEST.app_id, rotulo="Saldo atual",
         valor=fmt.moeda(saldo),
-        detalhe=(f"{fmt.moeda(resumo.a_receber_mes)} a receber em 30 dias"
-                 if resumo.a_receber_mes else "sem contas a receber"),
+        # a linha de baixo diz o que o numero soma: a gaveta e os bancos
+        detalhe="Caixa + contas bancárias",
         tom="danger" if saldo < -CENTAVO else "success",
         icone="money", peso=100,
     )]

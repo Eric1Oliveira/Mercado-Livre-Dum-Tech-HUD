@@ -294,10 +294,15 @@ class ProdutosMixin:
 
     # ------------------------------------------------------------------ compras
     def a_comprar(self, limite: int = 0) -> list[Produto]:
-        """Produtos no minimo ou abaixo, dos mais criticos para os menos."""
+        """Produtos no minimo ou abaixo, dos mais criticos para os menos.
+
+        Zerado vem antes de baixo: produto zerado e venda perdida hoje, o baixo
+        ainda vende. Dentro de cada grupo, quem esta mais longe do minimo.
+        """
         sql = (
             "SELECT * FROM produtos WHERE ativo = 1 AND quantidade <= estoque_minimo "
-            "ORDER BY (quantidade - estoque_minimo), nome COLLATE NOCASE"
+            "ORDER BY (quantidade <= 0) DESC, (quantidade - estoque_minimo), "
+            "nome COLLATE NOCASE"
         )
         params: list = []
         if limite:
@@ -306,7 +311,7 @@ class ProdutosMixin:
         return [Produto.from_row(row) for row in self.db.query(sql, params)]
 
     def maior_valor(self, limite: int = 6) -> list[Produto]:
-        """Onde o dinheiro esta parado."""
+        """Os produtos que mais pesam no valor do estoque (pelo custo)."""
         return [
             Produto.from_row(row)
             for row in self.db.query(

@@ -45,6 +45,28 @@ class Novidade:
 #: versao -> o que mudou. So entra o que o cliente PERCEBE: correcao interna
 #: nao vira aviso. Escreva como quem explica no balcao, sem termo tecnico.
 VERSOES: dict[str, tuple[Novidade, ...]] = {
+    "1.7.0": (
+        Novidade(
+            "clientes", "Parceiros: quem indica clientes para você",
+            "Na nova aba Parceiros do Clientes, cadastre quem manda cliente para a loja. "
+            "No cadastro do cliente, escolha em \"Indicado por\" e veja quantos clientes "
+            "cada parceiro já indicou.",
+        ),
+        Novidade(
+            "estoque", "Estoque: produtos para reposição",
+            "No Painel, clique em Produtos para reposição para ver o que está zerado e o "
+            "que está abaixo do mínimo, com a quantidade sugerida, o fornecedor e a última "
+            "reposição - e registre a entrada ali mesmo. O valor do estoque agora mostra a "
+            "participação de cada produto.",
+        ),
+        Novidade(
+            "financeiro", "Financeiro mais claro",
+            "O Fluxo de caixa mostra primeiro o que já entrou e já saiu no mês, e o saldo "
+            "projetado diz o período. A Visão geral traz o resultado financeiro do mês, e "
+            "as abas ganharam nomes novos: Fluxo de caixa, Visão geral, Lançamentos e "
+            "Contas bancárias.",
+        ),
+    ),
     "1.6.1": (
         Novidade(
             "", "Janelas inteiras em qualquer tela",
@@ -211,6 +233,7 @@ def marcar_vista(settings, instalada: str) -> None:
 #: Tire daqui quando a tela deixar de ser novidade.
 TELAS_NOVAS: frozenset[str] = frozenset({
     "agenda/Online", "agenda/Serviços", "vendas/Recorrentes", "ordens/Recorrentes",
+    "clientes/Parceiros",
 })
 
 #: nas preferencias de cada aplicativo: as telas novas que ja foram abertas

@@ -53,7 +53,7 @@ def avisos(paths, config):
 
 
 def indicadores(paths):
-    """O sinal vital do estoque: quanto dinheiro esta parado na prateleira."""
+    """O sinal vital do estoque: quanto dinheiro esta investido na prateleira."""
     from ...core.indicadores import Indicador
     from ...ui import format as fmt
     from .database import open_database
@@ -66,7 +66,7 @@ def indicadores(paths):
         banco.close()
 
     return [Indicador(
-        app_id=MANIFEST.app_id, rotulo="Parado em estoque",
+        app_id=MANIFEST.app_id, rotulo="Valor investido em estoque",
         valor=fmt.moeda(resumo.valor_custo),
         detalhe=(f"{fmt.contagem(resumo.produtos_baixo, 'produto')} no mínimo"
                  if resumo.produtos_baixo else "estoque em dia"),

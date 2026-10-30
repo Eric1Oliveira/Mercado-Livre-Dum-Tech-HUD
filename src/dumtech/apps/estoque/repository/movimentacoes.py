@@ -225,6 +225,16 @@ class MovimentacoesMixin:
         params.append(int(limite))
         return [Movimentacao.from_row(row) for row in self.db.query(sql, params)]
 
+    def ultimas_entradas(self) -> dict[int, str]:
+        """Quando cada produto recebeu a ultima entrada (produto_id -> data)."""
+        return {
+            row["produto_id"]: row["quando"]
+            for row in self.db.query(
+                "SELECT produto_id, MAX(criado_em) AS quando FROM movimentacoes "
+                "WHERE tipo = 'entrada' AND produto_id IS NOT NULL GROUP BY produto_id"
+            )
+        }
+
     # ----------------------------------------------------------------- gravacao
     def _gravar_movimentacao(self, produto, tipo, qtd, anterior, atual, **extras):
         with self.db.transaction() as conn:

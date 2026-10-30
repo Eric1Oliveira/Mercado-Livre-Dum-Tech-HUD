@@ -25,6 +25,8 @@ class MovimentoDialog(FormDialog):
         produto: Produto,
         tipo: str = TIPO_SAIDA,
         parent: QWidget | None = None,
+        quantidade_inicial: float | None = None,
+        observacao: str = "",
     ) -> None:
         self.repository = repository
         self.produto = produto
@@ -48,6 +50,9 @@ class MovimentoDialog(FormDialog):
         # consegue nem digitar um numero que seria recusado depois
         maximo = 9_999_999.0 if entrada else max(produto.quantidade, 0.0)
         inicial = 1.0 if maximo >= 1 else maximo
+        if quantidade_inicial is not None and 0 < quantidade_inicial <= maximo:
+            # a reposicao ja chega com o quanto falta para o estoque maximo
+            inicial = quantidade_inicial
         self.quantidade = form.quantidade(inicial, produto.casas, maximo)
         self.add_row(f"Quantidade ({produto.unidade})", self.quantidade)
 
@@ -65,7 +70,7 @@ class MovimentoDialog(FormDialog):
             )
 
         self.observacao = form.texto(
-            "", "Compra do fornecedor" if entrada else "Venda no balcão"
+            observacao, "Compra do fornecedor" if entrada else "Venda no balcão"
         )
         self.add_row("Observação", self.observacao)
 

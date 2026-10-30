@@ -90,6 +90,32 @@ MIGRATIONS = (
             """,
         ),
     ),
+    Migration(
+        version=3,
+        name="parceiros que indicam clientes",
+        statements=(
+            # quem manda cliente para a loja (arquiteto, contador, outra loja).
+            # A coluna nova nasce vazia: ninguem que ja estava cadastrado ganha
+            # parceiro sem o dono escolher
+            """
+            CREATE TABLE IF NOT EXISTS parceiros (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                nome          TEXT NOT NULL,
+                telefone      TEXT NOT NULL DEFAULT '',
+                email         TEXT NOT NULL DEFAULT '',
+                observacoes   TEXT NOT NULL DEFAULT '',
+                ativo         INTEGER NOT NULL DEFAULT 1,
+                criado_em     TEXT NOT NULL,
+                atualizado_em TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_parceiros_nome ON parceiros(nome);
+
+            ALTER TABLE contatos ADD COLUMN parceiro_id INTEGER
+                REFERENCES parceiros(id) ON DELETE SET NULL;
+            CREATE INDEX IF NOT EXISTS idx_contatos_parceiro ON contatos(parceiro_id);
+            """,
+        ),
+    ),
 )
 
 
@@ -132,6 +158,8 @@ class Contato:
     observacoes: str = ""
     criado_em: str = ""
     atualizado_em: str = ""
+    #: o parceiro que indicou o cliente (None = chegou sozinho)
+    parceiro_id: int | None = None
 
     # ------------------------------------------------------------- formatacao
     @property
@@ -225,10 +253,47 @@ class ResumoClientes:
     por_cidade: list[tuple[str, int]] = field(default_factory=list)
 
 
+@dataclass
+class Parceiro:
+    """Quem indica clientes para a loja."""
+
+    id: int | None = None
+    nome: str = ""
+    telefone: str = ""
+    email: str = ""
+    observacoes: str = ""
+    ativo: bool = True
+    criado_em: str = ""
+    atualizado_em: str = ""
+
+    @property
+    def telefone_formatado(self) -> str:
+        return formatar_telefone(self.telefone)
+
+    @classmethod
+    def from_row(cls, row: Row) -> "Parceiro":
+        dados = {chave: row[chave] for chave in row.keys()}
+        dados["ativo"] = bool(dados.get("ativo", 1))
+        return cls(**dados)
+
+
+@dataclass
+class Indicacoes:
+    """Quanto um parceiro ja indicou."""
+
+    parceiro: Parceiro
+    #: clientes indicados por ele, ativos ou nao
+    clientes: int = 0
+    ativos: int = 0
+    no_mes: int = 0
+    #: quando entrou o ultimo cliente indicado ("" = nenhum ainda)
+    ultimo: str = ""
+
+
 CAMPOS = (
     "nome", "documento", "telefone", "whatsapp", "email", "cep", "endereco",
     "numero", "complemento", "bairro", "cidade", "uf", "nascimento",
-    "segmento", "ativo", "observacoes",
+    "segmento", "ativo", "observacoes", "parceiro_id",
 )
 
 
@@ -405,6 +470,7 @@ class ContactsStore:
             contato.segmento.strip(),
             1 if contato.ativo else 0,
             contato.observacoes.strip(),
+            contato.parceiro_id or None,
         )
 
     # -------------------------------------------------------------- anotacoes
@@ -435,6 +501,98 @@ class ContactsStore:
     def excluir_nota(self, nota_id: int) -> None:
         self.db.execute("DELETE FROM contato_notas WHERE id = ?", (nota_id,))
         eventos.avisar(APP_ID)
+
+    # --------------------------------------------------------------- parceiros
+    def parceiros(self, incluir_inativos: bool = False) -> list[Parceiro]:
+        sql = "SELECT * FROM parceiros"
+        if not incluir_inativos:
+            sql += " WHERE ativo = 1"
+        sql += " ORDER BY nome COLLATE NOCASE"
+        return [Parceiro.from_row(row) for row in self.db.query(sql)]
+
+    def obter_parceiro(self, parceiro_id: int) -> Parceiro | None:
+        row = self.db.query_one("SELECT * FROM parceiros WHERE id = ?", (parceiro_id,))
+        return Parceiro.from_row(row) if row else None
+
+    def criar_parceiro(self, parceiro: Parceiro) -> Parceiro:
+        self._validar_parceiro(parceiro)
+        agora = _agora()
+        cursor = self.db.execute(
+            "INSERT INTO parceiros (nome, telefone, email, observacoes, ativo, "
+            "criado_em, atualizado_em) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (*self._valores_parceiro(parceiro), agora, agora),
+        )
+        parceiro.id = int(cursor.lastrowid)
+        parceiro.criado_em = parceiro.atualizado_em = agora
+        eventos.avisar(APP_ID)
+        return parceiro
+
+    def atualizar_parceiro(self, parceiro: Parceiro) -> Parceiro:
+        if parceiro.id is None:
+            raise ContatoError("Parceiro sem identificação.")
+        self._validar_parceiro(parceiro)
+        agora = _agora()
+        self.db.execute(
+            "UPDATE parceiros SET nome = ?, telefone = ?, email = ?, observacoes = ?, "
+            "ativo = ?, atualizado_em = ? WHERE id = ?",
+            (*self._valores_parceiro(parceiro), agora, parceiro.id),
+        )
+        parceiro.atualizado_em = agora
+        eventos.avisar(APP_ID)
+        return parceiro
+
+    def excluir_parceiro(self, parceiro_id: int) -> None:
+        """Apaga o parceiro; os clientes que ele indicou continuam cadastrados."""
+        with self.db.transaction() as conn:
+            conn.execute("UPDATE contatos SET parceiro_id = NULL WHERE parceiro_id = ?",
+                         (parceiro_id,))
+            conn.execute("DELETE FROM parceiros WHERE id = ?", (parceiro_id,))
+        eventos.avisar(APP_ID)
+
+    def indicacoes(self, incluir_inativos: bool = False) -> list[Indicacoes]:
+        """Cada parceiro e o quanto ele indicou, de quem mais indicou para o menos."""
+        mes_atual = datetime.now().strftime("%Y-%m")
+        numeros = {
+            row["parceiro_id"]: row
+            for row in self.db.query(
+                "SELECT parceiro_id, COUNT(*) AS clientes, SUM(ativo) AS ativos,"
+                " SUM(substr(criado_em, 1, 7) = ?) AS no_mes, MAX(criado_em) AS ultimo"
+                " FROM contatos WHERE parceiro_id IS NOT NULL GROUP BY parceiro_id",
+                (mes_atual,),
+            )
+        }
+        saida = []
+        for parceiro in self.parceiros(incluir_inativos=incluir_inativos):
+            row = numeros.get(parceiro.id)
+            saida.append(Indicacoes(
+                parceiro=parceiro,
+                clientes=int(row["clientes"]) if row else 0,
+                ativos=int(row["ativos"] or 0) if row else 0,
+                no_mes=int(row["no_mes"] or 0) if row else 0,
+                ultimo=(row["ultimo"] or "") if row else "",
+            ))
+        saida.sort(key=lambda i: (-i.clientes, i.parceiro.nome.lower()))
+        return saida
+
+    def _validar_parceiro(self, parceiro: Parceiro) -> None:
+        if not parceiro.nome.strip():
+            raise ContatoError("Informe o nome do parceiro.")
+        repetido = self.db.query_one(
+            "SELECT id FROM parceiros WHERE nome = ? COLLATE NOCASE AND id IS NOT ?",
+            (parceiro.nome.strip(), parceiro.id),
+        )
+        if repetido is not None:
+            raise ContatoError(f"Já existe um parceiro chamado '{parceiro.nome.strip()}'.")
+
+    @staticmethod
+    def _valores_parceiro(parceiro: Parceiro) -> tuple:
+        return (
+            parceiro.nome.strip(),
+            so_digitos(parceiro.telefone),
+            parceiro.email.strip(),
+            parceiro.observacoes.strip(),
+            1 if parceiro.ativo else 0,
+        )
 
     # ------------------------------------------------------------------ painel
     def aniversariantes(self, mes: int | None = None) -> list[Contato]:

@@ -6,6 +6,7 @@ from ....core.contacts import ContactsStore
 from ....ui.app_shell import AppWindow
 from .clientes_view import ClientesView
 from .dashboard_view import DashboardView
+from .parceiros_view import ParceirosView
 
 
 class ClientesWindow(AppWindow):
@@ -22,7 +23,9 @@ class ClientesWindow(AppWindow):
     def build_views(self) -> None:
         self.dashboard_view = self.add_view("Painel", "dashboard", DashboardView(self.store))
         self.clientes_view = self.add_view("Clientes", "users", ClientesView(self.store, mensageiro=self.mensagens))
-        self.clientes_view.data_changed.connect(self.refresh_all)
+        self.parceiros_view = self.add_view("Parceiros", "link", ParceirosView(self.store))
+        for tela in (self.clientes_view, self.parceiros_view):
+            tela.data_changed.connect(self.refresh_all)
 
     def teardown(self) -> None:
         if self._store_proprio:
