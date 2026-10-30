@@ -253,7 +253,7 @@ class RecorrenciasRepository:
 
     # ---------------------------------------------------------------- escrita
     def salvar(self, rec: Recorrencia) -> Recorrencia:
-        self._validar(rec)
+        self.conferir(rec)
         valores = (
             rec.numero.strip(), rec.cliente.strip(), rec.descricao.strip(),
             rec.frequencia, rec.inicio, rec.fim or "", int(rec.indice),
@@ -322,7 +322,12 @@ class RecorrenciasRepository:
                         (indice, recorrencia_id))
 
     # ----------------------------------------------------------------- regras
-    def _validar(self, rec: Recorrencia) -> None:
+    def conferir(self, rec: Recorrencia) -> None:
+        """Levanta o erro de regra sem gravar nada.
+
+        Quem cria o contrato junto com a venda (ou a ordem) confere antes de
+        gravar o documento: nao pode sobrar um sem o outro.
+        """
         if not rec.numero.strip():
             rec.numero = self.proximo_numero()
         if not rec.cliente.strip():

@@ -34,7 +34,7 @@ class BaixasMixin:
         return [
             Baixa.from_row(row)
             for row in self.db.query(
-                f"{SELECT_BAIXA} WHERE b.lancamento_id = ? ORDER BY b.data, b.id",
+                f"{SELECT_BAIXA} WHERE b.lancamento_id = ? ORDER BY b.data DESC, b.id DESC",
                 (lancamento_id,),
             )
         ]

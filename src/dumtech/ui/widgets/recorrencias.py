@@ -1,9 +1,13 @@
-"""A tela "Recorrentes" do Vendas e das Ordens: o cadastro dos contratos.
+"""A recorrencia no Vendas e nas Ordens: o campo do formulario e os contratos.
 
-Os dois modulos usam a mesma tela - muda so como cada um chama o documento
-que o contrato gera ("venda" ou "ordem") e quantos dias antes ele aparece.
-Quem transforma a vez em documento e o modulo (`gerar`, recebido pronto); a
-tela so cadastra, pausa e conta o que aconteceu.
+Repetir nasce no proprio Lancar venda / Nova OS (`CampoRepetir`): o documento
+que esta sendo lancado e a primeira vez, e o contrato cuida das proximas. O
+contrato que ja existe se cuida em `RecorrenciasDialog`, aberta pelo botao da
+lista: pausar, retomar, mudar o valor, excluir.
+
+Os dois modulos usam as mesmas pecas - muda so como cada um chama o documento
+("venda" ou "ordem") e quantos dias antes ele aparece. Quem transforma a vez em
+documento e o modulo (`gerar`, recebido pronto).
 """
 
 from __future__ import annotations
@@ -11,12 +15,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
-from PySide6.QtWidgets import QHBoxLayout, QWidget
+from PySide6.QtWidgets import QCheckBox, QDialog, QHBoxLayout, QVBoxLayout, QWidget
 
 from ...core import recorrencia as motor
 from .. import format as fmt
+from ..theme import Space, apply_window_theme, palette_for
 from . import form
 from .buttons import Button
+from .common import label
 from .crud_view import CrudView
 from .form import FormDialog
 from .items_editor import ItemsEditor
@@ -38,21 +44,62 @@ class Textos:
     onde: str
 
 
+class CampoRepetir(QWidget):
+    """A linha "Repetir" do formulario: liga e diz de quanto em quanto tempo."""
+
+    def __init__(self, rotulo: str, nota: str, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.marcar = QCheckBox(rotulo)
+        self.frequencia = form.escolha(
+            [(texto, chave) for chave, texto in motor.FREQUENCIAS], motor.MENSAL
+        )
+        self.ate = label("até", "muted")
+        self.fim = form.data_opcional()
+        self.fim.setPlaceholderText("sem data final")
+
+        linha = QHBoxLayout()
+        linha.setContentsMargins(0, 0, 0, 0)
+        linha.setSpacing(Space.sm + 2)
+        linha.addWidget(self.marcar)
+        linha.addWidget(self.frequencia, 1)
+        linha.addWidget(self.ate)
+        linha.addWidget(self.fim, 1)
+
+        self.nota = label(nota, "dim")
+        self.nota.setWordWrap(True)
+
+        raiz = QVBoxLayout(self)
+        raiz.setContentsMargins(0, 0, 0, 0)
+        raiz.setSpacing(Space.xs)
+        raiz.addLayout(linha)
+        raiz.addWidget(self.nota)
+
+        self.marcar.toggled.connect(self._mostrar)
+        self._mostrar(False)
+
+    @property
+    def ligado(self) -> bool:
+        return self.marcar.isChecked()
+
+    def _mostrar(self, ligado: bool) -> None:
+        for campo in (self.frequencia, self.ate, self.fim, self.nota):
+            campo.setVisible(ligado)
+
+
 class RecorrenciaDialog(FormDialog):
     def __init__(
         self,
         repositorio: motor.RecorrenciasRepository,
         textos: Textos,
-        rec: motor.Recorrencia | None = None,
+        rec: motor.Recorrencia,
         clientes: list[str] | None = None,
         catalogo=None,
         parent: QWidget | None = None,
     ) -> None:
         self.repositorio = repositorio
-        self.rec = rec or motor.Recorrencia(numero=repositorio.proximo_numero())
-        editando = rec is not None
+        self.rec = rec
         super().__init__(
-            f"Recorrência {self.rec.numero}" if editando else "Nova recorrência",
+            f"Recorrência {rec.numero}",
             f"Cada vez vira {textos.onde} e vai ao Financeiro como conta a receber",
             parent,
             largura=700,
@@ -124,7 +171,6 @@ class RecorrenciasView(CrudView):
     nome_registro = "recorrência"
     nome_plural = "recorrências"
     genero = "f"
-    rotulo_novo = "Nova recorrência"
     dica_pesquisa = "Pesquisar por número, cliente ou descrição..."
     colunas = ["Número", "Cliente", "Descrição", "Repete", "Cada vez", "Próxima",
                "Geradas", "Situação"]
@@ -147,9 +193,11 @@ class RecorrenciasView(CrudView):
         self.clientes = clientes or []
         self.catalogo = catalogo
         super().__init__(parent)
+        # contrato novo nasce no formulario da venda ou da ordem, junto com ela
+        self.botao_novo.setVisible(False)
         self.tabela.set_empty_message(
-            f"Mensalidade, contrato, {textos.documento} que se repete: cadastre aqui "
-            f"e cada {textos.documento} aparece sozinha na data."
+            f"Nada se repetindo ainda. Marque Repetir ao criar uma {textos.documento} "
+            f"e as próximas aparecem sozinhas na data."
         )
 
     def build_actions(self, layout: QHBoxLayout) -> None:
@@ -187,19 +235,14 @@ class RecorrenciasView(CrudView):
         self.botao_pausar.setEnabled(rec is not None and rec.situacao != motor.ENCERRADA)
 
     # ------------------------------------------------------------------- acoes
-    def abrir_dialogo(self, rec: motor.Recorrencia | None):
+    def abrir_dialogo(self, rec: motor.Recorrencia):
         return RecorrenciaDialog(self.repositorio, self.textos, rec, self.clientes,
                                  self.catalogo, self)
 
-    def novo(self) -> None:
-        self._cadastrar(None)
-
     def editar(self) -> None:
         rec = self.registro_selecionado()
-        if rec is not None:
-            self._cadastrar(rec)
-
-    def _cadastrar(self, rec: motor.Recorrencia | None) -> None:
+        if rec is None:
+            return
         dialogo = self.abrir_dialogo(rec)
         if not dialogo.exec():
             return
@@ -233,3 +276,41 @@ class RecorrenciasView(CrudView):
 
     def descricao(self, rec: motor.Recorrencia) -> str:
         return f"{rec.numero} - {rec.cliente}"
+
+
+class RecorrenciasDialog(QDialog):
+    """Os contratos que ja existem: sem isto, ninguem pausaria uma mensalidade."""
+
+    def __init__(
+        self,
+        repositorio: motor.RecorrenciasRepository,
+        textos: Textos,
+        gerar: Callable[[], list[str]],
+        contar: Callable[[list[motor.Recorrencia]], None],
+        clientes: list[str] | None = None,
+        catalogo=None,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Recorrentes")
+        self.setModal(True)
+        self.resize(1120, 620)
+
+        raiz = QVBoxLayout(self)
+        raiz.setContentsMargins(0, 0, 0, 0)
+        raiz.setSpacing(0)
+        self.tela = RecorrenciasView(repositorio, textos, gerar, contar, clientes,
+                                     catalogo, self)
+        raiz.addWidget(self.tela, 1)
+
+        rodape = QHBoxLayout()
+        rodape.setContentsMargins(30, 0, 30, 20)
+        rodape.addStretch(1)
+        fechar = Button("Fechar", "check", "primary")
+        fechar.setMinimumHeight(38)
+        fechar.clicked.connect(self.accept)
+        rodape.addWidget(fechar)
+        raiz.addLayout(rodape)
+
+        apply_window_theme(self, palette_for(parent))
+        self.tela.refresh()

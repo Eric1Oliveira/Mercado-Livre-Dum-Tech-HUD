@@ -33,7 +33,13 @@ class OrdensMixin:
         somente_abertas: bool = False,
         na_garantia: bool = False,
         limite: int = 500,
+        andamento_primeiro: bool = False,
     ) -> list[Ordem]:
+        """Da entrada mais recente para a mais antiga.
+
+        `andamento_primeiro` e para quem conta com o `limite` (painel e quadro):
+        a ordem antiga que ainda esta na bancada nao pode cair no corte.
+        """
         sql = "SELECT * FROM ordens WHERE 1 = 1"
         params: list = []
         if busca.strip():
@@ -57,9 +63,13 @@ class OrdensMixin:
                     " AND date(entregue_em, '+' || garantia_dias || ' days') >= date(?)")
             params += [ENTREGUE, date.today().isoformat()]
 
-        marcadores = ", ".join("?" for _ in FINALIZADAS)
-        sql += f" ORDER BY (status IN ({marcadores})), date(aberta_em) DESC, id DESC LIMIT ?"
-        params += list(FINALIZADAS) + [int(limite)]
+        sql += " ORDER BY "
+        if andamento_primeiro:
+            marcadores = ", ".join("?" for _ in FINALIZADAS)
+            sql += f"(status IN ({marcadores})), "
+            params += list(FINALIZADAS)
+        sql += "date(aberta_em) DESC, id DESC LIMIT ?"
+        params.append(int(limite))
 
         ordens = [Ordem.from_row(row) for row in self.db.query(sql, params)]
         for ordem in ordens:

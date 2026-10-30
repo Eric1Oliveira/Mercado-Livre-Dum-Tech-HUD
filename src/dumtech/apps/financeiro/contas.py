@@ -152,7 +152,7 @@ class ContasFinanceiro:
             observacoes += f"\nDevolução: {motivo.strip()}"
         # sai por onde entrou; baixa antiga sem conta nunca somou no saldo, e
         # por isso tambem nao pode subtrair
-        origem = self.repository.baixas_de(receita.id)[-1]
+        origem = self.repository.baixas_de(receita.id)[0]
         self.repository.criar(Lancamento(
             tipo=DESPESA,
             descricao=f"Devolução da venda {documento}",

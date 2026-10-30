@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 
 from ....ui.app_shell import AppWindow
-from ....ui.widgets.recorrencias import RecorrenciasView, Textos
+from ....ui.widgets.recorrencias import RecorrenciasDialog, Textos
 from .. import recorrencias
 from ..database import open_database
 from ..repository import OrdensRepository
@@ -72,27 +72,33 @@ class OrdensWindow(AppWindow):
                                          catalogo=self.context.catalog)
         )
 
-        self.recorrentes_view = self.add_view(
-            "Recorrentes", "refresh",
-            RecorrenciasView(self.recorrencias, TEXTOS_RECORRENCIA,
-                             gerar=self.gerar_recorrencias,
-                             contar=lambda contratos: recorrencias.contar_geradas(
-                                 self.repository, contratos),
-                             clientes=self.clientes,
-                             catalogo=self.context.catalog)
-        )
-
         self.bancada_view.abrir_ficha.connect(self.abrir_ficha)
-        for tela in (self.bancada_view, self.ordens_view, self.recorrentes_view):
+        self.ordens_view.botao_recorrentes.clicked.connect(self.abrir_recorrentes)
+        for tela in (self.bancada_view, self.ordens_view):
             tela.data_changed.connect(self.refresh_all)
 
     def abrir_ficha(self, ordem_id: int) -> None:
         """A ficha precisa da agenda de clientes, que so a janela conhece."""
         ordem = self.repository.obter(ordem_id) if ordem_id else None
         dialogo = OrdemDialog(self.repository, ordem, self.clientes,
-                              self.bancada_view, catalogo=self.context.catalog)
+                              self.bancada_view, catalogo=self.context.catalog,
+                              contas=self.context.contas)
         if dialogo.exec():
             self.refresh_all()
+
+    def dialogo_recorrentes(self) -> RecorrenciasDialog:
+        return RecorrenciasDialog(
+            self.recorrencias, TEXTOS_RECORRENCIA,
+            gerar=self.gerar_recorrencias,
+            contar=lambda contratos: recorrencias.contar_geradas(self.repository, contratos),
+            clientes=self.clientes,
+            catalogo=self.context.catalog,
+            parent=self,
+        )
+
+    def abrir_recorrentes(self) -> None:
+        self.dialogo_recorrentes().exec()
+        self.refresh_all()
 
     def teardown(self) -> None:
         self.database.close()

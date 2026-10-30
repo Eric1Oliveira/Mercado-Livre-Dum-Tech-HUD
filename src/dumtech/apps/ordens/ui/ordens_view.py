@@ -87,6 +87,10 @@ class OrdensView(CrudView):
         layout.addWidget(self.filtro_tecnico, 1)
         self._carregar_tecnicos()
 
+        self.botao_recorrentes = Button("Recorrentes", "refresh")
+        self.botao_recorrentes.setToolTip("Pausar, retomar ou mudar o que se repete")
+        layout.addWidget(self.botao_recorrentes)
+
     def build_actions(self, layout: QHBoxLayout) -> None:
         self.botao_entrada = Button("Entrada", "file")
         self.botao_entrada.setToolTip("Comprovante de entrada, em bobina")
@@ -197,7 +201,7 @@ class OrdensView(CrudView):
     # ------------------------------------------------------------------- acoes
     def abrir_dialogo(self, ordem: Ordem | None):
         return OrdemDialog(self.repository, ordem, self.clientes, self,
-                           catalogo=self.catalogo)
+                           catalogo=self.catalogo, contas=self.contas)
 
     def excluir(self, ordem: Ordem) -> None:
         self.repository.excluir(ordem.id)

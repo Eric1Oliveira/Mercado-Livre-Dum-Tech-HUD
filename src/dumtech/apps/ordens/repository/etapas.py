@@ -34,7 +34,7 @@ class EtapasMixin:
         return [
             EventoOS.from_row(row)
             for row in self.db.query(
-                "SELECT * FROM os_historico WHERE ordem_id = ? ORDER BY id",
+                "SELECT * FROM os_historico WHERE ordem_id = ? ORDER BY id DESC",
                 (ordem_id,),
             )
         ]

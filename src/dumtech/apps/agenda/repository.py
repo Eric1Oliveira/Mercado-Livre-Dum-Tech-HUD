@@ -115,7 +115,9 @@ class AgendaRepository:
             sql += " AND date(inicio) <= date(?)"
             params.append(fim)
 
-        sql += " ORDER BY datetime(inicio) LIMIT ?"
+        # concluido e cancelado ja passaram: historico, mais recente primeiro
+        historico = bool(status) and status not in ABERTOS
+        sql += f" ORDER BY datetime(inicio) {'DESC' if historico else ''} LIMIT ?"
         params.append(int(limite))
         return [Compromisso.from_row(row) for row in self.db.query(sql, params)]
 

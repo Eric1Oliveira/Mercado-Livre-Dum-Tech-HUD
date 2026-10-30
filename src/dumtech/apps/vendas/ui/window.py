@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 
 from ....ui.app_shell import AppWindow
-from ....ui.widgets.recorrencias import RecorrenciasView, Textos
+from ....ui.widgets.recorrencias import RecorrenciasDialog, Textos
 from .. import financeiro, recorrencias
 from ..database import open_database
 from ..repository import VendasRepository
@@ -68,19 +68,24 @@ class VendasWindow(AppWindow):
         self.caixa_view = self.add_view(
             "Caixa", "money", CaixaView(self.repository, empresa=self.empresa)
         )
-        self.recorrentes_view = self.add_view(
-            "Recorrentes", "refresh",
-            RecorrenciasView(self.recorrencias, TEXTOS_RECORRENCIA,
-                             gerar=self.gerar_recorrencias,
-                             contar=lambda contratos: recorrencias.contar_geradas(
-                                 self.repository, contratos),
-                             clientes=self.clientes,
-                             catalogo=self.context.catalog)
+
+        self.vendas_view.botao_recorrentes.clicked.connect(self.abrir_recorrentes)
+        for tela in (self.balcao_view, self.vendas_view, self.caixa_view):
+            tela.data_changed.connect(self.refresh_all)
+
+    def dialogo_recorrentes(self) -> RecorrenciasDialog:
+        return RecorrenciasDialog(
+            self.recorrencias, TEXTOS_RECORRENCIA,
+            gerar=self.gerar_recorrencias,
+            contar=lambda contratos: recorrencias.contar_geradas(self.repository, contratos),
+            clientes=self.clientes,
+            catalogo=self.context.catalog,
+            parent=self,
         )
 
-        for tela in (self.balcao_view, self.vendas_view, self.caixa_view,
-                     self.recorrentes_view):
-            tela.data_changed.connect(self.refresh_all)
+    def abrir_recorrentes(self) -> None:
+        self.dialogo_recorrentes().exec()
+        self.refresh_all()
 
     def tem_trabalho_aberto(self) -> bool:
         # a venda do balcao so vai para o banco ao receber

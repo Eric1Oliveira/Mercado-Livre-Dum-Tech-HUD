@@ -120,8 +120,10 @@ class LancamentosMixin:
         elif situacao == SITUACAO_PARCIAL:
             sql += f" AND l.pago_em IS NULL AND {BAIXADO} > 0"
 
-        sql += (" ORDER BY (l.pago_em IS NOT NULL OR l.cancelado_em <> ''),"
-                " l.vencimento, l.id DESC LIMIT ?")
+        # "em aberto" e agenda, o que vence antes vem antes (o fluxo de caixa e o
+        # painel leem por aqui); o resto e historico: mais recente primeiro
+        ordem = "l.vencimento" if situacao == SITUACAO_ABERTO else "l.vencimento DESC"
+        sql += f" ORDER BY {ordem}, l.id DESC LIMIT ?"
         params.append(int(limite))
         return [Lancamento.from_row(row) for row in self.db.query(sql, params)]
 

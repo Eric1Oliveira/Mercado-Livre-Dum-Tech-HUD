@@ -11,11 +11,13 @@ from PySide6.QtWidgets import QComboBox, QWidget
 
 from ....core.contas import MAXIMO_PARCELAS
 from ....core.pagamentos import PARCELADO, formas_do_balcao
+from ....core.recorrencia import Recorrencia
 from ....ui import format as fmt
 from ....ui.widgets import form
 from ....ui.widgets.form import FormDialog
 from ....ui.widgets.items_editor import ItemsEditor
-from .. import financeiro
+from ....ui.widgets.recorrencias import CampoRepetir
+from .. import financeiro, recorrencias
 from ..models import CONCLUIDA, PARCELAS_PADRAO, PENDENTE, STATUS_OPCOES, ItemVenda, Venda
 from ..repository import VendasRepository, pagamento_unico
 from .pagamento_dialog import nota_parcelas
@@ -44,6 +46,7 @@ class VendaDialog(FormDialog):
         self._status_antes = self.venda.status if self.editando else None
         #: o que a tela mostra depois de fechar ("" = nada a dizer)
         self.recado = ""
+        self.contratos = recorrencias.repositorio(repository.db)
         super().__init__(
             f"Venda {self.venda.numero}" if self.editando else "Lançar venda",
             "Itens vendidos, pagamento e total",
@@ -77,6 +80,15 @@ class VendaDialog(FormDialog):
         self.parcelas.valueChanged.connect(self._atualizar_total)
         self.add_row("Parcelas", self.parcelas)
         self.form.setRowVisible(self.parcelas, False)
+
+        # repetir nasce com a venda: depois, quem cuida e a lista de Recorrentes
+        self.repeticao = CampoRepetir(
+            "Repetir esta venda",
+            f"Esta é a primeira. As próximas aparecem {recorrencias.ANTECEDENCIA} dias "
+            "antes da data, como venda pendente.",
+        )
+        self.add_row("Repetir", self.repeticao)
+        self.form.setRowVisible(self.repeticao, not self.editando)
 
         # com o Estoque na licenca, o item sugere produto e baixa o saldo
         self.itens = ItemsEditor(
@@ -118,6 +130,8 @@ class VendaDialog(FormDialog):
         self.status.setEnabled(not parcelado)
         if parcelado:
             self.status.setCurrentIndex(self.status.findData(CONCLUIDA))
+            self.repeticao.marcar.setChecked(False)
+        self.form.setRowVisible(self.repeticao, not (parcelado or self.editando))
         self._atualizar_total()
 
     def _atualizar_total(self) -> None:
@@ -130,6 +144,25 @@ class VendaDialog(FormDialog):
         if self._em_parcelado():
             texto += f"\n{nota_parcelas(total, self.parcelas.value())}"
         self._nota_total.setText(texto)
+
+    def _contrato(self) -> Recorrencia | None:
+        """O contrato que o Repetir pede, ja conferido (None = venda de uma vez so).
+
+        Conferir antes de gravar a venda: cliente faltando nao pode deixar uma
+        venda sem contrato, e a venda recusada nao pode deixar um contrato solto.
+        """
+        if self.editando:
+            return None
+        self.venda.recorrencia = ""
+        if not self.repeticao.ligado:
+            return None
+        contrato = recorrencias.contrato(
+            self.contratos, self.venda,
+            self.repeticao.frequencia.currentData(), self.repeticao.fim.iso(),
+        )
+        self.contratos.conferir(contrato)
+        self.venda.recorrencia = contrato.numero
+        return contrato
 
     def salvar(self) -> None:
         parcelas = self.parcelas.value() if self._em_parcelado() else 0
@@ -156,11 +189,15 @@ class VendaDialog(FormDialog):
             if self.venda.status == CONCLUIDA
             else []
         )
+        contrato = self._contrato()
         # paga agora: baixa o estoque ja; pendente baixa quando o cliente pagar
         self.venda = self.repository.lancar(self.venda)
         recado = ""
+        if contrato is not None:
+            self.contratos.salvar(contrato)
+            recado = f"  Repete {contrato.frequencia_label.lower()} ({contrato.numero})."
         if self.venda.status != self._status_antes:
-            recado = financeiro.registrar(self.contas, self.venda)
+            recado += financeiro.registrar(self.contas, self.venda)
         if self.venda.avisos:
             recado += f"  Confira o estoque: {'; '.join(self.venda.avisos)}"
         self.recado = recado.strip()

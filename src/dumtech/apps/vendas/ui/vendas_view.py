@@ -71,6 +71,10 @@ class VendasView(CrudView):
         self.filtro_periodo.currentIndexChanged.connect(self.refresh)
         layout.addWidget(self.filtro_periodo, 1)
 
+        self.botao_recorrentes = Button("Recorrentes", "refresh")
+        self.botao_recorrentes.setToolTip("Pausar, retomar ou mudar o que se repete")
+        layout.addWidget(self.botao_recorrentes)
+
     def build_actions(self, layout: QHBoxLayout) -> None:
         self.botao_comprovante = Button("Comprovante", "file")
         self.botao_comprovante.clicked.connect(self._comprovante)

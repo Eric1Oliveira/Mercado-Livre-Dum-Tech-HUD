@@ -57,10 +57,42 @@ def gerar(ordens, contas=None, contatos=None, hoje: date | None = None) -> list[
             recorrencia=rec.numero,
             itens=[_item(item) for item in rec.itens],
         ))
-        _lancar(contas, ordem, rec)
+        lancar(contas, ordem, rec)
         return ordem.numero
 
     return recorrencia.gerar(contratos, criar, hoje=hoje, antecedencia=ANTECEDENCIA)
+
+
+def contrato(
+    contratos: recorrencia.RecorrenciasRepository, ordem: Ordem, frequencia: str, fim: str = "",
+) -> recorrencia.Recorrencia:
+    """O contrato que repete a ordem: ela e a primeira vez, as proximas vem dele.
+
+    Ordem sem itens vale o que foi digitado, e o contrato precisa de uma linha
+    para cobrar esse valor.
+    """
+    itens = [
+        {
+            "descricao": item.descricao,
+            "quantidade": item.quantidade,
+            "valor_unitario": item.valor_unitario,
+            "produto_id": item.produto_id,
+            "codigo": item.codigo,
+        }
+        for item in ordem.itens
+    ] or [{"descricao": ordem.assunto, "quantidade": 1, "valor_unitario": ordem.subtotal}]
+    return recorrencia.Recorrencia(
+        numero=contratos.proximo_numero(),
+        cliente=ordem.cliente,
+        descricao=ordem.assunto,
+        frequencia=frequencia,
+        inicio=ordem.prazo,
+        fim=fim,
+        indice=1,
+        desconto=ordem.desconto,
+        observacoes=ordem.defeito,
+        itens=itens,
+    )
 
 
 def contar_geradas(ordens, contratos: list[recorrencia.Recorrencia]) -> None:
@@ -75,7 +107,7 @@ def contar_geradas(ordens, contratos: list[recorrencia.Recorrencia]) -> None:
         rec.gerados = contagem.get(rec.numero, 0)
 
 
-def _lancar(contas, ordem: Ordem, rec: recorrencia.Recorrencia) -> None:
+def lancar(contas, ordem: Ordem, rec: recorrencia.Recorrencia) -> None:
     """A conta do contrato. Nunca desfaz a ordem: sem Financeiro, segue sem."""
     if contas is None or ordem.total <= 0:
         return

@@ -27,13 +27,16 @@ from __future__ import annotations
 
 from PySide6.QtWidgets import QCheckBox, QWidget
 
+from ....core.recorrencia import Recorrencia
 from ....ui import format as fmt
 from ....ui.theme import Space
 from ....ui.widgets import form
 from ....ui.widgets.common import label, separator
 from ....ui.widgets.flow_layout import FlowLayout
 from ....ui.widgets.form import FormDialog
+from ....ui.widgets.recorrencias import CampoRepetir
 from ....ui.widgets.secao import Secao
+from .. import recorrencias
 from ..models import (
     ACESSORIOS_COMUNS,
     GARANTIA_PADRAO,
@@ -94,10 +97,14 @@ class OrdemDialog(FormDialog):
         clientes: list[str] | None = None,
         parent: QWidget | None = None,
         catalogo=None,
+        contas=None,
     ) -> None:
         self.repository = repository
         #: catalogo do Estoque; usado la embaixo, em `_o_servico`
         self._catalogo = catalogo
+        #: ponte com o Financeiro; None quando a licenca nao o libera
+        self.contas = contas
+        self.contratos = recorrencias.repositorio(repository.db)
         self.ordem = ordem or Ordem(numero=repository.proximo_numero())
         self.editando = ordem is not None
         super().__init__(
@@ -139,6 +146,15 @@ class OrdemDialog(FormDialog):
         self.prazo = form.data(self.ordem.prazo or self.ordem.aberta_em)
         self.valor = form.dinheiro(self.ordem.valor)
         self.add_row("Entrega prevista", form.linha(self.prazo, "Valor", self.valor))
+
+        # repetir nasce com a ordem: depois, quem cuida e a lista de Recorrentes
+        self.repeticao = CampoRepetir(
+            "Repetir este serviço",
+            f"Esta é a primeira. As próximas abrem sozinhas no Quadro "
+            f"{recorrencias.ANTECEDENCIA} dias antes da entrega prevista.",
+        )
+        self.add_row("Repetir", self.repeticao)
+        self.form.setRowVisible(self.repeticao, not self.editando)
 
     # -------------------------------------------------------------- o servico
     def _o_servico(self) -> None:
@@ -250,6 +266,24 @@ class OrdemDialog(FormDialog):
             )
 
     # ------------------------------------------------------------------ gravar
+    def _contrato(self) -> Recorrencia | None:
+        """O contrato que o Repetir pede, ja conferido (None = ordem de uma vez so).
+
+        Conferir antes de gravar a ordem: nao pode sobrar uma sem o outro.
+        """
+        if self.editando:
+            return None
+        self.ordem.recorrencia = ""
+        if not self.repeticao.ligado:
+            return None
+        contrato = recorrencias.contrato(
+            self.contratos, self.ordem,
+            self.repeticao.frequencia.currentData(), self.repeticao.fim.iso(),
+        )
+        self.contratos.conferir(contrato)
+        self.ordem.recorrencia = contrato.numero
+        return contrato
+
     def salvar(self) -> None:
         self.ordem.numero = self.numero.text()
         self.ordem.aberta_em = form.iso_da_data(self.aberta_em)
@@ -271,4 +305,9 @@ class OrdemDialog(FormDialog):
             self.ordem.status = self.status.currentData()
         if not self.ordem.itens:
             self.ordem.valor = self.valor.value()
+        contrato = self._contrato()
         self.repository.salvar(self.ordem)
+        if contrato is not None:
+            self.contratos.salvar(contrato)
+            # a conta nasce junto, como nas proximas vezes do contrato
+            recorrencias.lancar(self.contas, self.ordem, contrato)

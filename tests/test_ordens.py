@@ -77,10 +77,10 @@ class EsteiraTestCase(OrdensBase):
         historico = self.repo.obter(ordem.id).historico
         self.assertEqual(
             [evento.status for evento in historico],
-            [ABERTA, AGUARDANDO, ANDAMENTO, CONCLUIDA, ENTREGUE],
+            [ENTREGUE, CONCLUIDA, ANDAMENTO, AGUARDANDO, ABERTA],
         )
         self.assertIn("aprovado por Joao da Silva", historico[2].observacao)
-        self.assertIn("Entregue para Joao da Silva", historico[4].observacao)
+        self.assertIn("Entregue para Joao da Silva", historico[0].observacao)
 
     def test_nao_se_comeca_o_servico_sem_o_cliente_aprovar(self) -> None:
         ordem = self._ordem()
@@ -130,7 +130,7 @@ class EsteiraTestCase(OrdensBase):
 
         cancelada = self.repo.cancelar(ordem.id, "Cliente desistiu do conserto")
         self.assertEqual(cancelada.status, CANCELADA)
-        self.assertIn("Cliente desistiu", cancelada.historico[-1].observacao)
+        self.assertIn("Cliente desistiu", cancelada.historico[0].observacao)
 
     def test_reabrir_traz_de_volta_sem_perder_o_passado(self) -> None:
         ordem = self._ate_concluir(self._ordem())
@@ -139,7 +139,7 @@ class EsteiraTestCase(OrdensBase):
 
         self.assertEqual(reaberta.status, ANDAMENTO)
         self.assertEqual(reaberta.entregue_em, "")
-        self.assertIn("Voltou com o mesmo defeito", reaberta.historico[-1].observacao)
+        self.assertIn("Voltou com o mesmo defeito", reaberta.historico[0].observacao)
         self.assertGreaterEqual(len(reaberta.historico), 6)
 
     def test_ordem_entregue_nao_pode_ser_apagada(self) -> None:

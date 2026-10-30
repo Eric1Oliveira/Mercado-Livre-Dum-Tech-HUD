@@ -45,6 +45,28 @@ class Novidade:
 #: versao -> o que mudou. So entra o que o cliente PERCEBE: correcao interna
 #: nao vira aviso. Escreva como quem explica no balcao, sem termo tecnico.
 VERSOES: dict[str, tuple[Novidade, ...]] = {
+    "1.9.0": (
+        Novidade(
+            "vendas", "Venda que se repete agora é no Lançar venda",
+            "Ao lançar a venda, marque Repetir e escolha de quanto em quanto tempo. Ela é a "
+            "primeira, e as próximas aparecem sozinhas, pendentes. A aba Recorrentes saiu do "
+            "menu: para pausar ou mudar o que já existe, use o botão Recorrentes na lista de "
+            "Vendas.",
+        ),
+        Novidade(
+            "ordens", "Serviço que se repete agora é na Nova OS",
+            "Ao abrir a ordem, marque Repetir e escolha de quanto em quanto tempo. Ela é a "
+            "primeira, e as próximas abrem sozinhas no Quadro. A aba Recorrentes saiu do "
+            "menu: para pausar ou mudar o que já existe, use o botão Recorrentes na lista de "
+            "Ordens de Serviço. A lista e o histórico da ordem agora começam pelo mais recente.",
+        ),
+        Novidade(
+            "financeiro", "Lançamentos com o mais recente primeiro",
+            "A lista e as baixas agora começam pelo mais recente, e a conta que vence mais "
+            "para a frente aparece em cima. Para ver o que vence primeiro, use o filtro "
+            "Em aberto.",
+        ),
+    ),
     "1.8.0": (
         Novidade(
             "vendas", "Venda parcelada: uma venda, uma conta por mês",
@@ -258,8 +280,7 @@ def marcar_vista(settings, instalada: str) -> None:
 #: "app_id/Titulo da aba" que mostram "Novo" ate a primeira visita.
 #: Tire daqui quando a tela deixar de ser novidade.
 TELAS_NOVAS: frozenset[str] = frozenset({
-    "agenda/Online", "agenda/Serviços", "vendas/Recorrentes", "ordens/Recorrentes",
-    "clientes/Parceiros",
+    "agenda/Online", "agenda/Serviços", "clientes/Parceiros",
 })
 
 #: nas preferencias de cada aplicativo: as telas novas que ja foram abertas

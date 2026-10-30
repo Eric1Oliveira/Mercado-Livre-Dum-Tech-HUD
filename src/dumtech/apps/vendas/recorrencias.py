@@ -57,6 +57,35 @@ def gerar(vendas, contas=None, hoje: date | None = None) -> list[str]:
     return recorrencia.gerar(contratos, criar, hoje=hoje, antecedencia=ANTECEDENCIA)
 
 
+def contrato(
+    contratos: recorrencia.RecorrenciasRepository, venda: Venda, frequencia: str, fim: str = "",
+) -> recorrencia.Recorrencia:
+    """O contrato que repete a venda: ela e a primeira vez, as proximas vem dele."""
+    return recorrencia.Recorrencia(
+        numero=contratos.proximo_numero(),
+        cliente=venda.cliente,
+        descricao=venda.itens[0].descricao if venda.itens else "",
+        frequencia=frequencia,
+        inicio=venda.data,
+        fim=fim,
+        indice=1,
+        desconto=venda.desconto,
+        observacoes=venda.observacoes,
+        itens=[
+            {
+                "descricao": item.descricao,
+                "quantidade": item.quantidade,
+                "valor_unitario": item.valor_unitario,
+                "produto_id": item.produto_id,
+                "codigo": item.codigo,
+                "unidade": item.unidade,
+                "casas": item.casas,
+            }
+            for item in venda.itens
+        ],
+    )
+
+
 def contar_geradas(vendas, contratos: list[recorrencia.Recorrencia]) -> None:
     """Preenche `gerados` de cada contrato (para a lista mostrar)."""
     contagem = {

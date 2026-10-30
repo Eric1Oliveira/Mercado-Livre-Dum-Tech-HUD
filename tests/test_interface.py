@@ -289,7 +289,7 @@ class BalcaoTestCase(unittest.TestCase):
 
     def test_vendas_comeca_pelo_balcao(self) -> None:
         self.assertEqual(
-            [v.title for v in self.casca.views], ["Balcão", "Painel", "Vendas", "Caixa", "Recorrentes"]
+            [v.title for v in self.casca.views], ["Balcão", "Painel", "Vendas", "Caixa"]
         )
 
     def test_item_avulso_entra_na_venda(self) -> None:
@@ -561,7 +561,8 @@ class FluxoDeCaixaTestCase(unittest.TestCase):
         lista = self.casca.lancamentos_view
         lista.refresh()
         self.assertEqual(lista.tabela.rowCount(), 3)
-        self.assertIn("(1/3)", lista.tabela.item(0, 1).text())
+        self.assertIn("(3/3)", lista.tabela.item(0, 1).text())
+        self.assertIn("(1/3)", lista.tabela.item(2, 1).text())
 
     def test_contas_mostram_o_saldo_e_o_total(self) -> None:
         self._conta(1500.0)
@@ -658,7 +659,7 @@ class OficinaTestCase(unittest.TestCase):
 
     def test_ordens_comeca_pelo_quadro(self) -> None:
         self.assertEqual(
-            [v.title for v in self.casca.views], ["Quadro", "Painel", "Ordens de Serviço", "Recorrentes"]
+            [v.title for v in self.casca.views], ["Quadro", "Painel", "Ordens de Serviço"]
         )
 
     def test_cada_ordem_vira_um_cartao_na_faixa_da_etapa(self) -> None:

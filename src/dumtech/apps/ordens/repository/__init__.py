@@ -40,7 +40,7 @@ class OrdensRepository(OrdensMixin, EtapasMixin, ItensMixin):
     # ===================================================================== painel
     def resumo(self, limite_listas: int = 6) -> ResumoOrdens:
         mes = date.today().strftime("%Y-%m")
-        todas = self.listar(limite=1000)
+        todas = self.listar(limite=1000, andamento_primeiro=True)
         por_status = lambda alvo: [o for o in todas if o.status == alvo]  # noqa: E731
 
         abertas = por_status(ABERTA)
@@ -68,7 +68,7 @@ class OrdensRepository(OrdensMixin, EtapasMixin, ItensMixin):
     def por_etapa(self) -> dict[str, list[Ordem]]:
         """As faixas do quadro: cada etapa com as suas ordens."""
         faixas: dict[str, list[Ordem]] = {}
-        for ordem in self.listar(somente_abertas=False, limite=1000):
+        for ordem in self.listar(limite=1000, andamento_primeiro=True):
             if ordem.na_bancada:
                 faixas.setdefault(ordem.status, []).append(ordem)
         return faixas
