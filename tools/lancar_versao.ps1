@@ -18,8 +18,11 @@
 #   registro sempre por ultimo, isso nao acontece.
 #
 # CONTROLE CONTINUA SEU
-#   -SemAvisar      sobe o arquivo mas NAO registra: voce libera pelo painel quando
-#                   quiser (Seguranca > Versao do DumTech Hub - os dados ficam impressos)
+#   -Pendente       sobe o arquivo e registra como PENDENTE: nenhum cliente recebe.
+#                   Voce lanca pelo painel (Atualizacoes), para um cliente ou para
+#                   todos. O instalador do site continua sendo o da versao no ar.
+#   -SemAvisar      sobe o arquivo mas NAO registra: os dados ficam impressos, e
+#                   voce registra a mao (Atualizacoes > Controles avancados)
 #   -Obrigatoria    marca como atualizacao importante
 #   -Silenciosa     mudanca pequena: o Hub (1.5.1+) baixa sozinho e instala quando
 #                   o cliente fecha o programa - sem botao, sem "O que mudou".
@@ -27,6 +30,7 @@
 #   No painel da para desligar "Atualizar pelo Hub" a qualquer momento.
 param(
   [Parameter(Mandatory = $true)][string]$Notas,
+  [switch]$Pendente,
   [switch]$SemAvisar,
   [switch]$Obrigatoria,
   [switch]$Silenciosa,
@@ -37,6 +41,9 @@ param(
   [switch]$Rapido
 )
 $ErrorActionPreference = "Stop"
+if ($Pendente -and ($Obrigatoria -or $Silenciosa -or $SemAvisar)) {
+  throw "-Pendente nao combina: quem decide como a versao sai e o painel."
+}
 if ($Silenciosa -and $Obrigatoria) {
   throw "Escolha uma: -Obrigatoria avisa o cliente, -Silenciosa nao avisa nada."
 }
@@ -58,7 +65,9 @@ try {
   #    de preencher $Matches. Por isso o Out-String.
   $antes = $ErrorActionPreference
   $ErrorActionPreference = "Continue"
-  $saidaCli = (npx supabase db query --linked "select versao from public.hub_versoes where id = 1" 2>&1 | Out-String)
+  #  - sem -o json o CLI escolhe sozinho: tabela no terminal de uma pessoa, JSON
+  #    para um agente. A versao so era achada quando quem rodava era o agente.
+  $saidaCli = (npx supabase db query --linked -o json "select versao from public.hub_versoes where id = 1" 2>&1 | Out-String)
   $ErrorActionPreference = $antes
   if ($saidaCli -match '"versao":\s*"([^"]+)"') { $jaPublicada = $Matches[1] }
 } catch { $ErrorActionPreference = "Stop" }
@@ -82,16 +91,27 @@ $sha = (Get-FileHash $instalador -Algorithm SHA256).Hash.ToLower()
 $tamanho = (Get-Item $instalador).Length
 
 # 2. endereco proprio desta versao (guarda as 3 ultimas: quem estiver no meio de
-#    um download da anterior nao fica sem arquivo)
+#    um download da anterior nao fica sem arquivo). A que esta no ar fica sempre:
+#    com duas pendentes na fila ela virava a 4a, era apagada e o passo 3 parava
 $pasta = Join-Path $raiz "build\versoes"
 New-Item -ItemType Directory -Force $pasta | Out-Null
 $nome = "DumTech-Hub-Setup-$versao.exe"
 Copy-Item $instalador (Join-Path $pasta $nome) -Force
 Get-ChildItem $pasta -Filter "DumTech-Hub-Setup-*.exe" | Sort-Object LastWriteTime -Descending |
-  Select-Object -Skip 3 | Remove-Item -Force
+  Select-Object -Skip 3 | Where-Object { $_.Name -ne "DumTech-Hub-Setup-$jaPublicada.exe" } |
+  Remove-Item -Force
 
-# 3. site
-& powershell -ExecutionPolicy Bypass -File (Join-Path $raiz "tools\publicar_site.ps1")
+# 3. site. A versao pendente sobe com o proprio nome, e o instalador generico
+#    continua sendo o da versao no ar: lancar nao pode depender de publicar o site
+$argumentosSite = @("-ExecutionPolicy", "Bypass", "-File", (Join-Path $raiz "tools\publicar_site.ps1"))
+if ($Pendente) {
+  $noAr = Join-Path $pasta "DumTech-Hub-Setup-$jaPublicada.exe"
+  if (-not $jaPublicada -or -not (Test-Path $noAr)) {
+    throw "Nao achei o instalador da versao no ar ($jaPublicada) em build\versoes: sem ele, o site passaria a entregar a versao pendente."
+  }
+  $argumentosSite += @("-Generico", $noAr)
+}
+& powershell @argumentosSite
 if ($LASTEXITCODE -ne 0) {
   # Sem as variaveis de FTP, o publicar_site monta build\site.zip e para de
   # proposito. Isso NAO e defeito: e o caminho manual (upload pelo cPanel).
@@ -128,6 +148,27 @@ if ($noAr -ne $sha) {
   throw "O arquivo no ar ($noAr) nao e o do build ($sha). A versao NAO foi registrada."
 }
 Write-Host "Arquivo no ar conferido." -ForegroundColor Green
+
+if ($Pendente) {
+  $notasSql = $Notas.Replace("'", "''")
+  $sql = "insert into public.hub_lancamentos (versao, url, sha256, tamanho, notas) values " +
+         "('$versao', '$url', '$sha', $tamanho, '$notasSql') on conflict (versao) do update set " +
+         "url = excluded.url, sha256 = excluded.sha256, tamanho = excluded.tamanho, notas = excluded.notas, " +
+         "criado_em = now(), descartada_em = null where public.hub_lancamentos.liberada_em is null;"
+  # por arquivo: o acento das notas nao sobrevive a linha de comando do PowerShell 5.1
+  $arquivoSql = Join-Path $env:TEMP "dumtech-pendente-$versao.sql"
+  [System.IO.File]::WriteAllText($arquivoSql, $sql, (New-Object System.Text.UTF8Encoding($false)))
+  npx supabase db query --linked -f $arquivoSql | Out-Null
+  $codigo = $LASTEXITCODE
+  Remove-Item $arquivoSql -Force
+  if ($codigo -ne 0) {
+    throw "Nao consegui registrar a pendente. O arquivo ja esta no ar: registre em Atualizacoes > Controles avancados."
+  }
+  Write-Host ""
+  Write-Host "Versao $versao pronta no painel, como pendente." -ForegroundColor Green
+  Write-Host "  Nenhum cliente recebe ate voce lancar em Atualizacoes."
+  return
+}
 
 if ($SemAvisar) {
   Write-Host ""

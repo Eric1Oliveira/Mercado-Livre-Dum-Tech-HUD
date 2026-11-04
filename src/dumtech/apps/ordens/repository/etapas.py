@@ -177,6 +177,8 @@ class EtapasMixin:
                     motivo=f"Ordem {ordem.numero}",
                 )
                 baixou = True
+                self.db.execute("UPDATE os_itens SET baixado = ? WHERE id = ?",
+                                (item.quantidade, item.id))
             except Exception as erro:  # noqa: BLE001 - o estoque nao derruba a entrega
                 avisos.append(f"{item.descricao}: não foi possível dar baixa ({erro})")
         if baixou:
@@ -195,7 +197,32 @@ class EtapasMixin:
             raise OrdemError("Ordem não encontrada.")
         if ordem.status == CANCELADA:
             raise OrdemError(f"A ordem {ordem.numero} já está cancelada.")
-        return self.definir_status(ordem_id, CANCELADA, f"Cancelada: {motivo}")
+        cancelada = self.definir_status(ordem_id, CANCELADA, f"Cancelada: {motivo}")
+        cancelada.avisos = self._devolver_pecas(cancelada, motivo)
+        return cancelada
+
+    def _devolver_pecas(self, ordem: Ordem, motivo: str) -> list[str]:
+        """A entrega desfeita devolve o que saiu; o que foi recusado nao saiu.
+
+        A marca da baixa sai junto: se a ordem for reaberta e entregue de novo,
+        a peca precisa sair de novo.
+        """
+        if self.catalogo is None:
+            return []
+        avisos: list[str] = []
+        for item in ordem.itens:
+            if not item.do_estoque or item.baixado <= 0:
+                continue
+            try:
+                self.catalogo.devolver(item.produto_id, item.baixado, documento=ordem.numero,
+                                       motivo=f"Ordem {ordem.numero} cancelada: {motivo}")
+            except Exception as erro:  # noqa: BLE001 - o estoque nao derruba o cancelamento
+                avisos.append(f"{item.descricao}: não voltou ao estoque ({erro})")
+                continue
+            self.db.execute("UPDATE os_itens SET baixado = 0 WHERE id = ?", (item.id,))
+            item.baixado = 0.0
+        self.db.execute("UPDATE ordens SET baixa_estoque = '' WHERE id = ?", (ordem.id,))
+        return avisos
 
     def reabrir(self, ordem_id: int, motivo: str = "") -> Ordem:
         """Cliente voltou: a ordem volta para o quadro, sem perder o passado."""

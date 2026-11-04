@@ -11,7 +11,7 @@ from .comum import agora, dinheiro, quantidade
 CAMPOS = """
     codigo, nome, descricao, categoria, unidade, codigo_barras, fornecedor,
     localizacao, quantidade, estoque_minimo, estoque_maximo, preco_custo,
-    preco_venda, ativo
+    preco_venda, ativo, tamanho, cor, grupo
 """
 
 #: teto do que vai para o banco. A imagem chega reduzida (dezenas de KB); isto
@@ -117,7 +117,7 @@ class ProdutosMixin:
             cursor = self.db.execute(
                 f"""
                 INSERT INTO produtos ({CAMPOS}, criado_em, atualizado_em)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (*self._valores(produto), momento, momento),
             )
@@ -169,6 +169,42 @@ class ProdutosMixin:
         return produto
 
     # ----------------------------------------------------------- codigo interno
+    def criar_variacoes(
+        self, base: Produto, tamanhos: list[str], cores: list[str]
+    ) -> list[Produto]:
+        """Um produto de verdade por combinacao: CAM-01-P-AZUL, Camiseta P Azul.
+
+        Variacao nao e um campo: cada uma tem saldo, codigo de barras e preco
+        proprios, e entra na venda, na etiqueta e na contagem como qualquer
+        produto. O que liga todas e o `grupo`. Nasce com saldo zero: quem da
+        entrada na mercadoria e a nota.
+        """
+        tamanhos = [t.strip() for t in tamanhos if t.strip()]
+        cores = [c.strip() for c in cores if c.strip()]
+        if not tamanhos and not cores:
+            raise EstoqueError("Informe pelo menos um tamanho ou uma cor.")
+        criadas: list[Produto] = []
+        with self.db.transaction():
+            for tamanho in tamanhos or [""]:
+                for cor in cores or [""]:
+                    partes = [parte for parte in (tamanho, cor) if parte]
+                    criadas.append(self.criar(Produto(
+                        codigo="-".join([base.codigo, *partes]).upper().replace(" ", ""),
+                        nome=" ".join([base.nome, *partes]),
+                        descricao=base.descricao, categoria=base.categoria,
+                        unidade=base.unidade, fornecedor=base.fornecedor,
+                        localizacao=base.localizacao, estoque_minimo=base.estoque_minimo,
+                        estoque_maximo=base.estoque_maximo, preco_custo=base.preco_custo,
+                        preco_venda=base.preco_venda, tamanho=tamanho, cor=cor,
+                        grupo=base.codigo,
+                    )))
+        return criadas
+
+    def variacoes_de(self, codigo: str) -> list[Produto]:
+        return [Produto.from_row(row) for row in self.db.query(
+            "SELECT * FROM produtos WHERE grupo = ? ORDER BY nome COLLATE NOCASE", (codigo,)
+        )]
+
     def proximo_codigo_barras(self) -> str:
         """O proximo codigo interno livre (EAN-13 com prefixo 2).
 
@@ -358,6 +394,9 @@ class ProdutosMixin:
             dinheiro(produto.preco_custo),
             dinheiro(produto.preco_venda),
             1 if produto.ativo else 0,
+            produto.tamanho.strip(),
+            produto.cor.strip(),
+            produto.grupo.strip(),
         )
 
     @staticmethod

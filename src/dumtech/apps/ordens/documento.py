@@ -23,7 +23,7 @@ GARANTIA_COBRE = (
 )
 
 
-def entrega_a4(ordem: Ordem, empresa=None, paths=None) -> str:
+def entrega_a4(ordem: Ordem, empresa=None, paths=None, assinatura: bytes | None = None) -> str:
     itens = [
         [
             item.descricao,
@@ -65,7 +65,7 @@ def entrega_a4(ordem: Ordem, empresa=None, paths=None) -> str:
         _garantia(ordem),
         doc.secao("Observações", ordem.observacoes),
         doc.destaque("Ordem cancelada") if ordem.status == CANCELADA else "",
-        doc.assinatura("Recebi o serviço nas condições acima"),
+        doc.assinatura("Recebi o serviço nas condições acima", assinatura),
         doc.rodape(empresa, "Documento sem valor fiscal"),
     ])
 

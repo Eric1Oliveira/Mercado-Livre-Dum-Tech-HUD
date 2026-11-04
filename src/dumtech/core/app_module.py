@@ -69,6 +69,16 @@ class AppContext:
     contas: Any = None
     #: para onde uma proposta aprovada pode virar trabalho (`core/pedidos.py`)
     destinos: list = field(default_factory=list)
+    #: o que os outros modulos sabem responder (`core/consulta.py`)
+    consultas: list = field(default_factory=list)
+    #: quem criou as contas que o Financeiro recebe (`core/contas.py`)
+    origens: list = field(default_factory=list)
+    #: o caixa do dia, para quem recebe em especie fora do balcao (`core/caixa.py`)
+    gaveta: Any = None
+    #: o modulo saiu da licenca e abriu so para ver e exportar os proprios dados
+    so_consulta: bool = False
+    #: por que, quando o motivo e a mensalidade (`core/mensalidade.py`); vazio = o de sempre
+    texto_consulta: str = ""
     #: o servidor da DumTech ja com as credenciais da licenca (`core/online.py`)
     #: - so para quem tem parte online, como o link de agendamento
     servidor: Any = None

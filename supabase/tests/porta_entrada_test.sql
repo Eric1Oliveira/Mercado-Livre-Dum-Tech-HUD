@@ -203,7 +203,8 @@ begin
                              'dumtech_celular_parear', 'dumtech_celular_dados',
                              'dumtech_agenda_pagina', 'dumtech_agenda_horarios',
                              'dumtech_agenda_reservar', 'dumtech_agenda_cancelar',
-                             'dumtech_agenda_salvar', 'dumtech_agenda_sincronizar');
+                             'dumtech_agenda_salvar', 'dumtech_agenda_sincronizar',
+                             'dumtech_mensalidade_publica', 'dumtech_cupom_publico');
     assert v_sobra is null, 'a chave anon executa funcoes demais: ' || coalesce(v_sobra, '');
 
     select string_agg(c.relname, ', ') into v_sobra

@@ -35,7 +35,7 @@ import socket
 import sys
 import uuid
 from dataclasses import dataclass, field, replace
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Protocol
 
@@ -175,6 +175,14 @@ class License:
     #: teste gratis: {"agenda": "2026-09-29T12:00:00+00:00"} - modulo -> fim.
     #: So vale o que veio assinado (ver `_conferir_assinatura`).
     testes: dict = field(default_factory=dict)
+    #: as contas da chave, assinadas (`core/acesso.py` confere e abre)
+    acesso: dict = field(default_factory=dict)
+    #: mensalidade: {"situacao", "ate", "motivo", "desde"}. So vale o que veio
+    #: assinado (`_conferir_assinatura`). Vitalicia nao tem - e nunca mostra nada.
+    cobranca: dict = field(default_factory=dict)
+    #: a licenca assinada diz que ha contas. Nao vai para o arquivo: apagar o
+    #: pacote `acesso` nao pode fazer a loja parecer sem conta
+    tem_contas: bool = False
 
     # ------------------------------------------------------------------ estados
     @classmethod
@@ -209,7 +217,41 @@ class License:
             return False
         if prazo.tzinfo is None:
             prazo = prazo.replace(tzinfo=timezone.utc)
+        if len(str(self.expires_at).strip()) == 10:
+            # so a data ("2026-11-10"): vale o dia inteiro, como no banco
+            # (`expira_em >= current_date`) - nao a meia-noite que o comeca
+            prazo += timedelta(days=1)
         return prazo < datetime.now(timezone.utc)
+
+    # ------------------------------------------------------------- mensalidade
+    @property
+    def mensal(self) -> bool:
+        """Licenca do plano mensal (assinatura ou teste). Vitalicia: nunca."""
+        return self.tipo in ("assinatura", "teste")
+
+    @property
+    def situacao_cobranca(self) -> str:
+        """teste | em_dia | pendente | consulta - ou vazio (vitalicia, servidor antigo)."""
+        if not self.mensal:
+            return ""
+        if self.is_expired or self.bloqueio == "expirada":
+            return "consulta"
+        return str(self.cobranca.get("situacao") or "")
+
+    @property
+    def cobranca_motivo(self) -> str:
+        return str(self.cobranca.get("motivo") or "") if self.mensal else ""
+
+    @property
+    def cobranca_ate(self) -> date | None:
+        """Ate quando o teste ou a carencia valem (a data que o cliente le)."""
+        if not self.mensal:
+            return None
+        valor = str(self.cobranca.get("ate") or self.expires_at or "")[:10]
+        try:
+            return date.fromisoformat(valor)
+        except ValueError:
+            return None
 
     def allows(self, app_id: str) -> bool:
         comprado = app_id in self.entitlements or self.teste_ativo(app_id)
@@ -272,6 +314,8 @@ class License:
             "extras": dict(self.extras),
             "assinado": dict(self.assinado),
             "testes": dict(self.testes),
+            "acesso": dict(self.acesso),
+            "cobranca": dict(self.cobranca),
         }
 
     @classmethod
@@ -291,6 +335,8 @@ class License:
             extras=dict(data.get("extras") or {}),
             assinado=dict(data.get("assinado") or {}) if isinstance(data.get("assinado"), dict) else {},
             testes=_testes(data.get("testes")),
+            acesso=dict(data.get("acesso") or {}) if isinstance(data.get("acesso"), dict) else {},
+            cobranca=_cobranca(data.get("cobranca")),
         )
 
 
@@ -366,7 +412,8 @@ class SupabaseLicenseGateway:
             assinada = self._assinada(key, machine)
         except LicenseError:
             assinada = None
-        return self._para_licenca(dados, key, machine, (assinada or {}).get("assinado"))
+        contas = {campo: assinada[campo] for campo in ("acesso_assinado", "contas") if campo in (assinada or {})}
+        return self._para_licenca({**dados, **contas}, key, machine, (assinada or {}).get("assinado"))
 
     def verify(self, key: str, machine: str) -> License:
         dados = self._assinada(key, machine)
@@ -448,7 +495,21 @@ class SupabaseLicenseGateway:
             tipo=str(dados.get("tipo") or ""),
             assinado=dict(assinado) if isinstance(assinado, dict) else {},
             testes=_testes(dados.get("testes")),
+            acesso=dict(dados["acesso_assinado"]) if isinstance(dados.get("acesso_assinado"), dict) else {},
+            tem_contas=dados.get("contas") is True,
+            cobranca=_cobranca(dados.get("cobranca")),
         )
+
+
+_SITUACOES_DA_COBRANCA = frozenset({"teste", "em_dia", "pendente", "consulta"})
+
+
+def _cobranca(bruto) -> dict:
+    """{"situacao", "ate", "motivo", "desde"} da mensalidade. Lixo vira vazio."""
+    if not isinstance(bruto, dict) or bruto.get("situacao") not in _SITUACOES_DA_COBRANCA:
+        return {}
+    return {chave: (str(bruto[chave]) if bruto.get(chave) else None)
+            for chave in ("situacao", "ate", "motivo", "desde")}
 
 
 def _testes(bruto) -> dict:
@@ -486,6 +547,8 @@ class LicenseService:
         self.file_path = Path(file_path) if file_path else get_paths().license_file
         self.gateway: LicenseGateway = gateway or self._gateway_padrao()
         self._license: License | None = None
+        #: sobe a cada pacote de contas gravado (`guardar_acesso`)
+        self._acessos_gravados = 0
 
     @staticmethod
     def _gateway_padrao() -> LicenseGateway:
@@ -548,10 +611,24 @@ class LicenseService:
         atual = self.current
         if not atual.key:
             raise LicenseError("Nenhuma licença ativada neste computador.", "sem_licenca")
+        gravados = self._acessos_gravados
         licenca = self.gateway.verify(atual.key, atual.machine or machine_id())
+        # esta chamada roda em segundo plano: se a tela gravou um pacote enquanto
+        # ela estava no ar, o da tela e mais novo que o que acabou de chegar
+        if gravados != self._acessos_gravados:
+            acesso = self.current.acesso
+        else:
+            # servidor que nao mandou as contas nao apaga as que ja estao aqui
+            acesso = licenca.acesso or atual.acesso
         return self.save(
-            replace(licenca, activated_at=atual.activated_at or _now(), last_check=_now())
+            replace(licenca, activated_at=atual.activated_at or _now(), last_check=_now(),
+                    acesso=acesso, tem_contas=licenca.tem_contas or atual.tem_contas)
         )
+
+    def guardar_acesso(self, pacote: dict) -> License:
+        """O pacote de contas novo, sem esperar a proxima conferencia."""
+        self._acessos_gravados += 1
+        return self.save(replace(self.current, acesso=dict(pacote)))
 
     def precisa_conferir(self, agora: datetime | None = None) -> bool:
         """Licenca do servidor sem conferencia recente?
@@ -676,6 +753,9 @@ class LicenseService:
             expires_at=dados.get("expira_em"),
             tipo=str(dados.get("tipo") or licenca.tipo),
             max_machines=int(dados.get("max_computadores") or licenca.max_machines),
+            tem_contas=dados.get("contas") is True,
+            # a mensalidade vale a assinada: editar o arquivo nao tira aviso nem poe
+            cobranca=_cobranca(dados.get("cobranca")),
         )
         if assinatura.vencida(dados):
             return sem_modulos(conferida, "conferencia_vencida",

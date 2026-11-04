@@ -111,6 +111,11 @@ class DataPaths:
         return self.config_dir / "license.json"
 
     @property
+    def acesso_file(self) -> Path:
+        """Quem ja entrou neste computador. Fica fora do backup, de proposito."""
+        return self.config_dir / "acesso.json"
+
+    @property
     def hub_db(self) -> Path:
         return self.data_dir / "hub.db"
 

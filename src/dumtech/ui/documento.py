@@ -17,6 +17,7 @@ varia entre versoes do Qt, estilo na tag sempre vale.
 
 from __future__ import annotations
 
+import base64
 from html import escape
 from pathlib import Path
 from typing import Iterable, Sequence
@@ -193,10 +194,15 @@ def destaque(texto: str) -> str:
     )
 
 
-def assinatura(texto: str) -> str:
-    """A linha onde alguem assina - so faz sentido no papel impresso."""
+def assinatura(texto: str, imagem: bytes | None = None) -> str:
+    """A linha onde alguem assina; com `imagem`, a assinatura ja vem em cima dela."""
+    desenho = ""
+    if imagem:
+        codigo = base64.b64encode(imagem).decode("ascii")
+        desenho = f'<img src="data:image/png;base64,{codigo}" height="70">'
     return (
-        f'<table width="100%" cellspacing="0" cellpadding="0" style="margin-top:42px;">'
+        f'<div style="margin-top:42px;">{desenho}</div>'
+        f'<table width="100%" cellspacing="0" cellpadding="0">'
         f'<tr><td width="55%" style="border-top:1px solid {TINTA};padding-top:5px;">'
         f"{_pequeno(texto)}</td><td></td></tr></table>"
     )

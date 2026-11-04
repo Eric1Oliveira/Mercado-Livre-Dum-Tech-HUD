@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
 )
 
 from ...core import backup
-from ...core.backup import Backup, BackupError
+from ...core.backup import Backup, BackupError, SemDados
 from ...ui import format as fmt
 from ...ui.theme import Space
 from ...ui.widgets.buttons import Button
@@ -233,7 +233,10 @@ class BackupView(QWidget):
 
         # copia no mesmo disco nao salva de disco queimado - e preciso dizer isso
         interna = self.paths is not None and _dentro(pasta, self.paths.root)
-        if interna:
+        falha = str(self.settings.get("backup", "falha", "") or "")
+        if falha:
+            self.alerta.setText(f"A última cópia automática falhou: {falha}")
+        elif interna:
             self.alerta.setText(
                 "Estas cópias estão no mesmo computador que os dados. Se o HD "
                 "queimar ou a máquina for formatada, elas somem junto. Escolha "
@@ -341,6 +344,8 @@ class BackupView(QWidget):
             self._dizer(str(erro), "danger")
             return
         problema = self.enviar_para_fora(copia)
+        self.settings.set("backup", "falha", problema)
+        self.settings.save()
         self.refresh()
         if problema:
             self._dizer(problema, "warning")
@@ -377,8 +382,12 @@ class BackupView(QWidget):
             # rede de seguranca: se a copia escolhida for a errada, ainda da
             # para voltar para o estado de agora
             backup.criar(self.pasta, self.paths, versao=self.versao)
-        except BackupError:
-            pass  # sem dados para copiar: seguir mesmo assim
+        except SemDados:
+            pass  # programa recem-instalado: nao ha o que perder
+        except BackupError as erro:
+            # a tela prometeu esta copia: sem ela, nao troca nada
+            self._dizer(f"Nada foi restaurado: {erro}", "danger")
+            return False
 
         self.restaurado.emit()  # quem tem banco aberto fecha agora
         try:
@@ -387,6 +396,9 @@ class BackupView(QWidget):
             self._dizer(str(erro), "danger")
             return False
 
+        # a empresa e as mensagens voltaram no arquivo: sem reler, a preferencia
+        # que esta na memoria gravaria por cima ao fechar o programa
+        self.settings.load()
         self.refresh()
         self._dizer(
             f"{fmt.contagem(len(bancos), 'banco')} restaurado(s). "

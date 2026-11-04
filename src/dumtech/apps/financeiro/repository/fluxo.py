@@ -9,7 +9,17 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-from ..models import RECORRENCIA, DiaDoFluxo, Projecao, ResumoFinanceiro, ler_data
+from ....core.contas import FORA_DO_RESULTADO
+from ..models import (
+    RECEITA,
+    RECORRENCIA,
+    DiaDoFluxo,
+    Dre,
+    LinhaDre,
+    Projecao,
+    ResumoFinanceiro,
+    ler_data,
+)
 from .comum import SITUACAO_ABERTO, dinheiro
 
 #: quantos dias a tela mostra por padrao
@@ -147,3 +157,33 @@ class FluxoMixin:
         projecao = self.projecao(dias=0)
         dia = projecao.dias[0] if projecao.dias else None
         return (dia.entradas, dia.saidas) if dia else (0.0, 0.0)
+
+    # ------------------------------------------------------------------- DRE
+    def dre(self, inicio: str, fim: str) -> Dre:
+        """O dinheiro que andou no periodo, por categoria.
+
+        Sangria e suprimento ficam de fora: tirar da gaveta nao e gastar.
+        """
+        marcadores = ", ".join("?" for _ in FORA_DO_RESULTADO)
+        linhas = self.db.query(
+            f"""
+            SELECT l.tipo, l.fixa, COALESCE(NULLIF(TRIM(l.categoria), ''), 'Sem categoria') AS categoria,
+                   SUM(b.valor) AS valor
+            FROM baixas b JOIN lancamentos l ON l.id = b.lancamento_id
+            WHERE date(b.data) BETWEEN date(?) AND date(?) AND l.cancelado_em = ''
+              AND l.categoria NOT IN ({marcadores})
+            GROUP BY l.tipo, l.fixa, categoria
+            ORDER BY valor DESC
+            """,
+            (inicio, fim, *FORA_DO_RESULTADO),
+        )
+        dre = Dre(inicio=inicio, fim=fim)
+        for linha in linhas:
+            item = LinhaDre(linha["categoria"], dinheiro(linha["valor"]))
+            if linha["tipo"] == RECEITA:
+                dre.receitas.append(item)
+            elif linha["fixa"]:
+                dre.fixas.append(item)
+            else:
+                dre.variaveis.append(item)
+        return dre

@@ -4,6 +4,7 @@
 // navegador). A URL e limpa logo em seguida: o segredo nao fica no historico,
 // nem numa captura de tela da barra de endereco.
 
+import { apontarInstalador } from "./instalador.js";
 import { situacaoDoPedido } from "./api.js";
 import { CONFIG } from "./config.js";
 import { METODOS, guardarPedido, lerVolta, pedidoGuardado } from "./pagamento.js";
@@ -193,3 +194,5 @@ $("copiar-chave").addEventListener("click", async () => {
   }
   setTimeout(() => { rotulo.textContent = "Copiar chave"; }, 2500);
 });
+
+apontarInstalador(document.querySelectorAll("a[data-instalador]"), "../baixar/");

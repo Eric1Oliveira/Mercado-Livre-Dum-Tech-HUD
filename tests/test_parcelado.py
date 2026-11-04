@@ -378,6 +378,7 @@ class TelasDeVendaTestCase(ParceladoBase):
         with mock.patch.object(balcao_view, "PagamentoDialog") as dialogo:
             dialogo.return_value.exec.return_value = True
             dialogo.return_value.pagamentos = pagamentos
+            dialogo.return_value.vencimento_iso = ""
             view.receber()
 
         self.assertEqual(len(self.parcelas()), 12)

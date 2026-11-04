@@ -105,6 +105,16 @@ MIGRATIONS = (
             """,
         ),
     ),
+    Migration(
+        version=4,
+        name="documento gerado pela proposta",
+        statements=(
+            # Sem isto a mesma proposta virava duas vendas sem ninguem perceber.
+            """
+            ALTER TABLE orcamentos ADD COLUMN gerado TEXT NOT NULL DEFAULT '';
+            """,
+        ),
+    ),
 )
 
 

@@ -36,6 +36,7 @@ from .. import __version__
 from ..core import celular as nucleo_celular
 from ..core import online as nucleo_online
 from ..core import confirmacoes, eventos
+from ..core.acesso import AcessoService
 from ..core.avisos import Config as AvisosConfig
 from ..core import comunicados as comunicados_core
 from ..core import novidades as novidades_core
@@ -69,6 +70,7 @@ from ..ui.theme import (
 from ..ui.widgets.command_palette import Command, CommandPalette
 from ..ui.widgets.common import IconBadge, label, menu_arredondado
 from ..ui.widgets.aviso_flutuante import AvisoFlutuante
+from .views.forcada_aviso import ForcadaAviso
 from ..ui.widgets.confirmar import confirmar
 from ..ui.widgets.indicador import TRACO, Indicador
 from ..ui.widgets.pilha import Pilha
@@ -87,15 +89,19 @@ from .views.anuncio_dialog import AnuncioDialog
 from .views.atualizacao_dialog import AtualizacaoDialog
 from .views.avisos_view import AvisosView
 from .views.backup_view import BackupView
+from .views.assistente_conta_view import AssistenteContaView
 from .views.celular_dialog import CelularDialog
 from .views.boas_vindas_view import BoasVindasView
 from .views.config_view import ConfigView
 from .views.empresa_view import EmpresaView
 from .views.home_view import HomeView
+from .views.login_view import LoginView
 from .views.mensagens_view import MensagensView
+from .views.minha_conta_dialog import MinhaContaDialog
 from .views.novidades_dialog import NovidadesDialog
 from .views.pagamentos_view import PagamentosView
 from .views.license_view import LicenseView
+from .views.usuarios_view import ConfirmarSenhaDialog, UsuariosView
 from .workspace import Workspace
 
 logger = logging.getLogger(__name__)
@@ -128,6 +134,13 @@ PAGINA_SOBRE = 3
 PAGINA_APP = 4
 #: primeiro acesso: so existe enquanto o cliente ainda nao se apresentou
 PAGINA_BOAS_VINDAS = 5
+#: a porta de quem tem conta, e o assistente de quem ainda vai criar
+PAGINA_LOGIN = 6
+PAGINA_ASSISTENTE = 7
+#: telas de dono: funcionario nao chega nelas por caminho nenhum
+PAGINAS_DE_DONO = (PAGINA_LICENCA, PAGINA_CONFIG)
+#: aqui ainda nao ha ninguem no Hub: sem barra do topo, sem atalho, sem paleta
+PAGINAS_DA_PORTA = (PAGINA_LOGIN, PAGINA_ASSISTENTE)
 
 #: botao so de icone da barra (tema)
 LADO_BOTAO = BotaoTema.LADO
@@ -149,6 +162,12 @@ class HubWindow(QMainWindow):
         self.settings = settings or Settings()
         self.license_service = license_service or LicenseService()
         self.registry = registry or AppRegistry(self.license_service)
+        self.acesso = AcessoService(self.license_service)
+        self.acesso.nova_abertura()
+        self.acesso.abrir_lembrado()
+        self.registry.usar_acesso(self.acesso)
+        #: a chave desta abertura: mudou, as contas sao outras
+        self._chave_aberta = self.license_service.current.key
         self.hub_store = hub_store or HubStore()
         self.contacts = contacts or ContactsStore()
         self.theme_manager = theme
@@ -194,7 +213,7 @@ class HubWindow(QMainWindow):
         if primeiro_acesso:
             # quem acabou de instalar nao tem "antes": nada mudou para ele
             novidades_core.marcar_vista(self.settings, __version__)
-        self._go(PAGINA_BOAS_VINDAS if primeiro_acesso else PAGINA_INICIO)
+        self._go(PAGINA_BOAS_VINDAS if primeiro_acesso else self._pagina_de_entrada())
 
         # a partir daqui o Hub fica sabendo quando um modulo mexe no dado do
         # outro - e quem estava aberto do outro lado recarrega sozinho
@@ -304,20 +323,37 @@ class HubWindow(QMainWindow):
         self.separador_atualizar = self.menu_perfil.addSeparator()
         self.item_atualizar.setVisible(False)
         self.separador_atualizar.setVisible(False)
-        acao("Minha empresa", "home", lambda: self._ir_para_config(self.empresa_view))
+        self.item_minha_conta = acao("Minha conta", "user", self.abrir_minha_conta)
+        self.item_empresa = acao("Minha empresa", "home", lambda: self._ir_para_config(self.empresa_view))
         self.item_licenca = acao("Licença", "key", lambda: self._go(PAGINA_LICENCA), True)
         self.item_config = acao("Configurações", "wrench",
                                 lambda: self._go(PAGINA_CONFIG), True)
-        acao("Backup", "shield", lambda: self._ir_para_config(self.backup_view))
-        acao("Ver no celular", "phone", self.abrir_celular)
+        self.item_usuarios = acao("Usuários e acessos", "users",
+                                  lambda: self._ir_para_config(self.usuarios_view))
+        self.item_backup = acao("Backup", "shield", lambda: self._ir_para_config(self.backup_view))
+        self.item_celular = acao("Ver no celular", "phone", self.abrir_celular)
         self.item_sobre = acao("Sobre", "info", lambda: self._go(PAGINA_SOBRE), True)
+        self.separador_conta = self.menu_perfil.addSeparator()
+        self.item_trocar = acao("Trocar de usuário", "users", self.trocar_de_usuario)
+        self.item_sair = acao("Sair", "logout", self.sair_da_conta)
         self.menu_perfil.addSeparator()
         self.acao_tema = acao("Tema claro", "sun", self._toggle_theme)
         self.menu_perfil.addSeparator()
         self.rotulo_versao = self.menu_perfil.addAction(f"DumTech Hub  ·  versão {__version__}")
         self.rotulo_versao.setEnabled(False)
 
+    def _ajustar_menu(self) -> None:
+        """O menu de quem esta aqui: funcionario ve so o que e dele."""
+        dono = self.acesso.e_adm
+        for item in (self.item_empresa, self.item_licenca, self.item_config, self.item_usuarios,
+                     self.item_backup, self.item_celular):
+            item.setVisible(dono)
+        logado = self.acesso.usuario is not None
+        for item in (self.item_minha_conta, self.item_trocar, self.item_sair, self.separador_conta):
+            item.setVisible(logado)
+
     def _abrir_menu_perfil(self) -> None:
+        self._ajustar_menu()
         self._vestir(self.menu_perfil)
         largura = self.menu_perfil.sizeHint().width()
         canto = self.perfil.mapToGlobal(
@@ -335,9 +371,12 @@ class HubWindow(QMainWindow):
         """O canto da barra mostra a empresa - e o que a licenca liberou."""
         empresa = self.launcher.empresa()
         preenchida = empresa is not None and empresa.preenchida
-        total = len(self.registry.available())
+        total = len(self.registry.visiveis())
         sub = (fmt.contagem(total, "sistema ativo", "sistemas ativos")
                if total else "Ative a sua licença")
+        usuario = self.acesso.usuario
+        if usuario is not None:
+            sub = usuario.nome
         logo = None
         if preenchida:
             caminho = empresa.caminho_logo(get_paths())
@@ -415,7 +454,7 @@ class HubWindow(QMainWindow):
         self.secao_apps.clear()
         self._app_items.clear()
 
-        disponiveis = self.registry.available()
+        disponiveis = self.registry.visiveis()
         for entrada in self._por_uso(disponiveis):
             manifest = entrada.manifest
             item = NavTab(manifest.short_name, accent=manifest.accent, closable=True)
@@ -490,6 +529,8 @@ class HubWindow(QMainWindow):
         self.atualizacao_service = AtualizacaoService(self.settings, __version__)
         #: atualizacao silenciosa ja baixada e conferida: (instalador, aviso)
         self._silenciosa = None
+        #: a contagem da atualizacao forcada, quando ha uma correndo
+        self._aviso_forcada = None
         self._baixando_em_silencio = ""
         #: o Windows esta desligando: instalar agora deixaria o programa pela metade
         self._windows_saindo = False
@@ -502,6 +543,7 @@ class HubWindow(QMainWindow):
                                   config_avisos=self.config_avisos,
                                   empresa=self.launcher.empresa,
                                   novidade=lambda: self.novidade_de_versao(),
+                                  consultaveis=self.launcher.consultaveis,
                                   carregar=False)
         self.home_view.configurar_empresa.connect(lambda: self._ir_para_config(self.empresa_view))
         self.home_view.abrir_backup.connect(lambda: self._ir_para_config(self.backup_view))
@@ -522,6 +564,16 @@ class HubWindow(QMainWindow):
         self.boas_vindas_view.licenca_alterada.connect(self._on_license_changed)
         self.boas_vindas_view.concluido.connect(self._primeiro_acesso_concluido)
         self.config_view = ConfigView()
+        self.login_view = LoginView(self.acesso, lambda: self.launcher.empresa().nome)
+        self.login_view.entrou.connect(self._usuario_entrou)
+        self.login_view.ativar_licenca.connect(lambda: self._go(PAGINA_LICENCA))
+        self.assistente_view = AssistenteContaView(self.acesso, self._dados_da_loja)
+        self.assistente_view.concluido.connect(self._assistente_terminou)
+        self.assistente_view.adiado.connect(self._assistente_adiado)
+        self.usuarios_view = UsuariosView(self.acesso, self.registry)
+        self.usuarios_view.mudou.connect(self._acesso_mudou)
+        self.usuarios_view.criar_conta.connect(lambda: self._abrir_assistente(False))
+        self.usuarios_view.licenca_saiu.connect(self._licenca_saiu_daqui)
         self.empresa_view = EmpresaView(self.settings, get_paths())
         self.empresa_view.alterada.connect(self.launcher.atualizar_empresa)
         self.backup_view = BackupView(self.settings, get_paths(), __version__)
@@ -531,8 +583,10 @@ class HubWindow(QMainWindow):
         self.empresa_view.alterada.connect(self._empresa_nas_mensagens)
         self.empresa_view.alterada.connect(self._atualizar_perfil)
         self.config_view.add_secao("Minha empresa", "home", self.empresa_view)
+        self.config_view.add_secao("Usuários e acessos", "users", self.usuarios_view)
         self.pagamentos_service = PagamentosService(self.settings, lambda: self.license_service.current)
-        self.celular_service = nucleo_celular.CelularService(lambda: self.license_service.current)
+        self.celular_service = nucleo_celular.CelularService(lambda: self.license_service.current,
+                                                             sessao=lambda: self.acesso.sessao)
         #: o ultimo resumo que foi para o celular (sem a hora) e quando foi
         self._celular_ultimo = ""
         self._celular_quando = 0.0
@@ -562,10 +616,14 @@ class HubWindow(QMainWindow):
         self.stack.addWidget(self.about_view)    # PAGINA_SOBRE
         self.stack.addWidget(self.workspace)     # PAGINA_APP
         self.stack.addWidget(self.boas_vindas_view)  # PAGINA_BOAS_VINDAS
+        self.stack.addWidget(self.login_view)        # PAGINA_LOGIN
+        self.stack.addWidget(self.assistente_view)   # PAGINA_ASSISTENTE
         return self.stack
 
     def _build_shortcuts(self) -> None:
         self.palette_dialog = CommandPalette(self)
+        self.palette_dialog.buscar_dados = self.buscar_nos_dados
+        self.contacts.ao_renomear = self.launcher.renomear_cliente
         buscar = QShortcut(QKeySequence("Ctrl+K"), self)
         buscar.activated.connect(self.open_palette)
         fechar = QShortcut(QKeySequence("Ctrl+W"), self)
@@ -575,15 +633,47 @@ class HubWindow(QMainWindow):
 
     # --------------------------------------------------------- paleta de comandos
     def open_palette(self) -> None:
+        if self.stack.currentIndex() in PAGINAS_DA_PORTA:
+            return
         paleta = self.theme_manager.palette if self.theme_manager else current_palette()
         self._vestir(self.palette_dialog, paleta)
         self.palette_dialog.show_for(self.build_commands(), paleta)
+
+    def buscar_nos_dados(self, termo: str) -> list[Command]:
+        """A busca geral: clientes e o que cada modulo liberado guarda."""
+        nomes = {e.app_id: e.manifest for e in self.registry.visiveis()}
+        comandos = []
+        if AGENDA in nomes:
+            for contato in self.contacts.listar(busca=termo, incluir_inativos=True)[:5]:
+                comandos.append(self._comando_de_busca(
+                    nomes[AGENDA], contato.nome, "Cliente", contato.nome))
+        for achado in self.launcher.buscar(termo):
+            manifesto = nomes.get(achado.app_id)
+            if manifesto is None:
+                continue
+            titulo = f"{achado.titulo}  ·  {achado.detalhe}" if achado.detalhe else achado.titulo
+            comandos.append(self._comando_de_busca(manifesto, titulo, achado.tipo, achado.titulo))
+        return comandos
+
+    def _comando_de_busca(self, manifesto, titulo: str, tipo: str, procurar: str) -> Command:
+        return Command(
+            title=titulo, hint=tipo, icon=manifesto.icon, accent=manifesto.accent,
+            run=lambda: self._abrir_achado(manifesto.app_id, procurar),
+        )
+
+    def _abrir_achado(self, app_id: str, texto: str) -> None:
+        """Abre o modulo ja com a lista filtrada no que foi escolhido."""
+        if not self.open_app(app_id):
+            return
+        casca = self.launcher.get(app_id)
+        if casca is not None:
+            casca.procurar(texto)
 
     def build_commands(self) -> list[Command]:
         """Tudo que da para fazer daqui, na ordem em que costuma ser procurado."""
         comandos: list[Command] = []
 
-        for entrada in self._por_uso(self.registry.available()):
+        for entrada in self._por_uso(self.registry.visiveis()):
             manifest = entrada.manifest
             comandos.append(
                 Command(
@@ -621,21 +711,32 @@ class HubWindow(QMainWindow):
             )
 
         escuro = self.theme_manager.palette.is_dark if self.theme_manager else True
+        comandos.append(Command("Início", "Hub", "home", run=lambda: self._go(PAGINA_INICIO)))
+        if self.acesso.e_adm:
+            comandos += [
+                Command("Licença", "Hub", "key", run=lambda: self._go(PAGINA_LICENCA)),
+                Command("Configurações", "Hub", "wrench",
+                        run=lambda: self._go(PAGINA_CONFIG)),
+                Command("Minha empresa", "Hub", "home",
+                        run=lambda: self._ir_para_config(self.empresa_view)),
+                Command("Usuários e acessos", "Hub", "users",
+                        run=lambda: self._ir_para_config(self.usuarios_view)),
+                Command("Pagamentos e chave Pix", "Hub", "money",
+                        run=lambda: self._ir_para_config(self.pagamentos_view)),
+                Command("Avisos do Início", "Hub", "alert",
+                        run=lambda: self._ir_para_config(self.avisos_view)),
+                Command("Mensagens de WhatsApp", "Hub", "chat",
+                        run=lambda: self._ir_para_config(self.mensagens_view)),
+                Command("Backup", "Hub", "shield",
+                        run=lambda: self._ir_para_config(self.backup_view)),
+            ]
+        if self.acesso.usuario is not None:
+            comandos += [
+                Command("Minha conta", "Hub", "user", run=self.abrir_minha_conta),
+                Command("Trocar de usuário", "Hub", "users", run=self.trocar_de_usuario),
+                Command("Sair", "Hub", "logout", run=self.sair_da_conta),
+            ]
         comandos += [
-            Command("Início", "Hub", "home", run=lambda: self._go(PAGINA_INICIO)),
-            Command("Licença", "Hub", "key", run=lambda: self._go(PAGINA_LICENCA)),
-            Command("Configurações", "Hub", "wrench",
-                    run=lambda: self._go(PAGINA_CONFIG)),
-            Command("Minha empresa", "Hub", "home",
-                    run=lambda: self._ir_para_config(self.empresa_view)),
-            Command("Pagamentos e chave Pix", "Hub", "money",
-                    run=lambda: self._ir_para_config(self.pagamentos_view)),
-            Command("Avisos do Início", "Hub", "alert",
-                    run=lambda: self._ir_para_config(self.avisos_view)),
-            Command("Mensagens de WhatsApp", "Hub", "chat",
-                    run=lambda: self._ir_para_config(self.mensagens_view)),
-            Command("Backup", "Hub", "shield",
-                    run=lambda: self._ir_para_config(self.backup_view)),
             Command("Sobre", "Hub", "info", run=lambda: self._go(PAGINA_SOBRE)),
             Command(
                 "Tema claro" if escuro else "Tema escuro",
@@ -654,8 +755,17 @@ class HubWindow(QMainWindow):
 
     # ------------------------------------------------------------------ acoes
     def _go(self, pagina: int) -> None:
+        # computador que saiu da chave: a saida e ativar de novo, e nenhuma senha
+        # resolve, porque o servidor recusa quem nao tem vaga
+        reativar = pagina == PAGINA_LICENCA and self.acesso.computador_fora
+        if pagina in PAGINAS_DE_DONO and not self.acesso.e_adm and not reativar:
+            return
+        if (self.acesso.precisa_login() and not reativar
+                and pagina not in (*PAGINAS_DA_PORTA, PAGINA_BOAS_VINDAS)):
+            pagina = PAGINA_LOGIN
         anterior = self.stack.currentIndex()
         self.stack.setCurrentIndex(pagina)
+        self.topo.setVisible(pagina not in PAGINAS_DA_PORTA)
         self._vestir(self._regiao_visivel())
         if pagina == PAGINA_INICIO:
             self.home_view.refresh()
@@ -664,6 +774,8 @@ class HubWindow(QMainWindow):
         self._sync_rail_state()
         if anterior != pagina:
             motion.surgir(self.stack.currentWidget(), self._direcao)
+        if pagina == PAGINA_INICIO:
+            self._talvez_convidar()
 
     def open_app(self, app_id: str) -> bool:
         """Abre (ou volta para) um aplicativo dentro do Hub."""
@@ -732,7 +844,7 @@ class HubWindow(QMainWindow):
             # uma acao so pode gerar varios avisos (a venda que baixa cinco
             # itens do estoque): marcar tudo e recarregar uma vez
             self._atualizacao_marcada = True
-            QTimer.singleShot(0, self._aplicar_atualizacoes)
+            QTimer.singleShot(0, self, self._aplicar_atualizacoes)
         QTimer.singleShot(self.CELULAR_ESPERA_MS, self, self.publicar_no_celular)
 
     def _aplicar_atualizacoes(self) -> None:
@@ -746,16 +858,23 @@ class HubWindow(QMainWindow):
     def _conferir_testes(self) -> None:
         """Teste gratis que venceu com o Hub aberto: o modulo fecha, o selo anda."""
         licenca = self.license_service.current
-        if any(not licenca.allows(app) for app in self.workspace.mounted):
+        if any(licenca.allows(app) == self.launcher.em_consulta(app)
+               for app in self.workspace.mounted):
             self._on_license_changed()
             return
         self.workspace.marcar_testes(licenca)
 
     def _on_license_changed(self) -> None:
         """Ativou, verificou ou removeu a licenca: o Hub reavalia os aplicativos."""
+        chave = self.license_service.current.key
+        if chave != self._chave_aberta:
+            # outra chave, outras contas: nada da anterior fica valendo
+            self._chave_aberta = chave
+            self.acesso.esquecer_tudo()
+            self.acesso.nova_abertura()
         self.registry.load()
         for app_id in self.workspace.mounted:  # abertos e preparados
-            if not self.license_service.allows(app_id):
+            if self.license_service.allows(app_id) == self.launcher.em_consulta(app_id):
                 self.workspace.unmount(app_id)
         self.launcher.close_blocked()
         self._remontar_desatualizados()
@@ -766,7 +885,11 @@ class HubWindow(QMainWindow):
         self.publicar_no_celular(forcar=True)
         # o que ele tem mudou: as ofertas do que ele NAO tem mudam junto
         self._tarefas_de_rede(forcar=True)
-        if self.stack.currentIndex() == PAGINA_APP and not self.workspace.mounted:
+        self.login_view.conferir_licenca()
+        if (self.acesso.precisa_login() and not self.acesso.computador_fora
+                and self.stack.currentIndex() not in (*PAGINAS_DA_PORTA, PAGINA_BOAS_VINDAS)):
+            self._go(self._pagina_de_entrada())
+        elif self.stack.currentIndex() == PAGINA_APP and not self.workspace.mounted:
             self._go(PAGINA_INICIO)
 
     def _remontar_desatualizados(self) -> None:
@@ -864,6 +987,8 @@ class HubWindow(QMainWindow):
 
     def _ir_para_config(self, secao: QWidget) -> None:
         """A paleta de comandos leva direto para a secao, nao so para a tela."""
+        if not self.acesso.e_adm:
+            return
         self._go(PAGINA_CONFIG)
         self.config_view.mostrar(self.config_view.stack.indexOf(secao))
 
@@ -890,6 +1015,8 @@ class HubWindow(QMainWindow):
     PREPARO_INTERVALO_MS = 300
     #: a copia diaria vai antes do preparo, com a janela ja na tela
     BACKUP_ESPERA_MS = 350
+    #: de quanto em quanto confere se o dia virou; a copia e uma por dia
+    BACKUP_INTERVALO_MS = 30 * 60 * 1000
     #: o que depende de internet (cadastro pendente, ofertas) vai por ultimo:
     #: nada disso e urgente, e ninguem pode ficar esperando por isso
     REDE_ESPERA_MS = 1500
@@ -937,6 +1064,11 @@ class HubWindow(QMainWindow):
             self._preparo_agendado = True
             # com o proprio Hub de contexto: se ele fechar antes, nada dispara
             QTimer.singleShot(self.BACKUP_ESPERA_MS, self, self._backup_depois_de_abrir)
+            # quem deixa o Hub aberto de um dia para o outro nunca abriria de novo
+            self._relogio_de_backup = QTimer(self)
+            self._relogio_de_backup.setInterval(self.BACKUP_INTERVALO_MS)
+            self._relogio_de_backup.timeout.connect(self._backup_depois_de_abrir)
+            self._relogio_de_backup.start()
             QTimer.singleShot(self.PREPARO_INICIO_MS, self, self._preparar_proximo)
             QTimer.singleShot(self.REDE_ESPERA_MS, self, self._tarefas_de_rede)
             QTimer.singleShot(self.REDE_ESPERA_MS, self, lambda: self.conferir_versao(True))
@@ -953,6 +1085,8 @@ class HubWindow(QMainWindow):
             # o teste gratis vence sozinho, mesmo offline: o mesmo relogio
             # confere se algum modulo aberto perdeu o direito
             self._relogio_de_versao.timeout.connect(self._conferir_testes)
+            # conta bloqueada no meio de uma venda: sai quando a venda acabar
+            self._relogio_de_versao.timeout.connect(self._conferir_saida_pendente)
             self._relogio_de_versao.start()
 
             QTimer.singleShot(self.REDE_ESPERA_MS, self, lambda: self.publicar_no_celular(forcar=True))
@@ -991,8 +1125,151 @@ class HubWindow(QMainWindow):
     def _primeiro_acesso_concluido(self) -> None:
         """Terminou o primeiro acesso - com chave ativada ou sem ela."""
         self.refresh_rail()
-        self._go(PAGINA_INICIO)
+        if self._loja_sem_conta():
+            self._abrir_assistente(direto=True)
+        else:
+            self._go(self._pagina_de_entrada())
         self._tarefas_de_rede()
+
+    # ---------------------------------------------------------- contas da loja
+    def _pagina_de_entrada(self) -> int:
+        if self.acesso.precisa_login():
+            self.login_view.preparar()
+            return PAGINA_LOGIN
+        return PAGINA_INICIO
+
+    def _dados_da_loja(self) -> dict:
+        """O que o assistente ja sabe, para ninguem digitar duas vezes."""
+        empresa = self.launcher.empresa()
+        return {"nome": empresa.nome, "email": empresa.email or self.conta_service.atual.email,
+                "computadores": self.license_service.current.used_machines}
+
+    def _loja_sem_conta(self) -> bool:
+        """Chave ativa, o servidor ja respondeu sobre as contas e nao ha nenhuma."""
+        licenca = self.license_service.current
+        return (licenca.ativa and licenca.source == "supabase" and not self.acesso.ha_contas
+                and not self.acesso.falta_documento())
+
+    def _abrir_assistente(self, direto: bool = False) -> None:
+        self.assistente_view.abrir(obrigatorio=direto or self.acesso.exigir_conta, direto=direto)
+        self._go(PAGINA_ASSISTENTE)
+
+    def _talvez_convidar(self) -> None:
+        """Quem ainda nao tem conta: uma vez por abertura, e so no Inicio.
+
+        Quem ja esta num modulo termina o que estava fazendo e ve o convite
+        quando voltar para o Inicio.
+        """
+        if (getattr(self, "_convidou", False) or modo_local_ligado() or not self._loja_sem_conta()
+                or self.stack.currentIndex() != PAGINA_INICIO):
+            return
+        self._convidou = True
+        self._abrir_assistente()
+
+    def _assistente_terminou(self) -> None:
+        self._recompor_para_a_pessoa()
+        self._go(PAGINA_INICIO)
+
+    def _assistente_adiado(self) -> None:
+        self._go(PAGINA_INICIO)
+
+    def _usuario_entrou(self) -> None:
+        self._recompor_para_a_pessoa()
+        self._go(PAGINA_INICIO)
+        # o que fica pronto em segundo plano e so o que esta pessoa pode abrir
+        QTimer.singleShot(self.PREPARO_INICIO_MS, self, self._preparar_proximo)
+
+    def _recompor_para_a_pessoa(self) -> None:
+        """Mudou quem esta aqui, ou o que ela ve: abas, menu e Inicio acompanham.
+
+        Quem esta com trabalho aberto (carrinho do balcao, dialogo) nao perde
+        nada: o modulo fica ate ela terminar.
+        """
+        dialogo_aberto = QApplication.activeModalWidget() is not None
+        for app_id in self.workspace.mounted:
+            if self.acesso.permite_modulo(app_id):
+                continue
+            surface = self.launcher.get(app_id)
+            if surface is not None and (dialogo_aberto or surface.tem_trabalho_aberto()):
+                continue
+            self.workspace.unmount(app_id)
+            self.launcher.close(app_id)
+            self.launcher.descartar_preparado(app_id)
+        self.refresh_rail()
+        self._ajustar_menu()
+        if self.stack.currentIndex() == PAGINA_INICIO:
+            self.home_view.refresh()
+        elif self.stack.currentIndex() in PAGINAS_DE_DONO and not self.acesso.e_adm:
+            self._go(PAGINA_INICIO)  # virou funcionario com a tela de dono aberta
+        elif self.stack.currentIndex() == PAGINA_APP and not self.workspace.mounted:
+            self._go(PAGINA_INICIO)
+
+    def _trabalho_aberto(self) -> bool:
+        abertos = (self.launcher.get(app_id) for app_id in self.launcher.open_apps)
+        return any(surface.tem_trabalho_aberto() for surface in abertos if surface is not None)
+
+    def _fechar_modulos(self) -> None:
+        for app_id in self.workspace.mounted:
+            self.workspace.unmount(app_id)
+        for app_id in self.launcher.open_apps:
+            self.launcher.close(app_id)
+        for app_id in self.launcher.preparados:
+            self.launcher.descartar_preparado(app_id)
+
+    def _encerrar_conta(self, esquecer: bool, recado: str = "") -> None:
+        self.acesso.sair(esquecer)
+        self._fechar_modulos()
+        self.refresh_rail()
+        self.login_view.preparar()
+        self._go(PAGINA_LOGIN)
+        if recado:
+            self.login_view.avisar(recado)
+
+    def _pode_sair_agora(self, titulo: str) -> bool:
+        if not self._trabalho_aberto():
+            return True
+        return confirmar(self, titulo, "Há uma venda em andamento. Ao continuar, o que não foi "
+                                       "finalizado se perde.", rotulo_ok="Continuar")
+
+    def trocar_de_usuario(self) -> None:
+        """Outra pessoa vai usar. Quem saiu aparece no login, e volta com a senha."""
+        if self._pode_sair_agora("Trocar de usuário"):
+            self._encerrar_conta(esquecer=False)
+
+    def sair_da_conta(self) -> None:
+        """Sair de verdade: na proxima abertura o Hub pede a senha."""
+        if self._pode_sair_agora("Sair da conta"):
+            self._encerrar_conta(esquecer=True)
+
+    def abrir_minha_conta(self) -> None:
+        if self.acesso.usuario is not None:
+            MinhaContaDialog(self.acesso, self).exec()
+            self._atualizar_perfil()
+
+    def _acesso_mudou(self) -> None:
+        """Chegou pacote de contas novo: de outro computador ou do painel."""
+        if self.acesso.reconciliar():
+            self._sair_quando_puder()
+            return
+        self._recompor_para_a_pessoa()
+
+    def _sair_quando_puder(self) -> None:
+        """Conta bloqueada ou senha redefinida: sai, sem perder venda no meio."""
+        if self._trabalho_aberto() or QApplication.activeModalWidget() is not None:
+            self._saida_pendente = True
+            return
+        self._saida_pendente = False
+        self._encerrar_conta(True, "A sua conta mudou. Entre de novo para continuar.")
+
+    def _conferir_saida_pendente(self) -> None:
+        if getattr(self, "_saida_pendente", False):
+            self._sair_quando_puder()
+
+    def _licenca_saiu_daqui(self) -> None:
+        """O ADM liberou este computador: a vaga ja foi solta no servidor."""
+        self.license_service.deactivate(liberar_vaga=False)
+        self._on_license_changed()
+        self._go(PAGINA_LICENCA)
 
     def abrir_loja(self, marcar: tuple[str, ...] = ()) -> None:
         """Abre a loja DumTech no navegador, ja dizendo quem chegou.
@@ -1002,6 +1279,8 @@ class HubWindow(QMainWindow):
         O codigo que identifica o cliente e pedido em segundo plano; se nao
         vier (sem internet, servidor fora), a loja abre do mesmo jeito.
         """
+        if not self.acesso.e_adm:
+            return
         licenca = self.license_service.current
         nome = self.launcher.empresa().nome
         email = self.conta_service.atual.email
@@ -1033,9 +1312,11 @@ class HubWindow(QMainWindow):
 
         def concluiu(resposta) -> None:
             self._licenca_talvez_mudou(resposta)
-            if self.atualizacao_service.guardar(resposta) is None:
+            nova = self.atualizacao_service.guardar(resposta)
+            if resposta:        # versao recolhida tambem muda a tela: o botao e a contagem somem
+                self._atualizar_botao_versao()
+            if nova is None:
                 return
-            self._atualizar_botao_versao()
             if self.stack.currentIndex() == PAGINA_INICIO:
                 self.home_view.refresh()
 
@@ -1081,9 +1362,13 @@ class HubWindow(QMainWindow):
         cada versao que chega - e a cada abertura do Hub - ela chama uma vez.
 
         Versao silenciosa nao aparece: baixa agora e instala quando o Hub fechar.
+        Versao forcada aparece e, alem disso, baixa e comeca a contagem.
         """
         aviso = nucleo_atualizacao.disponivel(self.settings, __version__)
-        if aviso is not None and nucleo_atualizacao.em_silencio(self.settings, aviso):
+        self._conferir_contagem(aviso)
+        if aviso is not None and nucleo_atualizacao.forcada_aqui(aviso):
+            self._cumprir_forcada(aviso)
+        elif aviso is not None and nucleo_atualizacao.em_silencio(self.settings, aviso):
             self._preparar_em_silencio(aviso)
             aviso = None
         existe = aviso is not None
@@ -1115,6 +1400,10 @@ class HubWindow(QMainWindow):
         """
         logger.info("Atualizacao em andamento: fechando o Hub")
         self._atualizando = True
+        # janela aberta por cima segura o programa no ar, e o instalador espera
+        for janela in QApplication.topLevelWidgets():
+            if isinstance(janela, QDialog) and janela.isVisible():
+                janela.reject()
         QTimer.singleShot(400, self, self.close)
 
     def _preparar_em_silencio(self, aviso) -> None:
@@ -1136,12 +1425,65 @@ class HubWindow(QMainWindow):
         def baixou(caminho) -> None:
             self._baixando_em_silencio = ""
             self._silenciosa = (caminho, aviso)
+            if nucleo_atualizacao.forcada_aqui(aviso):
+                self._contar_forcada(aviso)
 
         def falhou(erro) -> None:
             self._baixando_em_silencio = ""
             logger.info("Atualizacao silenciosa %s nao baixou: %s", aviso.versao, erro)
 
         tasks.executar(self, baixar, baixou, falhou)
+
+    def _cumprir_forcada(self, aviso) -> None:
+        """A DumTech mandou instalar: baixa e, com o arquivo pronto, conta o prazo."""
+        pronta = self._silenciosa
+        if pronta is not None and pronta[1].versao == aviso.versao:
+            self._contar_forcada(aviso)
+        else:
+            self._preparar_em_silencio(aviso)
+
+    def _conferir_contagem(self, aviso) -> None:
+        """A DumTech recolheu ou cancelou no meio do prazo: a instalacao para aqui."""
+        contagem = self._aviso_forcada
+        if contagem is None:
+            return
+        if aviso is None or not aviso.forcada or aviso.versao != contagem.versao:
+            logger.info("Atualizacao forcada %s cancelada pela DumTech", contagem.versao)
+            self._encerrar_aviso_forcada()
+
+    def _contar_forcada(self, aviso) -> None:
+        if self._aviso_forcada is not None:
+            return
+        self._aviso_forcada = ForcadaAviso(aviso.versao, nucleo_atualizacao.PRAZO_FORCADA_S, self)
+        self._aviso_forcada.instalar.connect(self._instalar_forcada)
+        self._aviso_forcada.mostrar()
+
+    def _encerrar_aviso_forcada(self) -> None:
+        aviso, self._aviso_forcada = self._aviso_forcada, None
+        if aviso is not None:
+            aviso.encerrar()
+
+    def _instalar_forcada(self) -> None:
+        """O prazo acabou (ou a pessoa adiantou): instala e reabre.
+
+        Se o Windows recusar, o Hub segue funcionando e a proxima conferencia
+        de versao baixa de novo: atualizacao forcada nunca derruba o programa.
+        """
+        self._encerrar_aviso_forcada()
+        pronta = self._silenciosa
+        if pronta is None:
+            return
+        instalador, aviso = pronta
+        atual = nucleo_atualizacao.disponivel(self.settings, __version__)
+        if atual is None or atual.versao != aviso.versao or not atual.forcada:
+            return      # chegou outra ordem depois do download
+        try:
+            self.atualizacao_service.instalar(instalador, aviso)
+        except nucleo_atualizacao.AtualizacaoError as erro:
+            logger.warning("Atualizacao forcada %s nao instalou: %s", aviso.versao, erro)
+            self._silenciosa = None
+            return
+        self._fechar_para_atualizar()
 
     def _instalar_em_silencio(self) -> None:
         """O Hub esta fechando com uma versao silenciosa pronta: instala agora.
@@ -1243,7 +1585,19 @@ class HubWindow(QMainWindow):
 
     # ---------------------------------------------------------------- celular
     def abrir_celular(self) -> None:
-        """O QR que conecta o celular (Ver no celular, no menu da empresa)."""
+        """O QR que conecta o celular (Ver no celular, no menu da empresa).
+
+        Funcionario nao tem esta visao. Com contas, o ADM confirma a senha: quem
+        abre lembrado nao tem sessao, e o servidor exige uma.
+        """
+        if not self.acesso.e_adm:
+            return
+        # `ha_contas`, e nao `exige_conta`: quem decide e o servidor, e ele pede a
+        # sessao assim que a chave tem conta, mesmo com este Hub aberto desde antes
+        if self.acesso.ha_contas and not self.acesso.gestao_aberta:
+            confirmacao = ConfirmarSenhaDialog(self.acesso, "O celular mostra os números da loja.", self)
+            if not confirmacao.exec():
+                return
         dialogo = CelularDialog(self.celular_service, self)
         dialogo.aparelhos_mudaram.connect(self._aparelhos_do_celular)
         dialogo.exec()
@@ -1383,8 +1737,12 @@ class HubWindow(QMainWindow):
         # chega aqui sem o cliente precisar clicar em "Verificar"
         # `forcar_licenca`: o servidor avisou que algo mudou (ver
         # `_licenca_talvez_mudou`) - reconfere agora, sem esperar a hora cheia
-        conferir_licenca = forcar_licenca or self.license_service.precisa_conferir()
+        # licenca ainda sem o pacote de contas tambem confere: e ele que diz se
+        # esta loja precisa do convite
+        conferir_licenca = (forcar_licenca or self.license_service.precisa_conferir()
+                            or self.acesso.falta_documento())
         antes = (set(licenca.entitlements), licenca.bloqueio)
+        contas_antes = licenca.acesso.get("assinatura")
         # comprou no Mercado Livre (sem e-mail) e digitou o e-mail no Hub: liga os dois
         vincular = (licenca.ativa and not licenca.is_local
                     and self.conta_service.precisa_vincular(chave))
@@ -1418,6 +1776,9 @@ class HubWindow(QMainWindow):
             conferida = resultado.get("licenca")
             if conferida is not None:
                 self._guardar_marca_da_licenca()
+            if conferida is not None and conferida.acesso.get("assinatura") != contas_antes:
+                self._acesso_mudou()
+            self._talvez_convidar()
             if conferida is not None and (set(conferida.entitlements), conferida.bloqueio) != antes:
                 logger.info("A licenca mudou na conferencia: %s %s",
                             conferida.entitlements, conferida.bloqueio or "")
@@ -1443,6 +1804,10 @@ class HubWindow(QMainWindow):
         if getattr(self, "_anunciou", False) or getattr(self, "_preparo_parado", False):
             return
         if self.stack.currentIndex() != PAGINA_INICIO or not self.isActiveWindow():
+            return
+        if not self.acesso.e_adm:
+            # oferta e assunto de quem compra. A novidade tambem espera: ela e
+            # marcada como vista para o computador, e o ADM ficaria sem saber
             return
         if self._contar_novidades():
             return  # um pop-up por abertura: o anuncio fica para a proxima
@@ -1485,7 +1850,7 @@ class HubWindow(QMainWindow):
         """
         if getattr(self, "_preparo_parado", False) or not self.isVisible():
             return
-        for entrada in self._por_uso(self.registry.available()):
+        for entrada in self._por_uso(self.registry.visiveis()):
             app_id = entrada.app_id
             if app_id in self.launcher.open_apps or app_id in self.launcher.preparados:
                 continue
@@ -1497,10 +1862,12 @@ class HubWindow(QMainWindow):
             return
 
     def backup_automatico(self) -> None:
-        """Uma copia por dia, ao abrir. Nunca atrapalha nem derruba o programa.
+        """Uma copia por dia, ao abrir e com o Hub aberto. Nunca derruba nada.
 
-        Falhar aqui e um recado no log, nao um erro na cara do usuario: ele
-        abriu o programa para trabalhar, nao para cuidar de backup.
+        A falha nao interrompe quem esta trabalhando, mas tambem nao fica
+        escondida no log: quem acha que tem copia e nao tem so descobre no dia
+        em que precisa dela. Vira um recado aqui e na tela de Backup, e fica
+        ate uma copia dar certo.
         """
         if not self.settings.get("backup", "automatico", True):
             return
@@ -1509,16 +1876,32 @@ class HubWindow(QMainWindow):
             return
 
         try:
-            copia = self.backup_view.pasta
-            backup.criar(copia, get_paths(), automatico=True, versao=__version__)
-            backup.limpar_antigos(copia)
-        except Exception:  # noqa: BLE001 - backup nunca derruba a abertura
+            pasta = self.backup_view.pasta
+            copia = backup.criar(pasta, get_paths(), automatico=True, versao=__version__)
+            backup.limpar_antigos(pasta)
+        except Exception as erro:  # noqa: BLE001 - backup nunca derruba a abertura
             logger.exception("Falha no backup automatico")
+            self._backup_falhou(str(erro))
             return
 
+        problema = self.backup_view.enviar_para_fora(copia)
         self.settings.set("backup", "ultimo", hoje)
+        self.settings.set("backup", "falha", problema)
         self.settings.save()
         self.backup_view.refresh()
+        if problema:
+            self._avisar_backup(problema)
+
+    def _backup_falhou(self, motivo: str) -> None:
+        self.settings.set("backup", "falha", motivo)
+        self.settings.save()
+        self.backup_view.refresh()
+        self._avisar_backup(motivo)
+
+    def _avisar_backup(self, motivo: str) -> None:
+        self.aviso_flutuante.mostrar(
+            f"A cópia automática falhou: {motivo}", "Backup", "shield", "warning",
+            acao=lambda: self._ir_para_config(self.backup_view))
 
     # ---------------------------------------------------------------- eventos
     def resizeEvent(self, event) -> None:  # noqa: N802
@@ -1540,5 +1923,6 @@ class HubWindow(QMainWindow):
         self.launcher.close_all()
         self.hub_store.close()
         self.contacts.close()
+        self._encerrar_aviso_forcada()
         self._instalar_em_silencio()
         super().closeEvent(event)

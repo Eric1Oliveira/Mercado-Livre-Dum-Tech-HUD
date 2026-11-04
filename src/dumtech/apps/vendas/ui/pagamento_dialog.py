@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ....core.contas import MAXIMO_PARCELAS
+from ....core.contas import MAXIMO_PARCELAS, vencimento_padrao
 from ....core.pagamentos import PARCELADO, formas_do_balcao
 from ....ui import format as fmt
 from ....ui.theme import Space, apply_window_theme, palette_for
@@ -35,8 +35,8 @@ from ..repository.comum import CENTAVO, dinheiro
 def nota_parcelas(valor: float, parcelas: int) -> str:
     """O que vai acontecer com o dinheiro, dito antes de acontecer."""
     return (
-        f"{parcelas}x de {fmt.moeda(dinheiro(valor / parcelas))}. A 1ª vence na data da "
-        "venda e as outras, todo mês: cada parcela vira uma conta a receber no Financeiro."
+        f"{parcelas}x de {fmt.moeda(dinheiro(valor / parcelas))}. A 1ª vence na data "
+        "escolhida e as outras, todo mês: cada parcela vira uma conta a receber no Financeiro."
     )
 
 
@@ -91,6 +91,12 @@ class PagamentoDialog(QDialog):
         self.nota_parcelas.setWordWrap(True)
         self.nota_parcelas.setVisible(False)
         raiz.addWidget(self.nota_parcelas)
+
+        # so para o que vira conta: quem paga agora nao tem vencimento
+        self.vencimento = form.data(vencimento_padrao())
+        self.campo_vencimento = form.campo("Vencimento", self.vencimento)
+        self.campo_vencimento.setVisible(False)
+        raiz.addWidget(self.campo_vencimento)
 
         raiz.addWidget(self._painel_pix())
 
@@ -249,6 +255,13 @@ class PagamentoDialog(QDialog):
             sum(max(p.recebido - p.valor, 0.0) for p in self.pagamentos if p.em_dinheiro)
         )
 
+    @property
+    def vencimento_iso(self) -> str:
+        """Quando vence a conta; vazio quando ninguem ficou devendo."""
+        vira_conta = any(p.parcelado or p.forma.strip().lower() == "prazo"
+                         for p in self.pagamentos)
+        return form.iso_da_data(self.vencimento) if vira_conta else ""
+
     def _em_dinheiro(self) -> bool:
         return self.forma.currentText().strip() == DINHEIRO
 
@@ -266,6 +279,13 @@ class PagamentoDialog(QDialog):
         self.campo_parcelas.setVisible(self._em_parcelado())
         self._atualizar_parcelas()
         self._atualizar_pix()
+        self.campo_vencimento.setVisible(
+            self._vira_conta() or any(p.parcelado or p.forma.strip().lower() == "prazo"
+                                      for p in self.pagamentos)
+        )
+
+    def _vira_conta(self) -> bool:
+        return self._em_parcelado() or self.forma.currentText().strip().lower() == "prazo"
 
     def _valor_mudou(self, valor: float) -> None:
         if not self._em_dinheiro() or self.recebido.value() < valor:
@@ -291,8 +311,11 @@ class PagamentoDialog(QDialog):
             return
 
         parcelado = self._em_parcelado()
-        if parcelado and not self.cliente:
-            self._dizer("Para parcelar, feche esta janela e informe o cliente.", "danger")
+        if self._vira_conta() and not self.cliente:
+            self._dizer(
+                f"Para {'parcelar' if parcelado else 'vender a prazo'}, feche esta "
+                "janela e informe o cliente.", "danger",
+            )
             return
         if parcelado and any(p.parcelado for p in self.pagamentos):
             self._dizer("Esta venda já tem uma linha parcelada.", "danger")

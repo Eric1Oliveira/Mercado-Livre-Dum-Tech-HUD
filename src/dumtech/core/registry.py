@@ -39,8 +39,13 @@ class AppRegistry:
 
     def __init__(self, license_service: LicenseService | None = None) -> None:
         self.license_service = license_service or LicenseService()
+        #: quem decide o que a pessoa logada ve (`core/acesso.py`)
+        self.acesso = None
         self._entries: list[AppEntry] = []
         self._failures: list[tuple[str, str]] = []
+
+    def usar_acesso(self, acesso) -> None:
+        self.acesso = acesso
 
     # ------------------------------------------------------------------ leitura
     def load(self, module_paths: tuple[str, ...] = INSTALLED_APPS) -> list[AppEntry]:
@@ -75,8 +80,19 @@ class AppRegistry:
 
     # ------------------------------------------------------------------ licenca
     def available(self) -> list[AppEntry]:
-        """Aplicativos instalados E liberados pela licenca."""
+        """Aplicativos instalados E liberados pela licenca.
+
+        E a loja inteira, seja quem for a pessoa logada: o resumo do celular e a
+        parte online dos modulos dependem disto. Para as telas, `visiveis`.
+        """
         return [e for e in self.entries if self.license_service.allows(e.app_id)]
+
+    def visiveis(self) -> list[AppEntry]:
+        """O que a pessoa logada ve: a licenca liberou E a conta dela permite."""
+        disponiveis = self.available()
+        if self.acesso is None:
+            return disponiveis
+        return [e for e in disponiveis if self.acesso.permite_modulo(e.app_id)]
 
     def locked(self) -> list[AppEntry]:
         """Aplicativos instalados que a licenca ainda nao libera."""

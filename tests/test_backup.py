@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 import tempfile
 import unittest
@@ -316,3 +317,65 @@ class IdaEVoltaTestCase(BackupBase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RestaurarInteiro(BackupBase):
+    """Restaurar e tudo ou nada, e traz a empresa de volta."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self._plataforma()
+        self.paths.settings_file.write_text(json.dumps({
+            "empresa": {"nome": "Loja da Ana"},
+            "app:vendas": {"tema": "claro"},
+            "backup": {"pasta": "D:/velha"},
+            "licenca": {"chave": "OUTRA"},
+        }), encoding="utf-8")
+        self.copia = backup.criar(self.destino, self.paths)
+
+    def _linhas(self, caminho: Path) -> int:
+        conn = sqlite3.connect(caminho)
+        try:
+            return conn.execute("SELECT COUNT(*) FROM coisas").fetchone()[0]
+        finally:
+            conn.close()
+
+    def test_a_empresa_volta_e_o_que_e_da_maquina_fica(self) -> None:
+        self.paths.settings_file.write_text(json.dumps({
+            "backup": {"pasta": "E:/nova"}, "licenca": {"chave": "MINHA"},
+        }), encoding="utf-8")
+        backup.restaurar(self.copia.arquivo, self.paths)
+        config = json.loads(self.paths.settings_file.read_text(encoding="utf-8"))
+        self.assertEqual(config["empresa"]["nome"], "Loja da Ana")
+        self.assertEqual(config["app:vendas"]["tema"], "claro")
+        self.assertEqual(config["backup"]["pasta"], "E:/nova")
+        self.assertEqual(config["licenca"]["chave"], "MINHA")
+
+    def test_banco_em_uso_nao_troca_nada(self) -> None:
+        banco = self.paths.app_db("vendas")
+        aberto = sqlite3.connect(banco)
+        self.addCleanup(aberto.close)
+        aberto.execute("PRAGMA journal_mode = WAL")
+        aberto.execute("INSERT INTO coisas VALUES (99, 'depois do backup')")
+        aberto.commit()
+        with self.assertRaises(BackupError):
+            backup.restaurar(self.copia.arquivo, self.paths)
+        self.assertEqual(aberto.execute("SELECT COUNT(*) FROM coisas").fetchone()[0], 8)
+        self.assertEqual(self._linhas(self.paths.app_db("estoque")), 5)
+        self.assertTrue(self.paths.hub_db.exists())
+
+    def test_banco_estragado_no_zip_para_antes_de_mexer(self) -> None:
+        estragado = self.destino / "dumtech-backup-estragado.zip"
+        with zipfile.ZipFile(self.copia.arquivo) as origem, zipfile.ZipFile(estragado, "w") as saida:
+            for nome in origem.namelist():
+                dados = origem.read(nome)
+                saida.writestr(nome, b"lixo" * 500 if nome.endswith("vendas.db") else dados)
+        with self.assertRaises(BackupError) as erro:
+            backup.restaurar(estragado, self.paths)
+        self.assertIn("danificado", str(erro.exception))
+        self.assertEqual(self._linhas(self.paths.app_db("vendas")), 7)
+
+    def test_sem_dados_e_um_erro_que_se_reconhece(self) -> None:
+        vazio = DataPaths(root=Path(tempfile.mkdtemp(prefix="dt_vazio_"))).ensure()
+        with self.assertRaises(backup.SemDados):
+            backup.criar(self.destino, vazio)

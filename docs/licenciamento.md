@@ -13,6 +13,56 @@ CLIENTES ──< LICENCAS ──< LICENCA_PRODUTOS >── PRODUTOS
 Um cliente, uma chave, N produtos. Combo comprado entra expandido em produtos,
 entao **o cliente nunca digita mais de uma chave**.
 
+## Mensalidade (desde a 1.12.0)
+
+A venda passou a ser por mes: plano base (Vendas, Estoque e Financeiro) +
+adicionais (Clientes, Orcamentos, Ordem de Servico e Agenda), todos pelo mesmo
+preco. Desenho completo: `docs/superpowers/specs/2026-11-03-mensalidade-design.md`.
+
+- **Vitalicia nao muda nada.** A resposta dela sai igual a antes (sem o campo
+  `cobranca`) e o Hub nunca mostra aviso de pagamento para ela.
+- **Situacao calculada, nunca gravada** (`dumtech_situacao_cobranca`): teste
+  (prazo de 7 dias), assinatura sem prazo = em dia, assinatura com prazo =
+  pagamento a confirmar ate a data, passou = recusa `expirada` (o Hub abre os
+  modulos so para consulta, como ja fazia com licenca vencida).
+- **A InfinitePay nao avisa o sistema** (os planos ficam no app dela). Por isso
+  o Eric, na tela Hoje do painel (ou na ficha do cliente): confirma a assinatura nova, marca
+  "Cobranca falhou" (carencia de 7 dias), "Pagamento em dia" ou "Cancelou".
+  Cada acao muda `expira_em`, a impressao digital da licenca muda junto, e o Hub
+  confere em ate 2 minutos.
+- **Teste e assinatura pelo site:** Edge Function `mensalidade` (rota
+  `cadastro`) cria a licenca `teste` com os 7 modulos e manda a chave so por
+  e-mail. A resposta ao navegador e igual para todos os casos.
+- **Controle pelo painel (desde 04/11/2026, `20261104120000`):** no painel
+  reformulado (Hoje, Clientes, Planos, Site, Hub, Seguranca). A ficha do cliente (plano, valor combinado, computadores,
+  datas, anotacoes, ativar/reabrir e o historico em `assinatura_eventos`), Planos
+  e precos (`mensalidade_modulos`: base/adicional/fora, preco e a venda;
+  `mensalidade_planos`: planos prontos com de/por; `mensalidade_combinacoes`: o
+  link de cada combinacao do monte o seu), Textos do site (`landing_conteudo`
+  rascunho/publicado + `landing_publicacoes`) e Promocoes (`landing_avisos` e
+  `mensalidade_cupons`, que liberam um plano escondido). A licenca guarda o plano
+  e o `valor_mensal` combinados na confirmacao. Desenho:
+  `docs/superpowers/specs/2026-11-04-controle-da-mensalidade-design.md`.
+
+## Contas e acessos (desde a 1.11.0)
+
+A chave tem contas ADM e funcionario (`licenca_usuarios`). Loja sem conta segue
+como sempre, sem login. O desenho inteiro esta em
+`docs/superpowers/specs/2026-11-02-contas-e-acessos-design.md`.
+
+- **Quem decide e o servidor.** A Edge Function `acesso` deriva e confere a senha
+  (PBKDF2, 600 mil iteracoes): o Postgres so ve o hash.
+- **Offline:** o Hub guarda um pacote assinado com as contas (`license.json`, campo
+  `acesso`) e, em `config/acesso.json`, um verificador de quem ja entrou ali. O
+  primeiro login de cada pessoa em cada computador precisa de internet.
+- **Limite de computadores:** diminuir abaixo do que esta em uso obriga a escolher
+  quem sai (`dumtech_ajustar_computadores`). O ADM da loja libera vaga pelo Hub, mas
+  nao aumenta o limite.
+- **Obrigatoriedade:** `licencas.exigir_conta`, ligada no painel, tira o "Agora nao"
+  do convite. Sem internet nada trava.
+- **Hub anterior a 1.11.0** abre sem login, mesmo em loja com conta. A tela Acessos
+  do painel mostra esses computadores.
+
 ## O fluxo, do inicio ao fim
 
 ```

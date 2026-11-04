@@ -7,7 +7,7 @@
 //
 //   BREVO_API_KEY            brevo.com - 300 e-mails/dia gratis (tem prioridade)
 //   RESEND_API_KEY           resend.com - exige dominio proprio verificado
-//   DUMTECH_EMAIL_REMETENTE  "DumTech <licencas@seudominio.com.br>" ou so o e-mail
+//   DUMTECH_EMAIL_REMETENTE  "DumTech <dumtechsolutions@gmail.com>" ou so o e-mail
 //   DUMTECH_EMAIL_RESPONDER  opcional: para onde vai a resposta do cliente
 
 export type Carta = { para: string; assunto: string; texto: string; html: string };

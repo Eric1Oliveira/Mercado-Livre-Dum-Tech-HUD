@@ -34,6 +34,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ...core.database import aviso_so_consulta, e_so_consulta
 from .. import format as fmt
 from ..tela import caber_na_tela
 from ..theme import Control, Space, apply_window_theme, palette_for
@@ -196,6 +197,15 @@ def dinheiro(valor: float = 0.0) -> CampoNumero:
     campo.setPrefix("R$ ")
     campo.setValue(float(valor or 0))
     campo.setMinimumWidth(140)
+    return campo
+
+
+def percentual(valor: float = 0.0) -> CampoNumero:
+    campo = CampoNumero()
+    campo.setRange(0, 100)
+    campo.setDecimals(2)
+    campo.setSuffix(" %")
+    campo.setValue(float(valor or 0))
     return campo
 
 
@@ -460,6 +470,7 @@ class FormDialog(QDialog):
             if self.salvar() is False:
                 return  # a subclasse pediu para continuar aberta
         except Exception as erro:  # regra de negocio: avisa e mantem aberto
-            QMessageBox.warning(self, "Não foi possível salvar", str(erro))
+            QMessageBox.warning(self, "Não foi possível salvar",
+                                aviso_so_consulta() if e_so_consulta(erro) else str(erro))
             return
         self.accept()

@@ -31,7 +31,9 @@ class AgendaWindow(AppWindow):
         self.compromissos_view = self.add_view(
             "Compromissos", "list", CompromissosView(self.repository, self.clientes,
                              mensageiro=self.mensagens,
-                             contatos=self.context.contacts)
+                             contatos=self.context.contacts,
+                             destinos=self.context.destinos,
+                             contas=self.context.contas)
         )
         self.servicos_view = self.add_view(
             "Serviços", "tag", ServicosView(self.repository)
@@ -53,13 +55,15 @@ class AgendaWindow(AppWindow):
         """A ficha precisa da agenda de clientes, que so a janela conhece."""
         compromisso = self.repository.obter(compromisso_id) if compromisso_id else None
         self._abrir(CompromissoDialog(
-            self.repository, compromisso, self.clientes, self.agenda_view
+            self.repository, compromisso, self.clientes, self.agenda_view,
+            contas=self.context.contas,
         ))
 
     def marcar_em(self, momento: str) -> None:
         """Clicou num horario vago: o formulario ja abre naquele dia e hora."""
         dialogo = CompromissoDialog(
-            self.repository, None, self.clientes, self.agenda_view
+            self.repository, None, self.clientes, self.agenda_view,
+            contas=self.context.contas,
         )
         lido = QDateTime.fromString(momento, Qt.DateFormat.ISODate)
         if lido.isValid():

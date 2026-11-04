@@ -72,6 +72,8 @@ export function montarTela(dados, escolhido = 0) {
     indice,
     atualizadoEm: espelho?.atualizado_em ?? null,
     secoes,
+    // marcadas pelo link: vem do servidor, nao dependem do computador ligado
+    reservas: Array.isArray(dados?.reservas) ? dados.reservas : [],
     // comprou agora e o computador ainda nao mandou: aparece "a caminho"
     aCaminho: MODULOS.filter((m) => liberados.has(m.codigo) && !comSecao.has(m.codigo)),
     // o que a empresa ainda nao tem (a vitrine discreta do fim da tela)
@@ -212,7 +214,14 @@ const PESO_DO_TOM = { perigo: 0, aviso: 1, ok: 2 };
  * lembrete; dentro do mesmo tom, a ordem dos módulos (dinheiro primeiro).
  */
 export function alertasDaTela(tela) {
-  const todos = [];
+  const todos = (tela?.reservas ?? []).map((r, ordem) => ({
+    texto: `${r.nome || "Cliente"} marcou ${r.servico || "um horário"}`,
+    detalhe: dataDaReserva(r.inicio),
+    tom: "aviso",
+    app: "AGENDA",
+    modulo: "Agendamento online",
+    ordem: ordem - 1000,
+  }));
   (tela?.secoes ?? []).forEach((s, ordem) => {
     for (const a of s.alertas ?? []) {
       if (!a?.texto) continue;
@@ -221,6 +230,12 @@ export function alertasDaTela(tela) {
     }
   });
   return todos.sort((a, b) => PESO_DO_TOM[a.tom] - PESO_DO_TOM[b.tom] || a.ordem - b.ordem);
+}
+
+/** 2026-11-05T14:30 -> 05/11 às 14:30 */
+function dataDaReserva(inicio) {
+  const achado = /^\d{4}-(\d{2})-(\d{2})T(\d{2}:\d{2})/.exec(inicio ?? "");
+  return achado ? `${achado[2]}/${achado[1]} às ${achado[3]}` : "";
 }
 
 /** "+18%" + "vs. sábado passado até 15:18" - a comparação sempre tem nome. */

@@ -66,6 +66,17 @@ MIGRATIONS = (
             """,
         ),
     ),
+    Migration(
+        version=4,
+        name="profissional, sinal e documento gerado",
+        statements=(
+            """
+            ALTER TABLE compromissos ADD COLUMN profissional TEXT NOT NULL DEFAULT '';
+            ALTER TABLE compromissos ADD COLUMN sinal REAL NOT NULL DEFAULT 0;
+            ALTER TABLE compromissos ADD COLUMN documento TEXT NOT NULL DEFAULT '';
+            """,
+        ),
+    ),
 )
 
 

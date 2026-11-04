@@ -28,10 +28,12 @@ class CaixaView(QWidget):
     data_changed = Signal()
 
     def __init__(self, repository: VendasRepository, parent: QWidget | None = None,
-                 empresa=None) -> None:
+                 empresa=None, contas=None) -> None:
         super().__init__(parent)
         self.repository = repository
         self.empresa = empresa
+        #: ponte com o Financeiro: sangria e quebra de caixa vao para la
+        self.contas = contas
 
         raiz = QVBoxLayout(self)
         raiz.setContentsMargins(30, 26, 30, 24)
@@ -101,10 +103,10 @@ class CaixaView(QWidget):
 
     def _card_movimentos(self) -> Card:
         card = Card(padding=Space.lg)
-        card.body.addWidget(label("Sangrias e suprimentos", "section"))
+        card.body.addWidget(label("Movimentos da gaveta", "section"))
         self.tabela_movimentos = DataTable(["Hora", "Tipo", "Motivo", "Valor"])
         self.tabela_movimentos.set_empty_message(
-            "Nenhuma sangria ou suprimento neste caixa."
+            "Nenhum movimento neste caixa."
         )
         card.body.addWidget(self.tabela_movimentos, 1)
         return card
@@ -171,11 +173,13 @@ class CaixaView(QWidget):
         conta = self.conferencia
         linhas = [
             ("Abertura", conta.abertura, "muted"),
-            ("Vendas em dinheiro", conta.vendas_dinheiro, "success"),
+            ("Dinheiro recebido", conta.vendas_dinheiro, "success"),
             ("Trocos", -conta.trocos, "muted"),
             ("Suprimentos", conta.suprimentos, "success"),
             ("Sangrias", -conta.sangrias, "danger"),
         ]
+        if conta.recebimentos:
+            linhas.append(("Recebimentos fora do balcão", conta.recebimentos, "success"))
         if conta.devolucoes_dinheiro:
             linhas.append(("Devoluções", -conta.devolucoes_dinheiro, "danger"))
 
@@ -242,7 +246,8 @@ class CaixaView(QWidget):
                 self.data_changed.emit()
             return
 
-        dialogo = FecharCaixaDialog(self.repository, self.conferencia, self)
+        dialogo = FecharCaixaDialog(self.repository, self.conferencia, self,
+                                    contas=self.contas)
         if not dialogo.exec():
             return
         resultado = dialogo.resultado
@@ -254,7 +259,7 @@ class CaixaView(QWidget):
             ).exec()
 
     def _movimento(self, tipo: str) -> None:
-        dialogo = MovimentoCaixaDialog(self.repository, tipo, self)
+        dialogo = MovimentoCaixaDialog(self.repository, tipo, self, contas=self.contas)
         if dialogo.exec():
             self.refresh()
             self.data_changed.emit()

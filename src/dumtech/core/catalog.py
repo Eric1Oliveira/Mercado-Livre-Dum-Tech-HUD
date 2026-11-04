@@ -51,6 +51,9 @@ class Catalogo(Protocol):
     def miniatura(self, produto_id: int) -> bytes | None:
         """Recorte quadrado pequeno da foto, para listas; None quando nao ha."""
 
+    def custo_de(self, produto_id: int) -> float:
+        """Custo medio de agora: a venda guarda, para o lucro nao mudar depois."""
+
     def baixar(
         self, produto_id: int, quantidade: float, documento: str = "", motivo: str = ""
     ) -> None:

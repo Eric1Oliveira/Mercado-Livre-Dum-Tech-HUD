@@ -31,10 +31,10 @@ import tempfile
 import zipfile
 from dataclasses import dataclass
 from datetime import datetime
-import pathlib
 from pathlib import Path
 
 from .paths import DataPaths, get_paths
+from .versao import SECAO as SECAO_VERSAO
 
 #: nome do arquivo que descreve o backup por dentro
 MANIFESTO = "backup.json"
@@ -48,6 +48,10 @@ PREFIXO = "dumtech-backup-"
 #: quantas copias manter na pasta de fora (la o espaco costuma ser da nuvem)
 MANTER_FORA = 30
 
+#: o que descreve ESTE computador, e nao a empresa: voltar com isso de um backup
+#: de outra maquina trocaria a licenca, o celular e a pasta das proprias copias
+SO_DESTA_MAQUINA = ("window", "backup", "licenca", "celular", "comunicados", SECAO_VERSAO)
+
 #: pastas de nuvem mais comuns no Windows, na ordem em que sugerimos
 _NUVENS = (
     ("OneDrive", "OneDrive"),
@@ -59,6 +63,10 @@ _NUVENS = (
 
 class BackupError(Exception):
     """Erro ao copiar ou restaurar (mensagem pronta para o usuario)."""
+
+
+class SemDados(BackupError):
+    """Nao ha banco nenhum para copiar: programa recem-instalado."""
 
 
 @dataclass(frozen=True)
@@ -143,7 +151,7 @@ def criar(
     paths = paths or get_paths()
     bancos = _bancos(paths)
     if not bancos:
-        raise BackupError("Não há nenhum dado para copiar ainda.")
+        raise SemDados("Não há nenhum dado para copiar ainda.")
 
     destino = Path(destino)
     try:
@@ -286,46 +294,121 @@ def limpar_antigos(pasta: Path, manter: int = MANTER) -> int:
 
 
 def restaurar(arquivo: Path, paths: DataPaths | None = None) -> list[str]:
-    """Devolve os bancos do backup para a pasta de dados.
+    """Devolve os bancos e a configuracao do backup para a pasta de dados.
 
     Quem chama **precisa** ter fechado todas as conexoes antes: substituir um
     arquivo que o SQLite tem aberto deixa o programa lendo dados velhos, ou pior.
-    Devolve os nomes dos bancos restaurados.
+
+    Tudo ou nada. O backup e extraido e conferido numa pasta ao lado, e so
+    entao os arquivos sao trocados; se algum estiver em uso, o que ja saiu do
+    lugar volta. Devolve os nomes dos bancos restaurados.
     """
     paths = (paths or get_paths()).ensure()
     ler_manifesto(arquivo)  # valida antes de mexer em qualquer coisa
 
-    restaurados: list[str] = []
-    with zipfile.ZipFile(arquivo) as pacote:
-        for nome in pacote.namelist():
-            if not nome.startswith("data/") or not nome.endswith(".db"):
-                continue
-            banco = Path(nome).name
-            # o banco de um aplicativo mora em data/apps; o resto em data
-            destino = (
-                paths.apps_data_dir / banco
-                if _e_de_aplicativo(banco, paths)
-                else paths.data_dir / banco
-            )
-            destino.parent.mkdir(parents=True, exist_ok=True)
-            with pacote.open(nome) as origem, open(destino, "wb") as saida:
-                shutil.copyfileobj(origem, saida)
-            # WAL velho ao lado de banco novo e receita de corrupcao: se nao
-            # der para apagar, alguem ainda esta com o banco aberto e restaurar
-            # seria pior do que nao restaurar
-            for sobra in ("-wal", "-shm"):
-                try:
-                    pathlib.Path(f"{destino}{sobra}").unlink(missing_ok=True)
-                except OSError as erro:
-                    raise BackupError(
-                        f"O banco '{banco}' ainda está em uso. Feche o DumTech "
-                        "Hub e abra de novo antes de restaurar."
-                    ) from erro
-            restaurados.append(banco)
+    with tempfile.TemporaryDirectory(prefix="dumtech_restaurar_", dir=paths.root) as temporario:
+        pasta = Path(temporario)
+        with zipfile.ZipFile(arquivo) as pacote:
+            trocas = _extrair_bancos(pacote, pasta, paths)
+            if not trocas:
+                raise BackupError("O backup não tem nenhum banco de dados dentro.")
+            for novo, _ in trocas:
+                _conferir_banco(novo)
+            _trocar(trocas, pasta / "antes")
+            _devolver_configuracao(pacote, paths)
+    return sorted(destino.name for _, destino in trocas)
 
-    if not restaurados:
-        raise BackupError("O backup não tem nenhum banco de dados dentro.")
-    return sorted(restaurados)
+
+def _extrair_bancos(
+    pacote: zipfile.ZipFile, pasta: Path, paths: DataPaths
+) -> list[tuple[Path, Path]]:
+    """Cada banco do zip, extraido ao lado: (arquivo novo, onde ele vai morar)."""
+    trocas: list[tuple[Path, Path]] = []
+    for nome in pacote.namelist():
+        if not nome.startswith("data/") or not nome.endswith(".db"):
+            continue
+        banco = Path(nome).name
+        # o banco de um aplicativo mora em data/apps; o resto em data
+        destino = (
+            paths.apps_data_dir / banco
+            if _e_de_aplicativo(banco, paths)
+            else paths.data_dir / banco
+        )
+        novo = pasta / banco
+        with pacote.open(nome) as origem, open(novo, "wb") as saida:
+            shutil.copyfileobj(origem, saida)
+        trocas.append((novo, destino))
+    return trocas
+
+
+def _conferir_banco(arquivo: Path) -> None:
+    """Backup com defeito para aqui, antes de encostar nos dados de agora."""
+    defeito = BackupError(
+        f"O banco '{arquivo.name}' dentro do backup está danificado. Nada foi alterado."
+    )
+    try:
+        conn = sqlite3.connect(f"file:{arquivo}?mode=ro", uri=True)
+        try:
+            resultado = conn.execute("PRAGMA quick_check").fetchone()
+        finally:
+            conn.close()
+    except sqlite3.Error as erro:
+        raise defeito from erro
+    if resultado is None or resultado[0] != "ok":
+        raise defeito
+
+
+def _trocar(trocas: list[tuple[Path, Path]], reserva: Path) -> None:
+    """Tira os arquivos de agora do lugar e poe os novos; se travar, desfaz."""
+    reserva.mkdir()
+    guardados: list[tuple[Path, Path]] = []
+    colocados: list[Path] = []
+    try:
+        for _, destino in trocas:
+            destino.parent.mkdir(parents=True, exist_ok=True)
+            # WAL velho ao lado de banco novo e receita de corrupcao
+            for atual in (destino, Path(f"{destino}-wal"), Path(f"{destino}-shm")):
+                if atual.exists():
+                    guardado = reserva / atual.name
+                    os.replace(atual, guardado)
+                    guardados.append((atual, guardado))
+        for novo, destino in trocas:
+            os.replace(novo, destino)
+            colocados.append(destino)
+    except OSError as erro:
+        for destino in colocados:
+            destino.unlink(missing_ok=True)
+        for atual, guardado in reversed(guardados):
+            os.replace(guardado, atual)
+        raise BackupError(
+            "Um dos bancos ainda está em uso. Feche o DumTech Hub e abra de novo "
+            "antes de restaurar. Nada foi alterado."
+        ) from erro
+
+
+def _devolver_configuracao(pacote: zipfile.ZipFile, paths: DataPaths) -> None:
+    """Empresa, mensagens e preferencias voltam; o que e desta maquina fica.
+
+    Backup antigo sem configuracao, ou com ela ilegivel, nao impede restaurar:
+    os bancos ja voltaram e sao eles que importam.
+    """
+    try:
+        guardada = json.loads(pacote.read(f"config/{paths.settings_file.name}"))
+    except (KeyError, ValueError):
+        return
+    if not isinstance(guardada, dict):
+        return
+    try:
+        atual = json.loads(paths.settings_file.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        atual = {}
+    for secao in SO_DESTA_MAQUINA:
+        guardada.pop(secao, None)
+        if isinstance(atual, dict) and secao in atual:
+            guardada[secao] = atual[secao]
+    paths.settings_file.write_text(
+        json.dumps(guardada, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
 
 
 def _e_de_aplicativo(banco: str, paths: DataPaths) -> bool:

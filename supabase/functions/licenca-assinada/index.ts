@@ -13,7 +13,7 @@
 //   (sem verificar JWT: o Hub chama com a chave anon, como chama as RPCs)
 
 import {
-  assinar, computadorValido, conteudoDaLicenca, importarChavePrivada, ipDoVisitante, normalizar,
+  assinar, computadorValido, conteudoAcesso, conteudoDaLicenca, importarChavePrivada, ipDoVisitante, normalizar,
 } from "./nucleo.ts";
 
 const URL_PROJETO = Deno.env.get("SUPABASE_URL") ?? "";
@@ -86,8 +86,18 @@ Deno.serve(async (pedido) => {
 
   try {
     chavePrivada ??= importarChavePrivada(PRIVADA);
-    const conteudo = conteudoDaLicenca(dados, { kid: KID, maquina, computador, diasOffline: DIAS_OFFLINE });
-    return responder(200, { ...dados, assinado: await assinar(conteudo, await chavePrivada, KID) });
+    const privada = await chavePrivada;
+    // as contas so saem assinadas: o Hub offline nao pode acreditar em texto solto
+    const { acesso, ...publicos } = dados;
+    const conteudo = conteudoDaLicenca(publicos, { kid: KID, maquina, computador, diasOffline: DIAS_OFFLINE });
+    return responder(200, {
+      ...publicos,
+      assinado: await assinar(conteudo, privada, KID),
+      ...(acesso ? {
+        acesso_assinado: await assinar(
+          conteudoAcesso({ kid: KID, chave: conteudo.chave, maquina, computador, resumo: acesso }), privada, KID),
+      } : {}),
+    });
   } catch (erro) {
     chavePrivada = null;
     console.error("assinatura", erro);

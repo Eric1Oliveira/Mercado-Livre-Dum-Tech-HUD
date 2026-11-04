@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from ....core.database import Database
 from ..models import Movimentacao, Produto, Resumo
+from .compras import ComprasMixin
 from .contagem import ContagemMixin
 from .movimentacoes import MovimentacoesMixin
 from .planilha import PlanilhaMixin
@@ -23,7 +24,8 @@ from .produtos import ProdutosMixin
 __all__ = ["EstoqueRepository", "Movimentacao", "Produto", "Resumo"]
 
 
-class EstoqueRepository(ProdutosMixin, MovimentacoesMixin, ContagemMixin, PlanilhaMixin):
+class EstoqueRepository(ProdutosMixin, MovimentacoesMixin, ContagemMixin, PlanilhaMixin,
+                        ComprasMixin):
     """Tudo que o DumTech Estoque sabe fazer."""
 
     def __init__(self, database: Database) -> None:
@@ -71,4 +73,5 @@ class EstoqueRepository(ProdutosMixin, MovimentacoesMixin, ContagemMixin, Planil
             baixos=self.a_comprar(limite=limite_listas),
             a_comprar=self.a_comprar(limite=limite_listas),
             maior_valor=self.maior_valor(limite=limite_listas),
+            vencendo=self.vencendo(),
         )

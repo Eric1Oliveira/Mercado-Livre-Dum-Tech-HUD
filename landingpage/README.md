@@ -1,21 +1,31 @@
 # Landing page da DumTech
 
 Site estático (HTML, CSS e JavaScript puro — sem build, sem framework) que
-vende os módulos do DumTech Hub. Três coisas acontecem aqui:
+vende o DumTech Hub **por mensalidade** (desde 03/11/2026). Quatro coisas
+acontecem na página inicial:
 
-1. **Monte seu kit** — o visitante escolhe os módulos e vê, em tempo real,
-   quais integrações o kit dele ativa e quais ficam apagadas (e por quê).
-2. **Reconhecimento pelo Hub** — quem clicou em "Adquirir novo produto" dentro
-   do programa chega com um código na URL (`?t=…`). A página troca esse código
-   por nome, e-mail e o que a pessoa já comprou: **sem login, sem digitar nada**,
-   e sem oferecer o que ela já tem.
-3. **Pedido** — o kit é gravado no Supabase e a conversa continua no WhatsApp.
+1. **O plano** — plano base (Vendas, Estoque e Financeiro) + adicionais
+   (Clientes, Orçamentos, Ordem de Serviço e Agenda), todos pelo mesmo preço.
+   O visitante liga e desliga os adicionais e o **cupom** ao lado imprime uma
+   linha para cada um, com o total do mês.
+2. **Teste grátis de 7 dias, sem cartão** — nome, e-mail e WhatsApp. A chave
+   vai **só por e-mail** (Edge Function `mensalidade`), com o link para baixar.
+3. **Assinar** — o mesmo cadastro, e a pessoa segue para o plano da
+   InfinitePay com a quantidade de adicionais que escolheu. Quem confirma a
+   assinatura é o Eric, no painel (tela Hoje).
+4. **Reconhecimento pelo Hub** — quem clica em "Adquirir novo produto" chega
+   com `?t=…`. Cliente **vitalício** vê uma saudação e o WhatsApp: a página
+   esconde o plano e o cadastro, e nunca empurra mensalidade para ele.
+   Teste e assinante veem o plano para assinar ou mudar.
+
+O desenho e as decisões estão em
+[docs/superpowers/specs/2026-11-03-mensalidade-design.md](../docs/superpowers/specs/2026-11-03-mensalidade-design.md).
 
 ## Rodar aqui
 
 ```bash
 cd landingpage
-npm test        # testes do motor do kit (sem navegador, sem internet)
+npm test        # testes do plano, da memoria e das outras paginas (sem navegador)
 npm run servir  # http://127.0.0.1:5173
 ```
 
@@ -25,113 +35,61 @@ Módulos ES não carregam por `file://` — abra sempre pelo servidor.
 
 Esta pasta **viaja dentro do DumTech Hub** (entra no `.exe` pelo
 `build/dumtech_hub.spec`). No primeiro clique em "Adquirir novo produto", o Hub
-serve a página em `http://127.0.0.1:<porta livre>` e abre o navegador ali — sem
-domínio, sem internet, sem instalar nada.
-
-Abrir o `index.html` com dois cliques (`file://`) **não** funciona: o navegador
-recusa módulos ES vindos de arquivo e a página abre em branco. Use
-`npm run servir` ou o próprio Hub.
+serve a página em `http://127.0.0.1:<porta livre>` e abre o navegador ali.
 
 ## Publicar
 
-Copie a pasta inteira para qualquer hospedagem estática (HostGator, GitHub
-Pages, HostGator). Não há nada para compilar.
+Copie a pasta inteira para a hospedagem estática (`tools\publicar_site.ps1`).
+Não há nada para compilar. Em [js/config.js](js/config.js) ficam o WhatsApp e o
+endereço do Supabase.
 
-Depois de publicar, preencha `URL_PADRAO` em
-[`src/dumtech/core/loja.py`](../src/dumtech/core/loja.py) com o endereço novo —
-o Hub para de servir a cópia local e passa a abrir o site de verdade.
+## Preços, planos, textos e promoções
 
-Antes de publicar, abra [js/config.js](js/config.js) e preencha:
+**Nada disso está no código.** Tudo vem de `dumtech_mensalidade_publica`, numa
+chamada só, e é editado no painel:
 
-| Campo | Para que serve |
+| No painel | O que muda no site |
 |---|---|
-| `WHATSAPP` | número que recebe os kits (55 + DDD + número). Vazio = o site só confirma o pedido na tela |
-| `SUPABASE_URL` / `SUPABASE_ANON` | já vêm preenchidos com o projeto de licenças; a chave anon é pública por natureza e **não lê tabela nenhuma** |
+| Planos > Planos e preços | preço da base, cada adicional (preço e "à venda"), os planos prontos (cartões, com de/por e o selo "Recomendado") e quais combinações do monte o seu têm link |
+| Site > Textos do site | todo texto da página, com rascunho, "Ver como fica" (`?previa=1`) e publicar |
+| Site > Faixa de aviso | o recado no topo, com datas |
+| Planos > Cupons | os cupons dos parceiros (`?cupom=CODIGO` aplica sozinho) |
 
-## Preços
-
-**Não estão no site.** Vêm de `produtos.preco` e `combos.preco` no Supabase
-(`dumtech_catalogo`). Para mudar um preço:
-
-```sql
-update public.produtos set preco = 299.00 where codigo = 'ESTOQUE';
-```
-
-**A página aberta muda sozinha, sem refresh.** Um gatilho no banco avisa o canal
-público `catalogo` do Supabase Realtime; o site ([js/tempo-real.js](js/tempo-real.js))
-busca o catálogo de novo e o preço que mudou pisca uma vez. O aviso não traz dado
-nenhum — o preço vem pela mesma `dumtech_catalogo`. Aba que volta a ficar visível
-também confere. Módulo tirado de linha aparece como "Indisponível" e sai do kit.
-
-A primeira pintura usa o último catálogo do servidor guardado no navegador (7 dias);
-sem ele, os números em `PRECO_PADRAO` ([js/dados.js](js/dados.js)) — só a rede de
-segurança para o site abrir se o servidor não responder. Mantenha-os espelhando o banco.
+A vitrine **nunca entrega os links** da InfinitePay: o link volta só depois do
+cadastro, e o preço é recalculado no banco. Os padrões de
+[js/plano.js](js/plano.js) e [js/conteudo.js](js/conteudo.js) são a rede de
+segurança para a página pintar na hora. Vitalício que chega pelo Hub não vê o
+plano, o cadastro nem a faixa de aviso.
 
 **Segurança da página:** `index.html` tem Content-Security-Policy (só scripts
-desta pasta, rede só para o Supabase do projeto). **Trocou de projeto Supabase?**
-Troque o endereço também no `connect-src` dessa meta. `?api=` só aceita servidor
-neste computador, e `?kit=`/`?tem=` só aceitam código de módulo.
+desta pasta, rede só para o Supabase do projeto). `?api=` só aceita servidor
+neste computador, e `?kit=` só aceita código de módulo.
 
-O **total nunca é calculado pelo navegador**: ao enviar, o banco recalcula a
-partir do próprio catálogo (`dumtech_registrar_pedido`). O que o visitante vê
-antes é uma prévia.
+A resposta do cadastro é **igual para todo mundo** (novo, quem já tem chave,
+vitalício): o que muda vai só no e-mail. Assim ninguém descobre quem é cliente
+digitando um e-mail.
 
-## Depende destas migrations
-
-| Migration | O que a página usa |
-|---|---|
-| `20260911230000_porta_de_entrada` | `dumtech_abrir_compra` — o reconhecimento pelo token |
-| `20260911235900_landing_catalogo_e_pedidos` | `dumtech_catalogo` e `dumtech_registrar_pedido` |
-| `20260912090000_aprovar_pedido` | `dumtech_aprovar_pedido` e a visão `pedidos_abertos` — o que fecha o ciclo (não é usado pela página; é você quem chama) |
-| `20260912180000_tempo_real_e_blindagem` | o aviso de catálogo ao vivo e o limite de pedidos por hora (12 por endereço, 6 por e-mail) |
-
-## O ciclo da compra
-
-```
-Hub → botão "Adquirir novo produto" → site (?t=token, já sabe quem é)
-   → monta o kit → "Quero este kit" → pedido gravado
-   → VOCÊ aprova:  select public.dumtech_aprovar_pedido('<pedido_id>');
-   → o produto entra na licença que o cliente já tem
-   → ele volta para o Hub e o módulo aparece sozinho
-```
-
-O Hub confere a licença **sozinho** quando a janela volta a ficar ativa depois
-de uma ida à loja — sem clicar em "Verificar licença".
-
-A aprovação é manual de propósito: liberar licença a partir de um clique no
-site seria liberar licença a partir da chave pública. Quando houver checkout
-automático, quem chama `dumtech_aprovar_pedido` passa a ser o webhook do
-gateway, e mais nada muda.
-
-## Quem já visitou não se apresenta de novo
-
-O token da URL vale 15 minutos e é de uso único — ele serve para a **primeira**
-visita. Depois disso o navegador guarda nome, e-mail e o que a pessoa já tem
-(`js/memoria.js`, 90 dias), então abrir o site direto no dia seguinte continua
-sendo "Olá, Joao". O limite é honesto: vale por navegador, e existe um
-**"Não é você?"** visível no cartão para apagar tudo.
-
-Sem elas aplicadas, a página **continua de pé**: usa o catálogo local e o envio
-cai no WhatsApp. Só não reconhece o cliente nem grava o pedido.
-
-## Os arquivos
+## Os arquivos da página inicial
 
 | Arquivo | Papel |
 |---|---|
 | `index.html` | a página |
-| `css/estilo.css` | o sistema visual (o mesmo do Hub: violeta #7353F6, cartão branco com fio, Plus Jakarta Sans) |
-| `js/dados.js` | **a cópia da vitrine**: nome, descrição, cor e ícone de cada módulo, e as integrações reais |
-| `js/kit.js` | o motor do kit: escolha, combo, preço e integrações. Puro, sem DOM — é o que os testes exercitam |
-| `js/api.js` | as chamadas ao Supabase, com queda para o catálogo local |
-| `js/app.js` | liga o motor na tela: cartões, grafo, resumo e envio |
-| `js/config.js` | o que você troca para publicar |
-| `tests/kit.test.mjs` | 15 testes do motor |
-| `servidor.mjs` | servidor local de desenvolvimento |
+| `css/inicio.css` | o visual da página inicial (violeta #7353F6, Plus Jakarta Sans, IBM Plex Mono no cupom) |
+| `css/estilo.css` | o visual das **outras** páginas (baixar, guia, pedido, termos...) — não mexa nele pela página inicial |
+| `js/plano.js` | o motor do plano: planos prontos, monte o seu, cupom, de/por, quem chegou. Puro, sem DOM (`tests/plano.test.mjs`) |
+| `js/conteudo.js` | os textos: o padrão, a mistura com o publicado, os marcadores e a prévia. Puro (`tests/conteudo.test.mjs`); o painel também lê os padrões daqui |
+| `js/app.js` | liga o motor na tela: adicionais, cupom, saudação, tour e cadastro |
+| `js/api.js` | as chamadas ao Supabase (`carregarMensalidade`, `cadastrar`, `reconhecer`) |
+| `js/memoria.js` | quem já visitou (nome, e-mail e o tipo da licença, 90 dias) |
+| `js/dados.js` | nome, cor e ícone de cada módulo (os mesmos do programa) |
+| `img/` | telas reais do programa (Vendas, Estoque e Financeiro) |
+
+`js/kit.js`, `js/pagamento.js` e `pedido/` são do modelo antigo (módulo avulso
+com checkout da InfinitePay): continuam de pé para os pedidos que já existiam e
+para as páginas de kit.
 
 ## Por que os textos são assim
 
-Cor, ícone, nome e descrição de cada módulo saem do `MANIFEST` do aplicativo
-correspondente (`src/dumtech/apps/<id>/module.py`) e de `ui/icons.py` — a
-página usa os mesmos traços do programa. As cinco integrações descritas
-existem no código (`hub/launcher.py`, `core/catalog.py`, `core/contas.py`,
-`core/pedidos.py`, `core/contacts.py`): nenhuma delas é promessa.
+Quem lê é dono de pequeno negócio: frases completas, o que muda para ele e o
+que fazer, sem termo técnico. Cada frase de módulo descreve algo que o programa
+faz de fato hoje.

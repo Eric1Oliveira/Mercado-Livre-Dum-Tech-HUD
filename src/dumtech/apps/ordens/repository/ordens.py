@@ -34,6 +34,7 @@ class OrdensMixin:
         na_garantia: bool = False,
         limite: int = 500,
         andamento_primeiro: bool = False,
+        cliente: str = "",
     ) -> list[Ordem]:
         """Da entrada mais recente para a mais antiga.
 
@@ -50,6 +51,9 @@ class OrdensMixin:
         if status:
             sql += " AND status = ?"
             params.append(status)
+        if cliente.strip():
+            sql += " AND cliente = ? COLLATE NOCASE"
+            params.append(cliente.strip())
         if tecnico.strip():
             sql += " AND tecnico = ?"
             params.append(tecnico.strip())

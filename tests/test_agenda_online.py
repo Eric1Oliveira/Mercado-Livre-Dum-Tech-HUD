@@ -91,7 +91,7 @@ class BancoTestCase(Base):
 
         novo = open_database(caminho)
         self.addCleanup(novo.close)
-        self.assertEqual(novo.schema_version, 3)
+        self.assertEqual(novo.schema_version, MIGRATIONS[-1].version)
         compromisso = AgendaRepository(novo).listar()[0]
         self.assertEqual((compromisso.titulo, compromisso.cliente), ("Corte", "Ana"))
         self.assertEqual((compromisso.telefone, compromisso.origem, compromisso.reserva), ("", "", ""))

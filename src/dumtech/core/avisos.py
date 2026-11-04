@@ -72,6 +72,8 @@ TIPOS: tuple[Tipo, ...] = (
          dias=None),
     Tipo("estoque_baixo", "estoque", "Estoque baixo",
          "Produtos que chegaram ao mínimo que você definiu.", dias=None),
+    Tipo("lote_vencendo", "estoque", "Lotes vencendo",
+         "Produtos com validade chegando ao fim, ou já vencidos.", dias=None),
     Tipo("conta_vencendo", "financeiro", "Contas a vencer",
          "Contas a pagar e a receber chegando ao vencimento.",
          dias=7, rotulo_dias="Avisar com quantos dias de antecedência"),

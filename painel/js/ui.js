@@ -66,6 +66,8 @@ export function pilulaModulo(codigo, { apagada = false } = {}) {
   );
 }
 
+export const iniciaisDe = iniciais;
+
 export const pessoa = (nome, sub) =>
   el("div", { classe: "pessoa" }, [
     el("span", { classe: "avatar", texto: iniciais(nome) }),
@@ -112,8 +114,8 @@ export function tabela(colunas, linhas, montar, { aoClicar = null, vazioTexto = 
   if (!linhas.length) return vazio(vazioTexto);
 
   const cabeca = el("tr", {}, colunas.map((coluna) => {
-    const { texto, numero } = typeof coluna === "string" ? { texto: coluna } : coluna;
-    return el("th", { classe: numero ? "numero" : null, texto });
+    const { texto, numero, no } = typeof coluna === "string" ? { texto: coluna } : coluna;
+    return el("th", { classe: numero ? "numero" : null }, [no ?? texto]);
   }));
 
   const corpo = el("tbody", {}, linhas.map((linha) => {

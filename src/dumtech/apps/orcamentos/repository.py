@@ -27,7 +27,7 @@ from .models import (
 CAMPOS = """
     numero, cliente, data, validade, status, desconto, observacoes,
     condicao_pagamento, prazo_entrega, validade_dias, enviado_em,
-    respondido_em, motivo_recusa, total
+    respondido_em, motivo_recusa, total, gerado
 """
 
 #: quantos dias sem resposta ja pedem um telefonema
@@ -53,6 +53,7 @@ class OrcamentosRepository:
         status: str = "",
         em_aberto: bool = False,
         limite: int = 500,
+        cliente: str = "",
     ) -> list[Orcamento]:
         sql = "SELECT * FROM orcamentos WHERE 1 = 1"
         params: list = []
@@ -63,6 +64,9 @@ class OrcamentosRepository:
         if status:
             sql += " AND status = ?"
             params.append(status)
+        if cliente.strip():
+            sql += " AND cliente = ? COLLATE NOCASE"
+            params.append(cliente.strip())
         if em_aberto:
             sql += " AND status IN (?, ?)"
             params += [RASCUNHO, ENVIADO]
@@ -130,6 +134,7 @@ class OrcamentosRepository:
             orcamento.respondido_em,
             orcamento.motivo_recusa,
             orcamento.total,
+            orcamento.gerado,
         )
         if orcamento.id is None:
             colunas = ", ".join(campo.strip() for campo in CAMPOS.split(","))
@@ -171,7 +176,7 @@ class OrcamentosRepository:
                 ItemOrcamento(
                     descricao=item.descricao, quantidade=item.quantidade,
                     valor_unitario=item.valor_unitario, desconto=item.desconto,
-                    unidade=item.unidade,
+                    unidade=item.unidade, produto_id=item.produto_id, codigo=item.codigo,
                 )
                 for item in origem.itens
             ],
@@ -218,6 +223,11 @@ class OrcamentosRepository:
         orcamento.respondido_em = ""
         orcamento.motivo_recusa = ""
         return self.salvar(orcamento)
+
+    def marcar_gerado(self, orcamento_id: int, numero: str) -> None:
+        """Guarda em que a proposta virou."""
+        self.db.execute("UPDATE orcamentos SET gerado = ? WHERE id = ?",
+                        (numero.strip(), orcamento_id))
 
     def excluir(self, orcamento_id: int) -> None:
         self.db.execute("DELETE FROM orcamentos WHERE id = ?", (orcamento_id,))
@@ -287,7 +297,7 @@ class OrcamentosRepository:
     # ------------------------------------------------------------------- funil
     def resumo(self, limite_listas: int = 6) -> ResumoOrcamentos:
         mes = date.today().strftime("%Y-%m")
-        todos = self.listar(limite=2000)
+        todos = self.listar(limite=-1)
         abertos = [o for o in todos if o.em_aberto]
         respondidos = [o for o in todos if o.respondido]
         aprovados = [o for o in respondidos if o.status == APROVADO]
@@ -350,7 +360,7 @@ class OrcamentosRepository:
     def esperando_ha_mais_de(self, dias: int = ESPERA_LONGA) -> list[Orcamento]:
         """Propostas paradas tempo demais: sao elas que pedem um telefonema."""
         return [
-            o for o in self.listar(status=ENVIADO, limite=2000)
+            o for o in self.listar(status=ENVIADO, limite=-1)
             if (o.dias_esperando or 0) >= dias
         ]
 

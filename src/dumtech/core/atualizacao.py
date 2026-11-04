@@ -34,6 +34,13 @@ ATUALIZACAO SILENCIOSA (`silenciosa`, desde a 1.5.1)
     plano, nao mostra pilula nem faixa, e instala quando a pessoa fecha o
     programa (sem `/reabrir`). As mesmas tres conferencias valem. Quem nunca
     fecha o Hub ve o aviso normal depois de `DIAS_EM_SILENCIO` dias.
+
+ATUALIZACAO FORCADA (`forcada`, desde a 1.10.0)
+    A DumTech mandou instalar: o Hub baixa em segundo plano, avisa por cima de
+    tudo, da `PRAZO_FORCADA_S` para a pessoa terminar o que esta fazendo,
+    instala e abre de novo. Vem dentro do manifesto assinado, e as mesmas tres
+    conferencias valem. Hub mais antigo ignora o campo e cai no que ja sabia:
+    `silenciosa` (instala ao fechar) e `obrigatoria` (aviso que nao se dispensa).
 """
 
 from __future__ import annotations
@@ -78,6 +85,9 @@ TAMANHO_MAXIMO = 300 * 1024 * 1024
 #: fechado, so o Windows desligado) passa a ser avisada como qualquer outra
 DIAS_EM_SILENCIO = 7
 
+#: tempo para terminar a venda pela metade antes da atualizacao forcada
+PRAZO_FORCADA_S = 5 * 60
+
 
 class AtualizacaoError(Exception):
     """Erro com mensagem pronta para a tela."""
@@ -101,6 +111,8 @@ class Atualizacao:
     tamanho: int = 0
     #: instala sozinha ao fechar o Hub, sem aviso (so vale se `automatica`)
     silenciosa: bool = False
+    #: a DumTech mandou instalar sem esperar o clique (so vale se `automatica`)
+    forcada: bool = False
 
     @property
     def tamanho_texto(self) -> str:
@@ -166,6 +178,7 @@ def abrir_manifesto(pacote: Any) -> Atualizacao | None:
         automatica=automatica,
         tamanho=int(dados.get("tamanho") or 0),
         silenciosa=automatica and bool(dados.get("silenciosa")),
+        forcada=automatica and bool(dados.get("forcada")),
     )
 
 
@@ -196,7 +209,7 @@ def em_silencio(settings, aviso: Atualizacao, hoje: date | None = None) -> bool:
     So onde o Hub consegue se instalar (programa instalado, Windows) e so
     durante `DIAS_EM_SILENCIO` dias desde que ela chegou (`guardar` anota).
     """
-    if not aviso.silenciosa or not pode_atualizar_aqui():
+    if aviso.forcada or not aviso.silenciosa or not pode_atualizar_aqui():
         return False
     marca = settings.get(SECAO, "silenciosa") or {}
     if not isinstance(marca, dict) or marca.get("versao") != aviso.versao:
@@ -206,6 +219,11 @@ def em_silencio(settings, aviso: Atualizacao, hoje: date | None = None) -> bool:
     except ValueError:
         return True
     return ((hoje or date.today()) - desde).days < DIAS_EM_SILENCIO
+
+
+def forcada_aqui(aviso: Atualizacao) -> bool:
+    """Esta versao instala sem esperar o clique, neste computador?"""
+    return aviso.forcada and pode_atualizar_aqui()
 
 
 def pasta_de_download(paths=None) -> Path:

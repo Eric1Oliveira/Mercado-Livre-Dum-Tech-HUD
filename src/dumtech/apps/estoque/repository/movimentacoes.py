@@ -6,13 +6,17 @@ sempre explicavel pela lista de movimentacoes.
 
 from __future__ import annotations
 
+from datetime import date, timedelta
+
 from ..models import (
     TIPO_AJUSTE,
     TIPO_ENTRADA,
     TIPO_SAIDA,
     EstoqueError,
     ItemEntrada,
+    Lote,
     Movimentacao,
+    Produto,
     quantidade_texto,
 )
 from .comum import agora, dinheiro, igual, maior_que, quantidade
@@ -74,25 +78,28 @@ class MovimentacoesMixin:
             atual = quantidade(anterior - qtd)
             novo_custo = produto.preco_custo
 
+        # saldo e historico juntos: o saldo tem de ser explicavel pela lista
         with self.db.transaction() as conn:
             conn.execute(
                 "UPDATE produtos SET quantidade = ?, preco_custo = ?, "
                 "atualizado_em = ? WHERE id = ?",
                 (atual, dinheiro(novo_custo), agora(), produto.id),
             )
-        produto.quantidade = atual
-        produto.preco_custo = dinheiro(novo_custo)
-        return self._gravar_movimentacao(
-            produto,
-            tipo,
-            qtd,
-            anterior,
-            atual,
-            observacao=observacao,
-            custo_unitario=custo_unitario,
-            fornecedor=fornecedor,
-            documento=documento,
-        )
+            produto.quantidade = atual
+            produto.preco_custo = dinheiro(novo_custo)
+            if tipo == TIPO_SAIDA:
+                self._consumir_lotes(conn, produto.id, qtd)
+            return self._gravar_movimentacao(
+                produto,
+                tipo,
+                qtd,
+                anterior,
+                atual,
+                observacao=observacao,
+                custo_unitario=custo_unitario,
+                fornecedor=fornecedor,
+                documento=documento,
+            )
 
     def ajustar(self, produto_id: int, novo_saldo: float, observacao: str = "") -> Movimentacao | None:
         """Corrige o saldo para o que foi contado de verdade."""
@@ -113,15 +120,15 @@ class MovimentacoesMixin:
                 "UPDATE produtos SET quantidade = ?, atualizado_em = ? WHERE id = ?",
                 (novo_saldo, agora(), produto.id),
             )
-        produto.quantidade = novo_saldo
-        return self._gravar_movimentacao(
-            produto,
-            TIPO_AJUSTE,
-            abs(novo_saldo - anterior),
-            anterior,
-            novo_saldo,
-            observacao=observacao or "Ajuste manual de saldo",
-        )
+            produto.quantidade = novo_saldo
+            return self._gravar_movimentacao(
+                produto,
+                TIPO_AJUSTE,
+                abs(novo_saldo - anterior),
+                anterior,
+                novo_saldo,
+                observacao=observacao or "Ajuste manual de saldo",
+            )
 
     def entrada_em_lote(
         self,
@@ -139,13 +146,17 @@ class MovimentacoesMixin:
             raise EstoqueError("Adicione pelo menos um produto na entrada.")
 
         preparados = []
+        # o mesmo produto em duas linhas (dois lotes) soma: cada linha precisa
+        # partir do saldo da anterior, e nao do saldo de antes da nota
+        produtos: dict[int, Produto] = {}
         for posicao, item in enumerate(itens, start=1):
             qtd = quantidade(item.quantidade)
             if qtd <= 0:
                 raise EstoqueError(f"Linha {posicao}: a quantidade precisa ser maior que zero.")
-            produto = self.obter(item.produto_id)
+            produto = produtos.get(item.produto_id) or self.obter(item.produto_id)
             if produto is None:
                 raise EstoqueError(f"Linha {posicao}: produto não encontrado.")
+            produtos[item.produto_id] = produto
             if dinheiro(item.custo_unitario) < 0:
                 raise EstoqueError(f"Linha {posicao}: o custo não pode ser negativo.")
             preparados.append((produto, qtd, dinheiro(item.custo_unitario)))
@@ -177,7 +188,56 @@ class MovimentacoesMixin:
                         documento=documento,
                     )
                 )
+            for item in itens:
+                if item.lote.strip() or item.validade:
+                    self._gravar_lote(conn, item)
         return registros
+
+    # ------------------------------------------------------------------- lotes
+    @staticmethod
+    def _gravar_lote(conn, item: ItemEntrada) -> None:
+        conn.execute(
+            "INSERT INTO lotes (produto_id, codigo, validade, quantidade, criado_em)"
+            " VALUES (?, ?, ?, ?, ?)",
+            (item.produto_id, item.lote.strip(), item.validade or "",
+             quantidade(item.quantidade), agora()),
+        )
+
+    @staticmethod
+    def _consumir_lotes(conn, produto_id: int, qtd: float) -> None:
+        """Sai primeiro o que vence primeiro; lote sem data fica por ultimo."""
+        restante = qtd
+        linhas = conn.execute(
+            "SELECT id, quantidade FROM lotes WHERE produto_id = ? AND quantidade > 0"
+            " ORDER BY validade = '', validade, id",
+            (produto_id,),
+        ).fetchall()
+        for linha in linhas:
+            if restante <= 0:
+                break
+            tirou = min(restante, float(linha["quantidade"]))
+            conn.execute("UPDATE lotes SET quantidade = ? WHERE id = ?",
+                         (quantidade(float(linha["quantidade"]) - tirou), linha["id"]))
+            restante -= tirou
+
+    def lotes_de(self, produto_id: int) -> list[Lote]:
+        return [Lote.from_row(row) for row in self.db.query(
+            "SELECT * FROM lotes WHERE produto_id = ? AND quantidade > 0"
+            " ORDER BY validade = '', validade, id", (produto_id,),
+        )]
+
+    def vencendo(self, dias: int = 30) -> list[Lote]:
+        """O que vence nos proximos dias, e o que ja venceu e ainda esta aqui."""
+        limite = (date.today() + timedelta(days=int(dias))).isoformat()
+        return [Lote.from_row(row) for row in self.db.query(
+            """
+            SELECT l.*, p.nome AS produto_nome FROM lotes l
+            JOIN produtos p ON p.id = l.produto_id
+            WHERE l.quantidade > 0 AND l.validade <> '' AND l.validade <= ? AND p.ativo = 1
+            ORDER BY l.validade
+            """,
+            (limite,),
+        )]
 
     @staticmethod
     def _custo_medio(

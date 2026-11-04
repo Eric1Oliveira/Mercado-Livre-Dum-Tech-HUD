@@ -24,12 +24,14 @@ from .caixa import CaixaMixin
 from .devolucoes import DevolucoesMixin
 from .indicadores import IndicadoresMixin
 from .pagamentos import PagamentosMixin, pagamento_unico
+from .resultado import ResultadoMixin
 from .vendas import VendasMixin
 
 __all__ = ["VendasRepository", "Pagamento", "Venda", "ResumoVendas", "pagamento_unico"]
 
 
-class VendasRepository(VendasMixin, PagamentosMixin, CaixaMixin, DevolucoesMixin, IndicadoresMixin):
+class VendasRepository(VendasMixin, PagamentosMixin, CaixaMixin, DevolucoesMixin,
+                       IndicadoresMixin, ResultadoMixin):
     """Tudo que o DumTech Vendas sabe fazer."""
 
     def __init__(self, database: Database, catalogo=None) -> None:
@@ -45,7 +47,8 @@ class VendasRepository(VendasMixin, PagamentosMixin, CaixaMixin, DevolucoesMixin
     def resumo(self, limite_listas: int = 6) -> ResumoVendas:
         hoje = date.today().isoformat()
         mes = date.today().strftime("%Y-%m")
-        todas = self.listar()
+        # soma nao pode ter corte: a loja que vende muito via o mes pela metade
+        todas = self.listar(inicio=f"{mes}-01", limite=-1)
         vendas = [v for v in todas if v.conta]
         canceladas = [v for v in todas if not v.conta]
         do_mes = [v for v in vendas if (v.data or "")[:7] == mes]
@@ -60,7 +63,8 @@ class VendasRepository(VendasMixin, PagamentosMixin, CaixaMixin, DevolucoesMixin
                 por_forma[chave] = por_forma.get(chave, 0.0) + venda.total
 
         devolvido = sum(
-            d.valor for d in self.listar_devolucoes() if (d.data or "")[:7] == mes
+            d.valor for d in self.listar_devolucoes(inicio=f"{mes}-01", limite=-1)
+            if (d.data or "")[:7] == mes
         )
 
         return ResumoVendas(
@@ -74,6 +78,7 @@ class VendasRepository(VendasMixin, PagamentosMixin, CaixaMixin, DevolucoesMixin
                 sum(v.total for v in canceladas if (v.data or "")[:7] == mes), 2
             ),
             caixa=self.caixa_aberto(),
-            ultimas=vendas[:limite_listas],
+            # o dia 1 tambem tem historico: a lista nao depende do mes
+            ultimas=[v for v in self.listar(limite=limite_listas * 3) if v.conta][:limite_listas],
             por_forma=sorted(por_forma.items(), key=lambda item: -item[1])[:limite_listas],
         )

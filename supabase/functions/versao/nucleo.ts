@@ -66,6 +66,9 @@ export function conteudoDaAtualizacao(
     automatica: Boolean(dados.automatica),
     // instala sozinha ao fechar o Hub (1.5.1+) - so se ele puder instalar
     silenciosa: Boolean(dados.automatica) && Boolean(dados.silenciosa),
+    // o painel mandou instalar sem esperar o clique (Hub 1.10.0+). Hub mais
+    // antigo ignora este campo e segue `silenciosa` e `obrigatoria`
+    forcada: Boolean(dados.automatica) && Boolean(dados.forcada),
     emitido_em: agora.toISOString(),
   };
 }
@@ -132,6 +135,7 @@ export async function tratar(
       obrigatoria: Boolean(manifesto.obrigatoria),
       automatica,
       silenciosa: automatica && Boolean(manifesto.silenciosa),
+      forcada: automatica && Boolean(manifesto.forcada),
       sha256: automatica ? String(manifesto.sha256).toLowerCase() : "",
       tamanho: Number(manifesto.tamanho ?? 0),
       licenca,

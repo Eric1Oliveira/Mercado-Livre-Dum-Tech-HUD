@@ -197,3 +197,17 @@ test("o dia de hoje por extenso, sem o -feira", () => {
   assert.equal(hojePorExtenso(new Date(2026, 9, 17, 10)), "Sábado, 17 de outubro");
   assert.equal(hojePorExtenso(new Date(2026, 9, 16, 10)), "Sexta, 16 de outubro");
 });
+
+
+test("reserva do link aparece no topo, sem depender do computador ligado", () => {
+  const tela = montarTela({ reservas: [{ nome: "Ana", servico: "Corte", inicio: "2026-11-05T14:30" }] });
+  const alertas = alertasDaTela(tela);
+  assert.equal(alertas.length, 1);
+  assert.equal(alertas[0].texto, "Ana marcou Corte");
+  assert.equal(alertas[0].detalhe, "05/11 às 14:30");
+  assert.equal(alertas[0].app, "AGENDA");
+});
+
+test("resposta antiga, sem reservas, continua funcionando", () => {
+  assert.deepEqual(alertasDaTela(montarTela({})), []);
+});

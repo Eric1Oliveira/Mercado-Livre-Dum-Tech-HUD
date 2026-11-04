@@ -57,7 +57,8 @@ class OrdensWindow(AppWindow):
     def build_views(self) -> None:
         self.bancada_view = self.add_view(
             "Quadro", "wrench",
-            BancadaView(self.repository, empresa=self.empresa, contas=self.context.contas)
+            BancadaView(self.repository, empresa=self.empresa, contas=self.context.contas,
+                        gaveta=self.context.gaveta)
         )
         self.dashboard_view = self.add_view(
             "Painel", "dashboard", DashboardView(self.repository)
@@ -69,6 +70,7 @@ class OrdensWindow(AppWindow):
                                          mensageiro=self.mensagens,
                                          contatos=self.context.contacts,
                                          contas=self.context.contas,
+                                         gaveta=self.context.gaveta,
                                          catalogo=self.context.catalog)
         )
 

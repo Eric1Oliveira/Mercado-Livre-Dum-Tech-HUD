@@ -12,6 +12,7 @@ esses modulos na licenca, o Hub entrega uma lista vazia e o botao nao aparece.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 
@@ -39,6 +40,27 @@ class Pedido:
     itens: list[ItemPedido] = field(default_factory=list)
     desconto: float = 0.0
     observacoes: str = ""
+
+
+def precos_fechados(pedido: Pedido) -> tuple[list[float], float]:
+    """Unitarios e desconto do documento para o total bater no centavo.
+
+    Quem recebe a proposta nao tem desconto por item: ele entra no preco. So
+    que R$ 89,70 em 3 linhas com desconto nem sempre vira um unitario de dois
+    digitos. O unitario arredonda para cima e a sobra entra no desconto do
+    documento, porque cobrar um centavo diferente do combinado e erro.
+    """
+    unitarios: list[float] = []
+    sobra = 0.0
+    for item in pedido.itens:
+        quantidade = float(item.quantidade or 1) or 1.0
+        liquido = round(
+            max(float(item.valor_unitario or 0) * quantidade - float(item.desconto or 0), 0.0), 2
+        )
+        unitario = math.ceil(round(liquido / quantidade * 100, 6)) / 100
+        unitarios.append(unitario)
+        sobra += round(unitario * quantidade, 2) - liquido
+    return unitarios, round(float(pedido.desconto or 0) + sobra, 2)
 
 
 @runtime_checkable

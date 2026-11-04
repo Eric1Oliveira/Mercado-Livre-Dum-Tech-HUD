@@ -36,7 +36,7 @@ from ....ui.widgets.flow_layout import FlowLayout
 from ....ui.widgets.form import FormDialog
 from ....ui.widgets.recorrencias import CampoRepetir
 from ....ui.widgets.secao import Secao
-from .. import recorrencias
+from .. import financeiro, recorrencias
 from ..models import (
     ACESSORIOS_COMUNS,
     GARANTIA_PADRAO,
@@ -307,6 +307,8 @@ class OrdemDialog(FormDialog):
             self.ordem.valor = self.valor.value()
         contrato = self._contrato()
         self.repository.salvar(self.ordem)
+        if self.editando:
+            financeiro.ajustar(self.contas, self.ordem)
         if contrato is not None:
             self.contratos.salvar(contrato)
             # a conta nasce junto, como nas proximas vezes do contrato

@@ -266,7 +266,8 @@ class LojaLocalTestCase(unittest.TestCase):
         with urllib.request.urlopen(f"{base}/index.html", timeout=10) as resposta:
             pagina = resposta.read().decode("utf-8")
         self.assertIn("DumTech", pagina)
-        self.assertIn('id="montador"', pagina, "a pagina servida e a landing inteira")
+        # o plano mensal (desde a 1.12.0) e o coracao da pagina inicial
+        self.assertIn('id="plano"', pagina, "a pagina servida e a landing inteira")
 
     def test_a_url_de_compra_nasce_do_endereco_local(self) -> None:
         self.assertRegex(url_compra("abc123"), r"^http://127\.0\.0\.1:\d+/\?t=abc123$")

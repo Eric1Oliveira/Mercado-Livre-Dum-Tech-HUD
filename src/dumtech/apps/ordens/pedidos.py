@@ -11,7 +11,8 @@ from datetime import date
 from pathlib import Path
 
 from ...core import eventos
-from ...core.pedidos import Pedido
+from ...core.pedidos import Pedido, precos_fechados
+from . import financeiro
 from .database import open_database
 from .models import ANDAMENTO, PECA, SERVICO, ItemOS, Ordem
 from .repository import OrdensRepository
@@ -31,6 +32,8 @@ class DestinoOrdens:
     def __init__(self, database) -> None:
         self.database = database
         self.repository = OrdensRepository(database)
+        #: o Financeiro, para a ordem da proposta ja nascer como conta a receber
+        self.contas = None
 
     @classmethod
     def abrir_banco(cls, caminho: Path) -> "DestinoOrdens":
@@ -38,6 +41,7 @@ class DestinoOrdens:
 
     def abrir(self, pedido: Pedido) -> str:
         primeiro = pedido.itens[0].descricao if pedido.itens else ""
+        unitarios, desconto = precos_fechados(pedido)
         ordem = self.repository.salvar(Ordem(
             numero=self.repository.proximo_numero(),
             cliente=pedido.cliente,
@@ -48,7 +52,7 @@ class DestinoOrdens:
             status=ANDAMENTO,
             aprovado_em=date.today().isoformat(),
             aprovado_por=pedido.cliente,
-            desconto=float(pedido.desconto or 0),
+            desconto=desconto,
             observacoes=f"Gerada da proposta {pedido.origem}"
                         if pedido.origem else "",
             itens=[
@@ -58,25 +62,19 @@ class DestinoOrdens:
                     tipo=PECA if getattr(item, "produto_id", 0) else SERVICO,
                     descricao=item.descricao,
                     quantidade=float(item.quantidade or 1),
-                    valor_unitario=_unitario(item),
+                    valor_unitario=unitario,
                     produto_id=int(getattr(item, "produto_id", 0) or 0),
                     codigo=getattr(item, "codigo", "") or "",
                 )
-                for item in pedido.itens
+                for item, unitario in zip(pedido.itens, unitarios)
             ],
         ))
+        financeiro.da_proposta(self.contas, ordem)
         eventos.avisar(self.app_id)
         return ordem.numero
 
     def close(self) -> None:
         self.database.close()
-
-
-def _unitario(item) -> float:
-    """O desconto por linha da proposta entra no preco: o total tem que bater."""
-    quantidade = float(item.quantidade or 1) or 1.0
-    bruto = float(item.valor_unitario or 0) * quantidade
-    return round(max(bruto - float(item.desconto or 0), 0.0) / quantidade, 2)
 
 
 def abrir_destino(caminho: Path) -> DestinoOrdens:

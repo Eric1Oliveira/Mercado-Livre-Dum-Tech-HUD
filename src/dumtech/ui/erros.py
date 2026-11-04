@@ -22,11 +22,13 @@ from PySide6.QtWidgets import (
     QApplication,
     QDialog,
     QHBoxLayout,
+    QMessageBox,
     QPlainTextEdit,
     QVBoxLayout,
     QWidget,
 )
 
+from ..core.database import aviso_so_consulta, e_so_consulta
 from ..core.diagnostico import onde, relatorio, resumo
 from .theme import Space, apply_window_theme, current_palette, palette_for
 from .widgets.buttons import Button
@@ -145,6 +147,12 @@ class ErroDialog(QDialog):
 def tratar(erro: BaseException, versao: str = "", log: Path | None = None) -> str:
     """Registra o erro e mostra a caixa. Devolve o relatorio (util em teste)."""
     global _mostrando
+
+    # botao de tela em modo consulta: nao e defeito, nao vai para o relatorio
+    if e_so_consulta(erro) and QApplication.instance() is not None:
+        aviso = aviso_so_consulta()
+        QMessageBox.information(QApplication.activeWindow(), "Somente consulta", aviso)
+        return aviso
 
     texto = relatorio(erro, versao)
     logger.error("Erro nao tratado\n%s", texto)

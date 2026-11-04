@@ -114,6 +114,47 @@ MIGRATIONS = (
             """,
         ),
     ),
+    Migration(
+        version=5,
+        name="estoque por linha",
+        statements=(
+            # O que ja deu baixa conta como saido por inteiro: e o que sempre
+            # se supos. Sem isto, cancelar nao sabia o que devolver.
+            """
+            ALTER TABLE os_itens ADD COLUMN baixado REAL NOT NULL DEFAULT 0;
+            UPDATE os_itens SET baixado = quantidade
+                WHERE tipo = 'peca' AND produto_id > 0 AND ordem_id IN
+                    (SELECT id FROM ordens WHERE TRIM(baixa_estoque) <> '');
+            """,
+        ),
+    ),
+    Migration(
+        version=6,
+        name="checklist, fotos e assinatura",
+        statements=(
+            # as fotos ficam no banco, e nao numa pasta: assim vao junto no backup
+            """
+            CREATE TABLE IF NOT EXISTS os_checklist (
+                id       INTEGER PRIMARY KEY AUTOINCREMENT,
+                ordem_id INTEGER NOT NULL REFERENCES ordens(id) ON DELETE CASCADE,
+                texto    TEXT    NOT NULL,
+                feito    INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE INDEX IF NOT EXISTS idx_os_checklist ON os_checklist(ordem_id);
+
+            CREATE TABLE IF NOT EXISTS os_fotos (
+                id        INTEGER PRIMARY KEY AUTOINCREMENT,
+                ordem_id  INTEGER NOT NULL REFERENCES ordens(id) ON DELETE CASCADE,
+                imagem    BLOB    NOT NULL,
+                criado_em TEXT    NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_os_fotos ON os_fotos(ordem_id);
+
+            ALTER TABLE ordens ADD COLUMN assinatura BLOB;
+            ALTER TABLE ordens ADD COLUMN assinado_em TEXT NOT NULL DEFAULT '';
+            """,
+        ),
+    ),
 )
 
 

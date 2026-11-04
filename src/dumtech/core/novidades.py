@@ -45,6 +45,106 @@ class Novidade:
 #: versao -> o que mudou. So entra o que o cliente PERCEBE: correcao interna
 #: nao vira aviso. Escreva como quem explica no balcao, sem termo tecnico.
 VERSOES: dict[str, tuple[Novidade, ...]] = {
+    "1.11.1": (
+        Novidade(
+            "vendas", "Receber no Balcão sem erro",
+            "Se o Receber do Balcão mostrou uma mensagem de erro, isso foi corrigido: a venda "
+            "fecha normalmente e guarda o vendedor escolhido.",
+        ),
+    ),
+    "1.11.0": (
+        Novidade(
+            "", "Cada pessoa da loja com a sua conta",
+            "Crie a conta de administrador com o login e a senha que quiser. Depois é só cadastrar "
+            "a equipe: cada um entra com o próprio acesso, e o Hub continua funcionando sem internet.",
+        ),
+        Novidade(
+            "", "Você decide o que cada um vê",
+            "Marque os módulos e os avisos de cada funcionário. Licença, Backup, Configurações e "
+            "Ver no celular ficam só com quem é administrador.",
+        ),
+        Novidade(
+            "", "Senha esquecida tem volta",
+            "No login, use Esqueci minha senha: o código chega no seu e-mail. Funcionário sem "
+            "e-mail pede ao administrador, que redefine em Usuários e acessos.",
+        ),
+        Novidade(
+            "", "Os computadores da chave na sua mão",
+            "Em Usuários e acessos você vê quais computadores usam a chave, dá nome a cada um e "
+            "libera a vaga de um que parou de funcionar.",
+        ),
+    ),
+    "1.10.0": (
+        Novidade(
+            "", "Ache qualquer coisa em um lugar só",
+            "Aperte Ctrl+K e digite pelo menos 3 letras: o Hub procura vendas, ordens, propostas, "
+            "contas, compromissos e produtos, em todos os módulos.",
+        ),
+        Novidade(
+            "", "Cópia de segurança mais confiável",
+            "A cópia automática agora vai também para a pasta que você escolheu e avisa quando "
+            "falha. Restaurar é tudo ou nada: se algo der errado, seus dados ficam como estavam.",
+        ),
+        Novidade(
+            "", "Licença vencida não prende seus dados",
+            "Módulo fora da licença abre só para consulta: você vê e exporta tudo o que já "
+            "lançou, só não grava nada novo. As listas agora têm o botão Exportar.",
+        ),
+        Novidade(
+            "vendas", "Caixa certo, com troco e recebimentos",
+            "O troco não aparece mais como dinheiro a mais na conferência do Caixa. Dinheiro "
+            "recebido por ordem de serviço ou conta do Financeiro entra na gaveta, e a sangria "
+            "pergunta para onde o dinheiro foi.",
+        ),
+        Novidade(
+            "vendas", "Venda a prazo com vencimento",
+            "Venda a prazo agora pede o cliente e já sugere o vencimento para 30 dias, que você "
+            "pode trocar. O Balcão avisa quando o cliente está devendo.",
+        ),
+        Novidade(
+            "vendas", "Veja o lucro de verdade",
+            "A nova aba Resultado mostra custo, lucro, margem e comissão por vendedor. Cada venda "
+            "guarda o custo do dia. Venda paga agora muda só cliente e observações: para mudar "
+            "item ou valor, use Devolução ou cancele e lance de novo.",
+        ),
+        Novidade(
+            "financeiro", "Receber aqui fecha a venda e a ordem",
+            "Conta recebida no Financeiro agora quita a venda ou a ordem ligada a ela, e estornar "
+            "reabre. A nova aba Resultado mostra receitas, despesas e o que sobrou em cada mês.",
+        ),
+        Novidade(
+            "ordens", "Checklist, fotos e assinatura na ordem",
+            "Cada ordem agora tem lista de tarefas, fotos do equipamento e assinatura do cliente "
+            "na tela. Cancelar a ordem devolve as peças ao estoque e cancela a conta junto.",
+        ),
+        Novidade(
+            "orcamentos", "Proposta aprovada vira conta a receber",
+            "Ao gerar a venda ou a ordem, o valor já aparece no Financeiro. Sem esses módulos, a "
+            "conta nasce na aprovação. Gerar a mesma proposta duas vezes agora pede confirmação.",
+        ),
+        Novidade(
+            "agenda", "Agenda de vários profissionais",
+            "Cada compromisso pode ter um profissional, e o conflito de horário vale por pessoa. "
+            "Dá para marcar quem faltou, registrar sinal e transformar o atendimento em venda ou "
+            "ordem. Reserva feita pelo link agora chega por e-mail e no celular.",
+        ),
+        Novidade(
+            "estoque", "Tamanho, cor, lote e validade",
+            "Crie as variações de um produto de uma vez e controle lote e validade na entrada: a "
+            "saída usa primeiro o que vence antes, e o painel avisa o que está vencendo.",
+        ),
+        Novidade(
+            "estoque", "Compras e fornecedores",
+            "Cadastre fornecedores, faça o pedido de compra e dê entrada quando chegar. Nota "
+            "parcelada vira boletos no Financeiro. A planilha agora entende valores como 1.500 e "
+            "o mesmo produto em várias linhas da nota soma certo.",
+        ),
+        Novidade(
+            "clientes", "A ficha conta tudo do cliente",
+            "A ficha agora mostra compras, ordens, contas e agenda num histórico só, e avisa "
+            "quanto o cliente deve. Parceiros ganharam comissão, com lançamento no Financeiro.",
+        ),
+    ),
     "1.9.0": (
         Novidade(
             "vendas", "Venda que se repete agora é no Lançar venda",
@@ -281,6 +381,7 @@ def marcar_vista(settings, instalada: str) -> None:
 #: Tire daqui quando a tela deixar de ser novidade.
 TELAS_NOVAS: frozenset[str] = frozenset({
     "agenda/Online", "agenda/Serviços", "clientes/Parceiros",
+    "vendas/Resultado", "financeiro/Resultado", "estoque/Compras", "estoque/Fornecedores",
 })
 
 #: nas preferencias de cada aplicativo: as telas novas que ja foram abertas

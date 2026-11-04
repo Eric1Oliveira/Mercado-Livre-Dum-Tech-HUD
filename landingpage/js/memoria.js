@@ -17,12 +17,18 @@ export const CHAVE = "dumtech.cliente";
 /** Depois disso, e melhor perguntar de novo do que chutar quem e a pessoa. */
 export const VALIDADE_DIAS = 90;
 
+/** O tipo da licenca so vale se for um dos tres: o resto e texto de estranho. */
+const TIPOS = new Set(["vitalicia", "assinatura", "teste"]);
+const tipoValido = (tipo) => (TIPOS.has(String(tipo || "")) ? String(tipo) : "");
+
 export function lembrar(armazem, cliente) {
   if (!armazem || !cliente?.email) return null;
   const guardado = {
     nome: String(cliente.nome || "").slice(0, 120),
     email: String(cliente.email || "").slice(0, 160).toLowerCase(),
     produtos: [...new Set((cliente.produtos || []).map((c) => String(c).toUpperCase()))],
+    // vitalicio, assinante ou teste: decide o que a pagina oferece
+    tipo: tipoValido(cliente.tipo),
     quando: new Date().toISOString(),
   };
   try {
@@ -68,6 +74,7 @@ export function lembrado(armazem, agora = new Date()) {
     produtos: Array.isArray(dados.produtos)
       ? dados.produtos.map((c) => String(c).toUpperCase())
       : [],
+    tipo: tipoValido(dados.tipo),
     quando: dados.quando,
     doNavegador: true,
   };

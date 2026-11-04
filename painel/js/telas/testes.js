@@ -1,113 +1,22 @@
-// Testes grátis: quem está testando o quê, quanto usou e se virou compra.
+// Teste grátis de um módulo (cliente vitalício): as peças que a ficha usa.
 //
 // O teste começa pelo Hub do cliente ("Testar grátis") ou pela ficha dele aqui.
 // Estender e encerrar chegam ao Hub em até 2 minutos: o fim do teste vai
 // dentro da licença assinada, e a impressão digital da licença inclui os
 // testes (migration 20261019120000).
 
-import { atualizar, inserir, ler } from "../api.js";
-import { data, dinheiro, numero, quando } from "../formato.js";
+import { atualizar, inserir } from "../api.js";
+import { data, numero, quando } from "../formato.js";
 import { mensagemDeAcompanhamento } from "../mensagens.js";
 import { modulo } from "../modulos.js";
 import { recarregar } from "../painel.js";
 import {
-  DIAS_DE_TESTE, ESTADOS_DO_TESTE, FALTA_MIGRATION, andamentoDoTeste, estadoDoTeste, fimEstendido,
-  ordenarTestes, prazoDoTeste, resumoDosTestes,
+  DIAS_DE_TESTE, ESTADOS_DO_TESTE, andamentoDoTeste, estadoDoTeste, fimEstendido, prazoDoTeste,
 } from "../saude.js";
-import {
-  agir, barra, botaoWhatsApp, cartao, chips, confirmar, el, limpar, pessoa, pilula, pilulaModulo,
-  tabela, tile, vazio,
-} from "../ui.js";
-import { ficha } from "./comercial.js";
+import { agir, barra, botaoWhatsApp, confirmar, el, pilula } from "../ui.js";
 
 const CHEGA_AO_HUB = "O Hub do cliente recebe em até 2 minutos, assim que estiver com internet.";
 const COR_DO_PRAZO = { rodando: "var(--violeta)", acabando: "var(--aviso)", terminou: "#b9b5c8", comprou: "var(--ok)" };
-const filtroTestes = { estado: "" };
-const GRUPOS = {
-  testando: (e) => e === "rodando" || e === "acabando",
-  terminou: (e) => e === "terminou",
-  comprou: (e) => e === "comprou",
-};
-
-export async function testes(alvo) {
-  const agora = new Date();
-  const [lista, clientes] = await Promise.all([
-    ler("painel_testes", { ordem: "termina_em.desc" }).catch(() => null),
-    ler("painel_clientes", { ordem: "nome.asc" }),
-  ]);
-  const cabeca = el("div", { classe: "pagina-cabeca" }, [
-    el("div", {}, [
-      el("h1", { texto: "Testes grátis" }),
-      el("p", { texto: "Quem está testando o quê, quanto usou e se virou compra. " +
-                       "Para dar um teste, abra a ficha do cliente." }),
-    ]),
-  ]);
-  if (!lista) {
-    alvo.append(cabeca, cartao("", vazio("O banco ainda não mostra os testes ao painel", FALTA_MIGRATION)));
-    return;
-  }
-  const porId = new Map(clientes.map((c) => [c.cliente_id, c]));
-  const r = resumoDosTestes(lista, agora);
-  const receita = lista.filter((t) => t.comprou).reduce((soma, t) => soma + Number(t.preco || 0), 0);
-
-  alvo.append(
-    cabeca,
-    el("div", { classe: "tiles" }, [
-      tile("Testando agora", numero(r.testando),
-        r.acabando ? `${numero(r.acabando)} terminam em até 2 dias` : "nenhum termina nos próximos 2 dias"),
-      tile("Viraram compra", numero(r.comprou),
-        r.conversao === null ? "nenhum teste terminou ainda" : `${r.conversao}% dos testes que terminaram`,
-        r.comprou ? "ok" : ""),
-      tile("Usaram o teste", r.total ? `${numero(r.usaram)} de ${numero(r.total)}` : "—",
-        "abriram o módulo durante o teste"),
-      tile("Receita dos testes", dinheiro(receita), "módulos comprados depois do teste, pelo preço de tabela"),
-    ])
-  );
-
-  const destino = el("div", {});
-  const conta = (grupo) => lista.filter((t) => GRUPOS[grupo](estadoDoTeste(t, agora))).length;
-  const opcoes = [
-    { valor: "", texto: "Todos", conta: lista.length },
-    { valor: "testando", texto: "Testando", conta: conta("testando") },
-    { valor: "terminou", texto: "Terminaram sem comprar", conta: conta("terminou") },
-    { valor: "comprou", texto: "Compraram", conta: conta("comprou") },
-  ];
-  const desenhar = () => {
-    const visiveis = ordenarTestes(lista, agora).filter((t) =>
-      !filtroTestes.estado || GRUPOS[filtroTestes.estado](estadoDoTeste(t, agora)));
-    limpar(destino).append(
-      lista.length
-        ? el("div", { classe: "cartao-filtros" }, [
-            chips(opcoes, filtroTestes.estado, (valor) => { filtroTestes.estado = valor; desenhar(); },
-                  "Filtrar testes"),
-          ])
-        : null,
-      tabela(
-        ["Cliente", "Módulo", "Situação", { texto: "Uso no teste", numero: true }, ""],
-        visiveis,
-        (t) => {
-          const cliente = porId.get(t.cliente_id) || {};
-          return [
-            pessoa(cliente.nome, cliente.email),
-            pilulaModulo(t.codigo),
-            periodo(t, agora),
-            usoNoTeste(t),
-            el("div", { classe: "ferramentas" }, acoesDoTeste(t, cliente, agora)),
-          ];
-        },
-        {
-          aoClicar: (t) => porId.get(t.cliente_id) && ficha(porId.get(t.cliente_id)),
-          vazioTexto: lista.length ? "Nenhum teste nesta situação."
-            : "Nenhum teste grátis ainda. Ele começa no Hub do cliente, no botão Testar grátis de cada módulo.",
-        }
-      )
-    );
-  };
-  desenhar();
-  alvo.append(cartao("Testes", destino));
-}
-
-/** A situação do teste e a barrinha do período: quanto dos dias já passou. */
 export function periodo(teste, agora = new Date()) {
   const estado = estadoDoTeste(teste, agora);
   const feito = estado === "comprou" || estado === "terminou" ? 1 : andamentoDoTeste(teste, agora);

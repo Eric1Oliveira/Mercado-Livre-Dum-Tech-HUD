@@ -99,7 +99,7 @@ def fechamento(conferencia: ConferenciaCaixa, empresa=None) -> str:
         linha(),
         centro("DINHEIRO NA GAVETA"),
         lado_a_lado("Abertura", fmt.moeda(conferencia.abertura)),
-        lado_a_lado("Vendas em dinheiro", fmt.moeda(conferencia.vendas_dinheiro)),
+        lado_a_lado("Dinheiro recebido", fmt.moeda(conferencia.vendas_dinheiro)),
         lado_a_lado("Trocos", f"-{fmt.moeda(conferencia.trocos)}"),
         lado_a_lado("Suprimentos", fmt.moeda(conferencia.suprimentos)),
         lado_a_lado("Sangrias", f"-{fmt.moeda(conferencia.sangrias)}"),

@@ -36,6 +36,20 @@ async function rpc(funcao, params = {}) {
   return resposta.json();
 }
 
+/**
+ * Conta ao dono na hora, mesmo com o computador dele desligado. Quem marcou nao
+ * espera por isto e nao fica sabendo se falhou: o horario ja esta garantido.
+ */
+function avisarEmpresa(reserva) {
+  const funcoes = CONFIG.SUPABASE_URL.replace(/\/rest\/v1\/?$/, "/functions/v1");
+  fetch(`${funcoes}/avisar-reserva`, {
+    method: "POST",
+    keepalive: true,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reserva }),
+  }).catch(() => null);
+}
+
 // -------------------------------------------------------------------- apoio --
 function el(tag, classe, texto) {
   const elemento = document.createElement(tag);
@@ -389,6 +403,7 @@ async function confirmar(evento) {
       p_armadilha: $("site").value,
     });
     if (resposta?.ok) {
+      avisarEmpresa(resposta.id);
       lembrarCliente(nome.value.trim(), telefone.value);
       const reserva = {
         codigo: resposta.codigo,

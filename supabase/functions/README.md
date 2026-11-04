@@ -5,6 +5,8 @@
 | `licenca-assinada` | o **Hub** (chave anon) | confere a licença e devolve ela **assinada** (Ed25519). O Hub guarda e confere a assinatura toda vez que abre: editar ou copiar o `license.json` não libera nada |
 | `enviar-chave` | o **painel** (token do administrador) | manda por e-mail a chave de uma licença, com os dados buscados no banco pelo próprio token de quem pediu |
 | `pagamentos` | o **Hub** (chave anon) | a área **Configurações › Pagamentos**: manda o código de 6 dígitos para o e-mail **da licença**, abre uma sessão de 15 min, **assina a chave Pix** para cada computador e avisa o dono por e-mail a cada troca |
+| `acesso` | o **Hub** (chave anon) | contas da chave: login, "esqueci minha senha", gestão de usuários e computadores. Deriva e confere a senha (PBKDF2): o banco só vê o hash. Usa os mesmos segredos de `pagamentos` |
+| `mensalidade` | o **site** (sem login) e o **painel** (token do administrador) | `/cadastro`: teste gratis e pedido de assinatura, com a chave **so por e-mail**. `/admin`: confirmar, descartar, cobranca falhou, em dia, cancelou, estender teste, ajustar, ativar e reabrir - cada acao manda o e-mail amigavel certo (`avisar: false` nao manda; ajuste so de anotacao tambem nao). O cadastro aceita `plano` (plano pronto) e `cupom`. Publicar com `--no-verify-jwt` (o site chama sem login; a rota admin confere o token no banco) |
 | `checkout` | a **loja** e a **InfinitePay** | cria o link de pagamento do pedido, recebe o aviso de pago, confere com a InfinitePay (`payment_check`) e entrega a licença; a página `/pedido/` pergunta por ela |
 
 `licenca-assinada` e `enviar-chave` são opcionais: sem a primeira o Hub usa a
@@ -53,7 +55,7 @@ Hub pede um código de 6 dígitos que chega no e-mail cadastrado **na licença**
    `index.ts` e `nucleo.ts` desta pasta, **Verify JWT desligado** (o Hub chama com a
    chave anon). Pelo CLI: `supabase functions deploy pagamentos --no-verify-jwt`.
 4. **Segredos:** `BREVO_API_KEY` (ou `RESEND_API_KEY`) e `DUMTECH_EMAIL_REMETENTE`
-   (ex.: `DumTech <seuemail@gmail.com>`). A chave de assinatura é a mesma da licença
+   (ex.: `DumTech <dumtechsolutions@gmail.com>`). A chave de assinatura é a mesma da licença
    (`DUMTECH_LICENCA_CHAVE_PRIVADA` e `DUMTECH_LICENCA_KID`) — já cadastrada.
 5. **Recompilar e distribuir o Hub.**
 
@@ -102,6 +104,7 @@ Em `enviar-chave`, deixe ligado.
 ```
 supabase functions deploy licenca-assinada --no-verify-jwt
 supabase functions deploy enviar-chave
+supabase functions deploy avisar-reserva --no-verify-jwt
 ```
 
 ## Segredos (Edge Functions › Secrets)
@@ -112,7 +115,7 @@ supabase functions deploy enviar-chave
 | `DUMTECH_LICENCA_KID` | licenca-assinada | `k1` |
 | `DUMTECH_LICENCA_DIAS_OFFLINE` | licenca-assinada | opcional, padrão `30` (1 a 90): quantos dias o Hub abre sem conferir |
 | `RESEND_API_KEY` | enviar-chave | chave da conta no resend.com |
-| `DUMTECH_EMAIL_REMETENTE` | enviar-chave | `DumTech <licencas@seudominio.com.br>` (domínio verificado no Resend) |
+| `DUMTECH_EMAIL_REMETENTE` | enviar-chave | `DumTech <dumtechsolutions@gmail.com>` (confirmado em *Senders* no Brevo) |
 | `DUMTECH_EMAIL_RESPONDER` | enviar-chave | opcional: para onde vai a resposta do cliente |
 | `DUMTECH_PAINEL_ORIGEM` | enviar-chave | opcional: `https://painel.seudominio.com.br` (restringe o CORS) |
 

@@ -10,6 +10,7 @@ from __future__ import annotations
 from ..models import (
     ABERTO,
     FECHADO,
+    TIPO_RECEBIMENTO,
     TIPO_SANGRIA,
     TIPO_SUPRIMENTO,
     Caixa,
@@ -112,6 +113,38 @@ class CaixaMixin:
             criado_em=momento,
         )
 
+    def receber_na_gaveta(self, valor: float, motivo: str, documento: str = "") -> bool:
+        """Dinheiro em especie que entrou por fora da venda. False sem caixa aberto."""
+        caixa = self.caixa_aberto()
+        valor = dinheiro(valor)
+        if caixa is None or valor <= 0:
+            return False
+        self.db.execute(
+            """
+            INSERT INTO caixa_movimentos (caixa_id, tipo, valor, motivo, documento, criado_em)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (caixa.id, TIPO_RECEBIMENTO, valor, motivo.strip(), documento.strip(), agora()),
+        )
+        return True
+
+    def desfazer_recebimento(self, valor: float, documento: str) -> bool:
+        """A baixa foi desfeita: sai do caixa aberto, se ainda estiver nele."""
+        caixa = self.caixa_aberto()
+        if caixa is None:
+            return False
+        cursor = self.db.execute(
+            """
+            DELETE FROM caixa_movimentos WHERE id = (
+                SELECT id FROM caixa_movimentos
+                WHERE caixa_id = ? AND tipo = ? AND documento = ? AND ABS(valor - ?) < 0.005
+                ORDER BY id DESC LIMIT 1
+            )
+            """,
+            (caixa.id, TIPO_RECEBIMENTO, documento.strip(), dinheiro(valor)),
+        )
+        return cursor.rowcount > 0
+
     def sangria(self, valor: float, motivo: str) -> MovimentoCaixa:
         return self.registrar_movimento(TIPO_SANGRIA, valor, motivo)
 
@@ -134,11 +167,13 @@ class CaixaMixin:
             for pagamento in venda.pagamentos:
                 por_forma[pagamento.forma] = por_forma.get(pagamento.forma, 0.0) + pagamento.valor
                 if pagamento.em_dinheiro:
-                    vendas_dinheiro += pagamento.valor
+                    # `valor` ja vem sem o troco: somar ele e tirar `trocos` de
+                    # novo cobrava o troco duas vezes
+                    vendas_dinheiro += max(pagamento.recebido, pagamento.valor)
 
         devolvido = float(
             self.db.scalar(
-                "SELECT COALESCE(SUM(valor), 0) FROM devolucoes WHERE caixa_id = ?",
+                "SELECT COALESCE(SUM(em_dinheiro), 0) FROM devolucoes WHERE caixa_id = ?",
                 (caixa.id,),
                 default=0.0,
             )
@@ -149,6 +184,9 @@ class CaixaMixin:
             abertura=caixa.valor_abertura,
             vendas_dinheiro=dinheiro(vendas_dinheiro),
             trocos=dinheiro(sum(v.troco for v in vendas)),
+            recebimentos=dinheiro(
+                sum(m.valor for m in movimentos if m.tipo == TIPO_RECEBIMENTO)
+            ),
             suprimentos=dinheiro(
                 sum(m.valor for m in movimentos if m.tipo == TIPO_SUPRIMENTO)
             ),

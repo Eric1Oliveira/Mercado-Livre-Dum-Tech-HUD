@@ -2,17 +2,20 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import date
 
 from PySide6.QtWidgets import QWidget
 
-from ....core.pagamentos import PIX, formas_do_balcao
+from ....core.pagamentos import DINHEIRO, PIX, formas_do_balcao
 from ....ui import format as fmt
 from ....ui.widgets import form
 from ....ui.widgets.form import FormDialog
 from ....ui.widgets.painel_pix import PainelPix
 from ..models import Ordem, OrdemError
 from ..repository import OrdensRepository
+
+logger = logging.getLogger(__name__)
 
 
 class AprovacaoDialog(FormDialog):
@@ -73,9 +76,12 @@ class EntregaDialog(FormDialog):
         parent: QWidget | None = None,
         empresa=None,
         contas=None,
+        gaveta=None,
     ) -> None:
         self.repository = repository
         self.ordem = ordem
+        #: o caixa do dia: dinheiro recebido na entrega vai para a mesma gaveta
+        self.gaveta = gaveta
         #: chave Pix da loja: a hora de entregar e a hora de receber
         self.empresa = empresa
         #: ponte com o Financeiro; None quando a licenca nao o libera
@@ -161,6 +167,7 @@ class EntregaDialog(FormDialog):
             if pagou:
                 try:
                     if self.contas.quitar(self.ordem.numero, forma=self.forma.currentText()):
+                        self._para_a_gaveta()
                         return (f"  Recebido em {self.forma.currentText()}: "
                                 "a conta do Financeiro foi quitada.")
                 except Exception as erro:  # noqa: BLE001 - o aparelho ja saiu pela porta
@@ -176,12 +183,22 @@ class EntregaDialog(FormDialog):
                 documento=self.ordem.numero,
             ))
             if pagou:
-                self.contas.quitar(self.ordem.numero)
+                self.contas.quitar(self.ordem.numero, forma=self.forma.currentText())
         except Exception as erro:  # noqa: BLE001 - o aparelho ja saiu pela porta
             return f"  Não consegui lançar no Financeiro ({erro}) - use o botão Financeiro."
         if pagou:
+            self._para_a_gaveta()
             return f"  Recebido em {self.forma.currentText()}: já entrou no caixa do Financeiro."
         return f"  Conta a receber criada para {fmt.data(form.iso_da_data(self.vencimento))}."
+
+    def _para_a_gaveta(self) -> None:
+        """Nota que entrou na entrega vai para a gaveta: o caixa precisa contar."""
+        if self.gaveta is None or self.forma.currentText() != DINHEIRO:
+            return
+        try:
+            self.gaveta.entrada(self.ordem.total, f"Ordem {self.ordem.numero}", self.ordem.numero)
+        except Exception:  # noqa: BLE001 - o aparelho ja saiu pela porta
+            logger.exception("Nao foi possivel levar a entrega ao caixa")
 
 
 class MotivoDialog(FormDialog):

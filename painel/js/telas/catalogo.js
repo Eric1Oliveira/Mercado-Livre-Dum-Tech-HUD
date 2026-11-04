@@ -1,153 +1,16 @@
-// Catálogo (módulos) e anúncios. Kits têm tela própria: telas/kits.js.
+// Hub > Anúncios: o pop-up que aparece no Início do Hub do cliente.
 //
 // O construtor de anúncios mostra, junto do formulário, o pop-up exatamente
 // como ele aparece no Hub do cliente — escrever anúncio às cegas é como vender
 // de olhos fechados.
 
 import { apagar, atualizar, inserir, ler } from "../api.js";
-import { contagem, data, dinheiro, numero } from "../formato.js";
+import { contagem, data, numero } from "../formato.js";
 import { abrirGaveta, fecharGaveta, recarregar } from "../painel.js";
 import { modulo } from "../modulos.js";
 import { montarAnuncio, situacaoAnuncio } from "../anuncios.js";
-import { traduzirExclusao } from "../exclusao.js";
-import {
-  agir, cartao, confirmar, el, icone, limpar, pilula, pilulaModulo, recado, tabela,
-} from "../ui.js";
 
-// =============================================================== catálogo ====
-export async function catalogo(alvo) {
-  const [produtos, modulosPainel] = await Promise.all([
-    ler("produtos", { ordem: "codigo.asc" }),
-    ler("painel_modulos"),
-  ]);
-  const porCodigo = new Map(modulosPainel.map((m) => [m.codigo, m]));
-
-  alvo.append(el("div", { classe: "pagina-cabeca" }, [
-    el("div", {}, [
-      el("h1", { texto: "Catálogo" }),
-      el("p", { texto: "Salvou aqui, o site mostra na hora — sem ninguém atualizar a página." }),
-    ]),
-    el("div", { classe: "ferramentas" }, [
-      el("button", {
-        classe: "botao botao-fantasma", texto: "Novo módulo",
-        onclick: () => editarProduto(null),
-      }),
-    ]),
-  ]));
-
-  alvo.append(cartao("Módulos", tabela(
-    ["Módulo", "Código", { texto: "Preço", numero: true }, { texto: "Clientes", numero: true },
-     { texto: "Uso 30d", numero: true }, "À venda"],
-    produtos,
-    (p) => [
-      pilulaModulo(p.codigo),
-      el("code", { texto: p.codigo }),
-      dinheiro(p.preco),
-      numero(porCodigo.get(p.codigo)?.clientes || 0),
-      numero(porCodigo.get(p.codigo)?.aberturas_30d || 0),
-      p.ativo ? pilula("Sim", "ok") : pilula("Fora de linha", "neutro"),
-    ],
-    { aoClicar: (p) => editarProduto(p, porCodigo.get(p.codigo)) }
-  )));
-
-  alvo.append(el("p", { classe: "rodape-entrada",
-    texto: "Kits (pacotes com desconto) ficam na tela Kits, no menu ao lado." }));
-}
-
-function editarProduto(produto, uso = null) {
-  const novo = !produto;
-  const clientes = Number(uso?.clientes || 0);
-  const campos = {
-    codigo: campo("Código", produto?.codigo || "", { placeholder: "CRM", disabled: !novo }),
-    nome: campo("Nome", produto?.nome || "", { placeholder: "DumTech CRM" }),
-    descricao: campo("Descrição", produto?.descricao || ""),
-    preco: campo("Preço (R$)", produto?.preco ?? 0, { type: "number", step: "0.01", min: "0" }),
-    versao: campo("Versão", produto?.versao || ""),
-  };
-  const ativo = el("input", { type: "checkbox", checked: produto ? produto.ativo : true });
-
-  const destino = abrirGaveta({
-    acima: novo ? "Novo módulo" : "Módulo",
-    titulo: novo ? "Cadastrar módulo" : produto.nome,
-    conteudo: el("div", {}, [
-      cartao("", [
-        ...Object.values(campos).map((c) => c.no),
-        el("label", { classe: "campo", estilo: "flex-direction:row;align-items:center;gap:8px" },
-          [ativo, el("span", { texto: "À venda (aparece no site e pode entrar em licença nova)" })]),
-        el("div", { classe: "acoes-linha", estilo: "margin-top:14px" }, [
-          el("button", {
-            classe: "botao botao-primario", texto: novo ? "Cadastrar" : "Salvar",
-            onclick: (e) => {
-              const dados = {
-                nome: campos.nome.valor().trim(), descricao: campos.descricao.valor().trim(),
-                preco: Number(campos.preco.valor()), versao: campos.versao.valor().trim(),
-                ativo: ativo.checked,
-              };
-              const codigo = campos.codigo.valor().trim().toUpperCase();
-              const problema = conferirItem(dados, novo ? codigo : produto.codigo);
-              if (problema) return recado(problema, "erro");
-
-              agir(e.target, async () => {
-                if (novo) await inserir("produtos", { ...dados, codigo });
-                else await atualizar("produtos", { id: `eq.${produto.id}` }, dados);
-                fecharGaveta();
-                await recarregar();
-              }, { feito: "Catálogo atualizado. O site já mostra o novo valor." });
-            },
-          }),
-          novo ? null : el("button", {
-            classe: "botao botao-perigo", texto: "Excluir",
-            onclick: (e) => excluirProduto(e.target, produto, clientes),
-          }),
-          el("button", { classe: "botao botao-fantasma", texto: "Cancelar", onclick: fecharGaveta }),
-        ]),
-      ]),
-      novo
-        ? el("p", { classe: "nota-alerta", estilo: "margin-top:12px;font-size:.84rem",
-            texto: "Atenção: cadastrar aqui não cria o módulo. Ele só abre no Hub depois que existir no programa " +
-                   "(uma versão nova) e só aparece na loja depois de entrar na página. Deixe “À venda” desmarcado até lá." })
-        : el("p", { classe: "rodape-entrada", estilo: "margin-top:12px",
-            texto: "Módulo fora de linha continua funcionando para quem já comprou — só não entra em venda nova." }),
-    ]),
-  });
-  return destino;
-}
-
-/**
- * Excluir um módulo do catálogo. Quem já tem o módulo continua precisando
- * dele: o banco não deixa excluir enquanto ele estiver em alguma licença (nem
- * em kit, teste ou anúncio) - e a tela diz onde ele está e oferece tirar de linha.
- */
-function excluirProduto(botao, produto, clientes) {
-  const tirarDeLinha = () => agir(botao, async () => {
-    await atualizar("produtos", { id: `eq.${produto.id}` }, { ativo: false });
-    fecharGaveta();
-    await recarregar();
-  }, { feito: "Módulo fora de linha: some da loja, e quem tem continua usando." });
-
-  if (clientes > 0) {
-    if (!produto.ativo) {
-      recado(`${contagem(clientes, "cliente tem", "clientes têm")} ${produto.nome}: para excluir, ` +
-             "tire o módulo das licenças antes (na ficha de cada um).", "erro");
-      return;
-    }
-    if (confirmar(`${contagem(clientes, "cliente tem", "clientes têm")} ${produto.nome} e continuam precisando dele, ` +
-                  "então ele não pode ser excluído.\n\nTirar de linha? Ele some da loja e de venda nova; " +
-                  "quem tem continua usando.")) tirarDeLinha();
-    return;
-  }
-  if (!confirmar(`Excluir o módulo ${produto.nome} (${produto.codigo}) do catálogo?\n\n` +
-                 "Nenhum cliente tem este módulo. Ele some do painel e da loja.")) return;
-  agir(botao, async () => {
-    try {
-      await apagar("produtos", { id: `eq.${produto.id}` }, { conferir: true });
-    } catch (erro) {
-      throw traduzirExclusao(erro, `O módulo ${produto.nome}`);
-    }
-    fecharGaveta();
-    await recarregar();
-  }, { feito: `Módulo ${produto.nome} excluído.`, erro: "" });
-}
+import { agir, cartao, confirmar, el, icone, limpar, pilula, pilulaModulo, recado, tabela } from "../ui.js";
 
 // =============================================================== anúncios ====
 //

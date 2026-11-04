@@ -58,6 +58,10 @@ class CatalogoEstoque:
     def miniatura(self, produto_id: int) -> bytes | None:
         return self.repository.miniatura(produto_id)
 
+    def custo_de(self, produto_id: int) -> float:
+        produto = self.repository.obter(produto_id)
+        return float(produto.preco_custo or 0) if produto is not None else 0.0
+
     # ------------------------------------------------------------------ escrita
     def baixar(
         self, produto_id: int, quantidade: float, documento: str = "", motivo: str = ""

@@ -1,9 +1,14 @@
-// Resumo, clientes (com a ficha) e pedidos.
+// A ficha do cliente e os pedidos antigos da loja.
 //
-// A ficha do cliente é o coração do painel: tudo o que a DumTech sabe daquela
-// pessoa numa tela só — e as ações que resolvem o caso sem sair dali.
+// A ficha é o coração do painel: tudo o que a DumTech sabe daquela pessoa numa
+// tela só, e as ações que resolvem o caso sem sair dali. Abre de Hoje, de
+// Clientes, de Hub e de Segurança.
+//
+// Pedidos: o checkout antigo da loja (módulo avulso). A loja agora vende por
+// mensalidade, mas um pedido antigo em aberto ainda precisa de alguém para
+// aprovar: a tela fica fora do menu e Hoje avisa quando há um.
 
-import { apagar, atualizar, funcao, inserir, ler, rpc, um } from "../api.js";
+import { apagar, atualizar, ler, rpc, um } from "../api.js";
 import { CONFIG } from "../config.js";
 import { PALAVRA, confere, exclusaoPesada, filtroDeBusca } from "../exclusao.js";
 import {
@@ -12,9 +17,11 @@ import {
 import {
   contagem, data, dataHora, dinheiro, documento as fmtDocumento, numero, quando, relativo, telefone,
 } from "../formato.js";
+import { CANAIS, comPresenca, linhaDoTempo, versaoAlvo } from "../gestao.js";
 import { faixa } from "../graficos.js";
+import { SITUACAO } from "../mensalidade.js";
 import {
-  abrirGaveta, fecharGaveta, folhaDaGaveta, irPara, marcarPedidos, recarregar, substituirNaGaveta,
+  abrirGaveta, fecharGaveta, folhaDaGaveta, irPara, recarregar, substituirNaGaveta,
 } from "../painel.js";
 import { cor, modulo } from "../modulos.js";
 import {
@@ -23,9 +30,13 @@ import {
 } from "../saude.js";
 import {
   agir, barra, botaoWhatsApp, cartao, confirmar, el, limpar, pessoa, pilula, pilulaModulo,
-  pilulaSituacao, recado, tabela, tile, vazio,
+  pilulaSituacao, recado, tabela, vazio,
 } from "../ui.js";
+import { temLogin, vagasASoltar } from "../acessos.js";
+import { cartaoContas } from "./acessos.js";
 import { aparelho, botaoDesconectar } from "./celulares.js";
+import { cartaoAcompanhamento, cartaoAtualizacao, cartaoLinhaDoTempo } from "./ficha-gestao.js";
+import { cartoesDaAssinatura, detalheDaSituacao, eventosDaAssinatura, primeiro } from "./mensalidades.js";
 import { acoesDoTeste, darTeste, periodo, usoNoTeste } from "./testes.js";
 
 const JANELA = 30;
@@ -37,174 +48,14 @@ const AVISO_HUB = "O Hub do cliente recebe em até 2 minutos, assim que estiver 
 const diaLimite = (dias) =>
   new Date(Date.now() - dias * 86400000).toISOString().slice(0, 10);
 
-// ================================================================= resumo ====
-export async function resumo(alvo) {
-  const [resumoLinha, pedidosAbertos, modulos, recentes] = await Promise.all([
-    um("painel_resumo"),
-    ler("pedidos_abertos", { limite: 6 }),
-    ler("painel_modulos", { ordem: "aberturas_30d.desc" }),
-    ler("painel_clientes", { ordem: "cliente_desde.desc", limite: 6 }),
-  ]);
-  const r = resumoLinha || {};
-  marcarPedidos(Number(r.pedidos_abertos || 0));
-
-  alvo.append(
-    el("div", { classe: "pagina-cabeca" }, [
-      el("div", {}, [
-        el("h1", { texto: "Resumo" }),
-        el("p", { texto: "O retrato do negócio agora." }),
-      ]),
-    ]),
-    el("div", { classe: "tiles" }, [
-      tile("Clientes", numero(r.clientes), `${numero(r.interessados)} sem compra`),
-      tile("Licenças ativas", numero(r.licencas_ativas),
-        Number(r.licencas_vencidas) ? `${numero(r.licencas_vencidas)} vencidas` : "todas no prazo",
-        Number(r.licencas_vencidas) ? "ruim" : ""),
-      tile("Módulos vendidos", numero(r.modulos_vendidos), `${numero(r.computadores)} computadores`),
-      tile("Vendido", dinheiro(r.vendido), "loja, Mercado Livre e venda direta", "ok"),
-      tile("Pedidos abertos", numero(r.pedidos_abertos), "esperando você",
-        Number(r.pedidos_abertos) ? "ruim" : ""),
-      tile("Aberturas (30d)", numero(r.aberturas_30d), "uso dos módulos"),
-      tile("Tentativas 24h", numero(r.tentativas_24h), "chaves recusadas",
-        Number(r.tentativas_24h) > 20 ? "ruim" : ""),
-    ])
-  );
-
-  if (pedidosAbertos.length) {
-    alvo.append(cartao(
-      "Precisa de você",
-      tabela(
-        ["Quem", "Kit", { texto: "Total", numero: true }, "Quando"],
-        pedidosAbertos,
-        (p) => [
-          pessoa(p.nome, p.email),
-          p.kit || "—",
-          dinheiro(p.total),
-          quando(p.criado_em),
-        ],
-        { aoClicar: () => irPara("pedidos") }
-      ),
-      el("button", {
-        classe: "botao botao-primario botao-mini", texto: "Ver pedidos",
-        onclick: () => irPara("pedidos"),
-      })
-    ));
-  }
-
-  const maisUsado = modulos.filter((m) => Number(m.aberturas_30d) > 0);
-  const teto = Math.max(1, ...maisUsado.map((m) => Number(m.aberturas_30d)));
-  alvo.append(cartao(
-    "Módulos, por uso nos últimos 30 dias",
-    maisUsado.length
-      ? tabela(
-          ["Módulo", { texto: "Clientes", numero: true }, { texto: "Aberturas", numero: true }, "Proporção"],
-          maisUsado,
-          (m) => [
-            pilulaModulo(m.codigo),
-            numero(m.clientes),
-            numero(m.aberturas_30d),
-            barra(Number(m.aberturas_30d), teto, cor(m.codigo)),
-          ]
-        )
-      : vazio("Ninguém mandou uso ainda",
-              "O Hub envia o resumo quando fala com o servidor; espere o primeiro dia de uso.")
-  ));
-
-  alvo.append(cartao(
-    "Últimos cadastros",
-    tabela(
-      ["Cliente", "Situação", "Módulos", "Entrou"],
-      recentes,
-      (c) => [
-        pessoa(c.nome, c.email),
-        pilulaSituacao(c.situacao),
-        listaDeModulos(c.produtos_codigos),
-        quando(c.cliente_desde),
-      ],
-      { aoClicar: (c) => ficha(c) }
-    )
-  ));
-}
-
-const listaDeModulos = (codigos) =>
-  el("div", { classe: "modulos-lista" },
-    (codigos || []).length
-      ? (codigos || []).map((c) => pilulaModulo(c))
-      : [el("span", { classe: "pilula", "data-tom": "neutro", texto: "nenhum" })]);
-
-// =============================================================== clientes ====
-// A busca sobrevive ao redesenho: quando a tela se atualiza sozinha (tempo
-// real), o que foi digitado e o filtro escolhido continuam ali.
-const filtroClientes = { busca: "", situacao: "" };
-
-export async function clientes(alvo) {
-  const busca = el("input", { type: "search", placeholder: "Nome, e-mail ou chave…" });
-  const filtro = el("select", {}, [
-    el("option", { value: "", texto: "Todas as situações" }),
-    el("option", { value: "ativa", texto: "Ativas" }),
-    el("option", { value: "suspensa", texto: "Suspensas" }),
-    el("option", { value: "expirada", texto: "Vencidas" }),
-    el("option", { value: "cancelada", texto: "Canceladas" }),
-    el("option", { value: "sem", texto: "Sem licença (interessados)" }),
-  ]);
-  const destino = el("div", {});
-
-  alvo.append(
-    el("div", { classe: "pagina-cabeca" }, [
-      el("div", {}, [
-        el("h1", { texto: "Clientes" }),
-        el("p", { texto: "Clique em alguém para abrir a ficha completa." }),
-      ]),
-      el("div", { classe: "ferramentas" }, [
-        busca, filtro,
-        el("button", { classe: "botao botao-fantasma", texto: "Novo cliente", onclick: () => novoCliente() }),
-        el("button", { classe: "botao botao-primario", texto: "Nova venda", onclick: () => novaVenda() }),
-      ]),
-    ]),
-    destino
-  );
-
-  const linhas = await ler("painel_clientes", { ordem: "nome.asc" });
-
-  const desenhar = () => {
-    const termo = busca.value.trim().toLowerCase();
-    const situacaoEscolhida = filtro.value;
-    const visiveis = linhas.filter((c) => {
-      const combina = !termo
-        || `${c.nome} ${c.email} ${c.chave || ""}`.toLowerCase().includes(termo);
-      const situacaoOk = !situacaoEscolhida
-        || (situacaoEscolhida === "sem" ? !c.chave : c.situacao === situacaoEscolhida);
-      return combina && situacaoOk;
-    });
-
-    limpar(destino).append(cartao(
-      `${contagem(visiveis.length, "cliente")}`,
-      tabela(
-        ["Cliente", "Licença", "Situação", "Módulos",
-         { texto: "PCs", numero: true }, { texto: "Uso 30d", numero: true }, "Último uso"],
-        visiveis,
-        (c) => [
-          pessoa(c.nome, c.email),
-          c.chave ? el("code", { texto: c.chave }) : "—",
-          pilulaSituacao(c.chave ? c.situacao : null),
-          listaDeModulos(c.produtos_codigos),
-          c.chave ? `${c.computadores}/${c.max_computadores}` : "—",
-          numero(c.aberturas_30d),
-          quando(c.ultimo_uso),
-        ],
-        { aoClicar: (c) => ficha(c), vazioTexto: "Nenhum cliente com esse filtro." }
-      )
-    ));
-  };
-
-  busca.value = filtroClientes.busca;
-  filtro.value = filtroClientes.situacao;
-  busca.addEventListener("input", () => { filtroClientes.busca = busca.value; desenhar(); });
-  filtro.addEventListener("change", () => { filtroClientes.situacao = filtro.value; desenhar(); });
-  desenhar();
-}
-
 // ================================================================== ficha ====
+const ROTULO_DA_FICHA = { assinatura: "Assinante", teste: "Testando o plano mensal", vitalicia: "Cliente vitalício" };
+
+/**
+ * A ficha do cliente: uma só para assinante, teste, vitalício e quem ainda
+ * não tem licença. O topo diz quem é e como está; o bloco do meio muda com o
+ * tipo (assinatura, ou módulos do vitalício); o resto é igual para todos.
+ */
 export async function ficha(cliente, { silencioso = false } = {}) {
   // `silencioso`: a ficha ja esta aberta e so precisa refletir o que mudou -
   // monta a nova por tras e troca de uma vez, sem voltar ao "Carregando".
@@ -212,7 +63,7 @@ export async function ficha(cliente, { silencioso = false } = {}) {
   if (silencioso && !antiga) return;
   const destino = silencioso
     ? document.createElement("div")
-    : abrirGaveta({ acima: "Cliente", titulo: cliente.nome || cliente.email });
+    : abrirGaveta({ acima: ROTULO_DA_FICHA[cliente.tipo] || "Cliente", titulo: cliente.nome || cliente.email });
 
   // Depois de mexer em algo, a ficha volta do banco (uma ficha que continua
   // mostrando o estado antigo mente) e a tela de baixo se corrige por tras.
@@ -230,8 +81,10 @@ export async function ficha(cliente, { silencioso = false } = {}) {
   const daLicenca = (tabela, opcoes = {}) => (cliente.licenca_id
     ? ler(tabela, { ...opcoes, filtros: { licenca_id: `eq.${cliente.licenca_id}`, ...opcoes.filtros } })
     : Promise.resolve([]));
-  const [produtos, combos, liberados, maquinas, uso, recomendacoes, pedidosDoCliente,
-         testesDoCliente, aparelhos, espelhos, modulosPagos, versoes] =
+  const mensalPossivel = cliente.licenca_id && (cliente.tipo === "assinatura" || cliente.tipo === "teste");
+  const [produtos, combos, liberados, ativacoes, uso, recomendacoes, pedidosDoCliente,
+         testesDoCliente, aparelhos, espelhos, modulosPagos, versoes, presencas, liberacoes,
+         lancamentos, gestaoDoCliente, notas, mensal, assinatura] =
     await Promise.all([
       ler("produtos", { ordem: "codigo.asc" }),
       ler("combos", { ordem: "codigo.asc" }),
@@ -250,9 +103,21 @@ export async function ficha(cliente, { silencioso = false } = {}) {
       daLicenca("celular_espelhos", { select: "licenca_id,maquina,atualizado_em" }).catch(() => null),
       daLicenca("painel_modulos_da_licenca").catch(() => []),
       ler("hub_versoes", { limite: 1 }).catch(() => null),
+      daLicenca("hub_presenca", { fresco }),
+      daLicenca("hub_liberacoes", { fresco }),
+      ler("hub_lancamentos", { ordem: "criado_em.desc" }),
+      um("painel_gestao", { filtros: { cliente_id: `eq.${cliente.cliente_id}` }, fresco }),
+      ler("cliente_notas", { filtros: { cliente_id: `eq.${cliente.cliente_id}` }, ordem: "criado_em.desc", fresco }),
+      // a mensalidade so existe para assinatura e teste: vitalicio nunca a ve
+      mensalPossivel
+        ? um("painel_mensalidades", { filtros: { licenca_id: `eq.${cliente.licenca_id}` }, fresco }).catch(() => null)
+        : null,
+      mensalPossivel ? eventosDaAssinatura(cliente.licenca_id) : [],
     ]);
   const agora = new Date();
   const publicada = String(versoes?.[0]?.versao || "");
+  const maquinas = comPresenca(ativacoes, presencas);
+  const vitalicia = Boolean(cliente.licenca_id) && !mensal;
 
   const porId = new Map(produtos.map((p) => [p.id, p]));
   const tem = liberados.map((l) => porId.get(l.produto_id)?.codigo).filter(Boolean);
@@ -260,216 +125,102 @@ export async function ficha(cliente, { silencioso = false } = {}) {
 
   limpar(destino);
 
-  // ---------------------------------------------------------------- dados --
-  destino.append(cartao("Dados", el("div", { classe: "dados" }, [
-    dado("E-mail", cliente.email || "— (liga sozinho quando ele ativar o Hub)"),
-    dado("Telefone", telefone(cliente.telefone) || "—"),
-    dado("Documento", fmtDocumento(cliente.documento) || "—"),
-    dado("Origem", cliente.origem === "hub" ? "Hub ou loja" : "Cadastrado no painel"),
-    dado("Cliente desde", data(cliente.cliente_desde)),
-    dado("Comprou", dinheiro(cliente.total_comprado)),
-  ]), el("button", {
-    classe: "botao botao-fantasma botao-mini", texto: "Editar", onclick: () => editarCliente(cliente),
-  })));
+  // ----------------------------------------------------------------- topo --
+  destino.append(topoDaFicha({ cliente, mensal, maquinas, gestao: gestaoDoCliente, agora, vitalicia }));
 
-  // -------------------------------------------------------------- licença --
-  if (cliente.licenca_id) {
-    const acoes = el("div", { classe: "acoes-linha" });
-    const mudarStatus = (novo, texto) =>
-      el("button", {
-        classe: "botao botao-fantasma botao-mini", texto,
-        onclick: (e) => agir(e.target, async () => {
-          await atualizar("licencas", { id: `eq.${cliente.licenca_id}` }, { status: novo });
-          await refazer();
-        }, { feito: `Licença ${texto.toLowerCase()}. ${AVISO_HUB}` }),
-      });
-
-    acoes.append(
-      el("button", {
-        classe: "botao botao-primario botao-mini", texto: "Enviar chave",
-        onclick: () => enviarChave(cliente.licenca_id, { reserva: reservaDoCliente(cliente) }),
-      }),
-      el("button", {
-        classe: "botao botao-fantasma botao-mini", texto: "Registrar venda",
-        title: "Vendeu mais um módulo por fora da loja (Mercado Livre, WhatsApp, telefone)",
-        onclick: () => novaVenda({ cliente }),
-      }),
-      el("button", {
-        classe: "botao botao-fantasma botao-mini", texto: "Editar licença",
-        title: "Tipo, vencimento e número de computadores",
-        onclick: () => editarLicenca(cliente),
-      }),
-    );
-    if (cliente.status !== "ativa") acoes.append(mudarStatus("ativa", "Reativar"));
-    if (cliente.status === "ativa") acoes.append(mudarStatus("suspensa", "Suspender"));
-    if (cliente.status !== "cancelada") {
-      acoes.append(el("button", {
-        classe: "botao botao-perigo botao-mini", texto: "Cancelar",
-        onclick: (e) => {
-          if (!confirmar("Cancelar esta licença? Os módulos param de abrir no computador do cliente " +
-                         "em até 2 minutos, assim que o Hub dele estiver com internet.")) return;
-          agir(e.target, async () => {
-            await atualizar("licencas", { id: `eq.${cliente.licenca_id}` }, { status: "cancelada" });
-            await refazer();
-          }, { feito: `Licença cancelada. ${AVISO_HUB}` });
-        },
-      }));
-    }
-    acoes.append(el("button", {
-      classe: "botao botao-perigo botao-mini", texto: "Excluir licença",
-      title: "Apaga a licença e tudo dela; o cadastro do cliente fica",
-      onclick: () => excluirLicenca(cliente, { modulos: tem, maquinas }),
-    }));
-
-    destino.append(cartao("Licença", [
-      el("div", { classe: "dados" }, [
-        dado("Chave", el("code", { texto: cliente.chave })),
-        dado("Situação", pilulaSituacao(cliente.situacao)),
-        dado("Tipo", cliente.tipo || "—"),
-        dado("Validade", cliente.expira_em ? data(cliente.expira_em) : "sem prazo"),
-        dado("Computadores", `${cliente.computadores} de ${cliente.max_computadores}`),
-        dado("Última checagem", dataHora(cliente.ultima_checagem)),
-      ]),
-      el("div", { estilo: "margin-top:14px" }, [acoes]),
-    ]));
+  // ------------------------------------------------- o bloco do meio ------
+  if (mensal) {
+    destino.append(...await cartoesDaAssinatura(mensal, { depois: refazer }));
+  } else if (cliente.licenca_id) {
+    destino.append(cartaoModulos({ cliente, produtos, combos, tem, naoTem, testes: testesDoCliente, agora, depois: refazer }));
   } else {
-    destino.append(cartao("Licença", [
-      el("p", { estilo: "color:var(--tinta-media);margin-bottom:12px",
-                texto: "Ainda não comprou. Fechou por WhatsApp, telefone ou Mercado Livre? Registre a venda: a chave sai na hora." }),
-      el("button", {
-        classe: "botao botao-primario botao-mini", texto: "Registrar venda e gerar a chave",
-        onclick: () => novaVenda({ cliente }),
-      }),
+    destino.append(cartao("Ainda sem licença", [
+      el("p", { classe: "zona-texto", texto: "Esta pessoa está cadastrada, mas ainda não começou o teste grátis. " +
+                                             "Mande o link do site: o teste de 7 dias começa lá, sem cartão." }),
+      botaoWhatsApp(cliente.telefone, `Olá, ${primeiro(cliente.nome)}! Aqui é da DumTech. Para testar o DumTech Hub ` +
+        `por 7 dias, grátis e sem cartão, é só entrar em ${CONFIG.LOJA_URL || "dumtechsolution.com"} e clicar em ` +
+        "Testar grátis. Qualquer dúvida, estou por aqui.", "Mandar o link do teste"),
     ]));
   }
 
-  // -------------------------------------------------------------- módulos --
-  const escolha = el("select", {}, [
-    el("option", { value: "", texto: "Liberar módulo…" }),
-    ...naoTem.map((p) => el("option", { value: `p:${p.codigo}`, texto: `${p.nome} — ${dinheiro(p.preco)}` })),
-    ...combos.filter((c) => c.ativo).map((c) =>
-      el("option", { value: `c:${c.codigo}`, texto: `Combo ${c.nome} — ${dinheiro(c.preco)}` })),
-  ]);
-  const liberar = el("button", {
-    classe: "botao botao-primario botao-mini", texto: "Liberar",
-    onclick: (e) => {
-      if (!escolha.value) {
-        recado("Escolha um módulo primeiro.", "erro");
-        return;
-      }
-      const [tipo, codigo] = escolha.value.split(":");
-      agir(e.target, async () => {
-        await rpc("dumtech_liberar_produtos", {
-          p_licenca_id: cliente.licenca_id,
-          p_produtos: tipo === "p" ? [codigo] : [],
-          p_combo: tipo === "c" ? codigo : null,
-        });
-        await refazer();
-      }, { feito: `Módulo liberado. ${AVISO_HUB}` });
-    },
-  });
-
-  destino.append(cartao("Módulos", [
-    el("div", { classe: "modulos-lista" }, [
-      ...tem.map((codigo) => {
-        const pilulaDoModulo = pilulaModulo(codigo);
-        pilulaDoModulo.append(el("button", {
-          classe: "botao botao-mini", estilo: "background:transparent;border:0;padding:0 0 0 4px;color:inherit",
-          title: "Tirar este módulo da licença", texto: "×",
-          onclick: (evento) => {
-            evento.stopPropagation();
-            if (!confirmar(`Tirar ${modulo(codigo).nome} desta licença?`)) return;
-            const produto = produtos.find((p) => p.codigo === codigo);
-            agir(evento.target, async () => {
-              await apagar("licenca_produtos", {
-                licenca_id: `eq.${cliente.licenca_id}`, produto_id: `eq.${produto.id}`,
-              });
-              await refazer();
-            }, { feito: "Módulo removido." });
-          },
-        }));
-        return pilulaDoModulo;
-      }),
-      // módulo em teste grátis aparece aceso, com o selo: ele abre no Hub até o fim do teste
-      ...naoTem.map((p) => {
-        const teste = (testesDoCliente || []).find((t) => t.produto_id === p.id && estadoDoTeste(t, agora) !== "terminou");
-        if (!teste) return pilulaModulo(p.codigo, { apagada: true });
-        const emTeste = pilulaModulo(p.codigo);
-        emTeste.title = `Em teste grátis até ${data(teste.termina_em)}`;
-        emTeste.append(el("span", { classe: "selo-teste", texto: "teste" }));
-        return emTeste;
-      }),
-    ]),
-    cliente.licenca_id
-      ? el("div", { classe: "ferramentas", estilo: "margin-top:14px" }, [escolha, liberar])
-      : null,
-  ]));
+  destino.append(cartaoAcompanhamento({ cliente, gestao: gestaoDoCliente, notas, depois: refazer }));
 
   // ---------------------------------------------------------------- uso ----
   // os módulos pagos (com o último uso de sempre) e os abertos em teste
-  const porModulo = new Map(modulosPagos.map((m) => [m.codigo, { aberturas: 0, ultimo: m.ultimo_uso }]));
-  for (const linha of uso) {
-    const atual = porModulo.get(linha.produto_codigo) || { aberturas: 0, ultimo: null };
-    atual.aberturas += Number(linha.aberturas || 0);
-    if (!atual.ultimo || linha.dia > atual.ultimo) atual.ultimo = linha.dia;
-    porModulo.set(linha.produto_codigo, atual);
-  }
-  const usoOrdenado = [...porModulo.entries()].sort((a, b) => b[1].aberturas - a[1].aberturas);
-  const tetoUso = Math.max(1, ...usoOrdenado.map(([, m]) => m.aberturas));
-  const serieDoCliente = serieDiaria(uso, JANELA, agora);
+  if (cliente.licenca_id) {
+    const porModulo = new Map(modulosPagos.map((m) => [m.codigo, { aberturas: 0, ultimo: m.ultimo_uso }]));
+    for (const linha of uso) {
+      const atual = porModulo.get(linha.produto_codigo) || { aberturas: 0, ultimo: null };
+      atual.aberturas += Number(linha.aberturas || 0);
+      if (!atual.ultimo || linha.dia > atual.ultimo) atual.ultimo = linha.dia;
+      porModulo.set(linha.produto_codigo, atual);
+    }
+    const usoOrdenado = [...porModulo.entries()].sort((a, b) => b[1].aberturas - a[1].aberturas);
+    const tetoUso = Math.max(1, ...usoOrdenado.map(([, m]) => m.aberturas));
+    const serieDoCliente = serieDiaria(uso, JANELA, agora);
 
-  destino.append(cartao(`Uso nos últimos ${JANELA} dias`,
-    usoOrdenado.length
-      ? [
-          el("div", { classe: "faixa-da-ficha" }, [
-            faixa(serieDoCliente, Math.max(1, ...serieDoCliente.map((d) => d.valor)), { rotulo: cliente.nome }),
-            el("div", { classe: "eixo-dias", "aria-hidden": "true" }, [
-              el("span", { texto: data(serieDoCliente[0].dia).slice(0, 5) }), el("span", { texto: "hoje" }),
+    destino.append(cartao(`Uso nos últimos ${JANELA} dias`,
+      usoOrdenado.length
+        ? [
+            el("div", { classe: "faixa-da-ficha" }, [
+              faixa(serieDoCliente, Math.max(1, ...serieDoCliente.map((d) => d.valor)), { rotulo: cliente.nome }),
+              el("div", { classe: "eixo-dias", "aria-hidden": "true" }, [
+                el("span", { texto: data(serieDoCliente[0].dia).slice(0, 5) }), el("span", { texto: "hoje" }),
+              ]),
             ]),
-          ]),
-          tabela(
-            ["Módulo", { texto: "Aberturas", numero: true }, "Último uso", "Proporção"],
-            usoOrdenado,
-            ([codigo, m]) => [pilulaModulo(codigo), numero(m.aberturas),
-                              m.ultimo ? quando(m.ultimo) : "nunca abriu", barra(m.aberturas, tetoUso, cor(codigo))]
-          ),
-        ]
-      : vazio("Sem uso registrado", "Ou o cliente não abriu nada, ou o Hub ainda não enviou.")
-  ));
-
-  // -------------------------------------------------------- teste grátis ----
-  if (cliente.licenca_id && testesDoCliente) {
-    const testados = new Set(testesDoCliente.map((t) => t.produto_id));
-    const paraTestar = naoTem.filter((p) => !testados.has(p.id));
-    const escolhaTeste = el("select", { "aria-label": "Módulo para testar" }, [
-      el("option", { value: "", texto: "Dar 7 dias de teste…" }),
-      ...paraTestar.map((p) => el("option", { value: p.id, texto: modulo(p.codigo).nome })),
-    ]);
-    destino.append(cartao("Teste grátis", [
-      testesDoCliente.length
-        ? tabela(
-            ["Módulo", "Situação", { texto: "Uso no teste", numero: true }, ""],
-            testesDoCliente,
-            (t) => [pilulaModulo(t.codigo), periodo(t, agora), usoNoTeste(t),
-                    el("div", { classe: "ferramentas" }, acoesDoTeste(t, cliente, agora, { depois: refazer }))]
-          )
-        : el("p", { classe: "zona-texto", texto: "Nenhum teste grátis ainda. O cliente começa pelo Hub, " +
-                                                 "ou você libera aqui." }),
-      paraTestar.length
-        ? el("div", { classe: "ferramentas", estilo: "margin-top:14px" }, [
-            escolhaTeste,
-            el("button", {
-              classe: "botao botao-fantasma botao-mini", texto: "Dar teste",
-              onclick: (e) => {
-                const produto = paraTestar.find((p) => p.id === escolhaTeste.value);
-                if (!produto) return recado("Escolha o módulo do teste.", "erro");
-                darTeste(e.target, { licencaId: cliente.licenca_id, produto, depois: refazer });
-              },
-            }),
-          ])
-        : null,
-    ]));
+            tabela(
+              ["Módulo", { texto: "Aberturas", numero: true }, "Último uso", "Proporção"],
+              usoOrdenado,
+              ([codigo, m]) => [pilulaModulo(codigo), numero(m.aberturas),
+                                m.ultimo ? quando(m.ultimo) : "nunca abriu", barra(m.aberturas, tetoUso, cor(codigo))]
+            ),
+          ]
+        : vazio("Sem uso registrado", "Ou o cliente não abriu nada, ou o Hub ainda não enviou.")
+    ));
   }
+
+  // -------------------------------------------------------- computadores --
+  if (maquinas.length) {
+    destino.append(cartao(`Computadores: ${maquinas.length} de ${cliente.max_computadores} vagas`, tabela(
+      ["Apelido", "Identificador", "Versão", "Ativado", "Hub", ""],
+      maquinas,
+      (m) => [
+        m.apelido || "—",
+        el("code", { texto: m.maquina }),
+        m.versao
+          ? el("span", { classe: "hub-versao", "data-velha": versaoEmDia(m.versao, publicada) === false ? "sim" : null,
+                         texto: temLogin(m.versao) ? m.versao : `${m.versao} · sem login`,
+                         title: publicada ? `Publicada: ${publicada}` : "" })
+          : "—",
+        data(m.ativado_em),
+        hubAberto(m, agora)
+          ? el("span", { classe: "hub-pc" }, [el("span", { classe: "hub-ponto", "data-aberto": "sim" }),
+                                               m.online_desde ? `online, aberto ${relativo(m.online_desde, agora)}` : "aberto agora"])
+          : vistoEm(m) ? `visto ${relativo(vistoEm(m), agora)}` : "nunca falou com o servidor",
+        el("button", {
+          classe: "botao botao-fantasma botao-mini", texto: "Liberar vaga",
+          onclick: (e) => {
+            if (!confirmar("Liberar esta vaga? O cliente precisará ativar de novo neste computador.")) return;
+            agir(e.target, async () => {
+              await apagar("ativacoes", { id: `eq.${m.id}` });
+              await refazer();
+            }, { feito: "Vaga liberada." });
+          },
+        }),
+      ]
+    )));
+  }
+
+  // ------------------------------------------------------------------ hub --
+  const atualizacao = cartaoAtualizacao({
+    cliente, maquinas, publicada, liberacao: liberacoes[0] || null, forcadaGeral: Boolean(versoes?.[0]?.forcada),
+    alvo: versaoAlvo(lancamentos, publicada), depois: refazer,
+  }, agora);
+  if (atualizacao) destino.append(atualizacao);
+
+  // --------------------------------------------------------------- contas --
+  const contas = cliente.licenca_id ? await cartaoContas(cliente, { depois: refazer }) : null;
+  if (contas) destino.append(contas);
 
   // ------------------------------------------------------------- celular ----
   if (cliente.licenca_id) {
@@ -502,55 +253,34 @@ export async function ficha(cliente, { silencioso = false } = {}) {
   }
 
   // ----------------------------------------------------- o que oferecer ----
+  // O cruzamento de uso ("usa Vendas e não tem Orçamentos") vale para os dois:
+  // para o vitalício é um módulo a mais, para o mensal um adicional no plano.
   if (recomendacoes.length) {
-    destino.append(cartao("O que faz sentido oferecer", tabela(
-      ["Módulo", { texto: "Preço", numero: true }, "Por quê"],
+    destino.append(cartao(mensal ? "Adicional que faz sentido oferecer" : "O que faz sentido oferecer", tabela(
+      vitalicia ? ["Módulo", { texto: "Preço", numero: true }, "Por quê"] : ["Módulo", "Por quê"],
       recomendacoes,
       (r) => [
         pilulaModulo(r.recomendado),
-        dinheiro(r.preco),
+        ...(vitalicia ? [dinheiro(r.preco)] : []),
         el("div", {}, [
           el("div", { texto: r.porque }),
-          el("div", { estilo: "font-size:.8rem;color:var(--tinta-fraca)",
+          el("div", { classe: "sub-linha",
                       texto: `usa ${modulo(r.porque_tem).nome}: ${numero(r.aberturas_origem)} aberturas em 30 dias` }),
         ]),
       ]
     )));
   }
 
-  // -------------------------------------------------------- computadores --
-  if (maquinas.length) {
-    destino.append(cartao("Computadores", tabela(
-      ["Apelido", "Identificador", "Versão", "Ativado", "Hub", ""],
-      maquinas,
-      (m) => [
-        m.apelido || "—",
-        el("code", { texto: m.maquina }),
-        m.versao
-          ? el("span", { classe: "hub-versao", "data-velha": versaoEmDia(m.versao, publicada) === false ? "sim" : null,
-                         texto: m.versao, title: publicada ? `Publicada: ${publicada}` : "" })
-          : "—",
-        data(m.ativado_em),
-        hubAberto(m, agora)
-          ? el("span", { classe: "hub-pc" }, [el("span", { classe: "hub-ponto", "data-aberto": "sim" }), "aberto agora"])
-          : vistoEm(m) ? `visto ${relativo(vistoEm(m), agora)}` : "nunca falou com o servidor",
-        el("button", {
-          classe: "botao botao-fantasma botao-mini", texto: "Liberar vaga",
-          onclick: (e) => {
-            if (!confirmar("Liberar esta vaga? O cliente precisará ativar de novo neste computador.")) return;
-            agir(e.target, async () => {
-              await apagar("ativacoes", { id: `eq.${m.id}` });
-              await refazer();
-            }, { feito: "Vaga liberada." });
-          },
-        }),
-      ]
-    )));
-  }
+  // ------------------------------------------------------- linha do tempo --
+  const tempo = cartaoLinhaDoTempo(linhaDoTempo({
+    cliente, pedidos: pedidosDoCliente, testes: testesDoCliente || [], modulos: modulosPagos, maquinas, notas,
+    assinatura, nomeDoModulo: (codigo) => modulo(codigo).nome,
+  }), agora);
+  if (tempo) destino.append(tempo);
 
-  // ------------------------------------------------------------- pedidos --
+  // --------------------------------------------- compras do modelo antigo --
   if (pedidosDoCliente.length) {
-    destino.append(cartao("Compras e pedidos", tabela(
+    destino.append(cartao("Compras e pedidos da loja", tabela(
       ["Quando", "Canal", "Kit", { texto: "Total", numero: true }, "Situação"],
       pedidosDoCliente,
       (p) => [
@@ -565,21 +295,187 @@ export async function ficha(cliente, { silencioso = false } = {}) {
     )));
   }
 
-  // ------------------------------------------------------ excluir cliente --
-  const zona = cartao("Excluir cliente", [
-    el("p", { classe: "zona-texto",
-              texto: cliente.licenca_id
-                ? "Apaga o cadastro e, junto, a licença e tudo dela. Os pedidos continuam no histórico."
-                : "Apaga o cadastro. Os pedidos continuam no histórico." }),
-    el("button", {
-      classe: "botao botao-perigo", texto: "Excluir cliente…",
-      onclick: () => excluirCliente(cliente, { modulos: tem, maquinas }),
-    }),
-  ]);
-  zona.classList.add("zona-perigo");
-  destino.append(zona);
+  // ------------------------------------------------ bloquear ou excluir --
+  destino.append(zonaDePerigo(cliente, { modulos: tem, maquinas, depois: refazer }));
 
   if (silencioso) substituirNaGaveta(antiga, destino, cliente.nome || cliente.email);
+}
+
+/** Quem é, como está e os atalhos de sempre: o que se lê em 2 segundos. */
+function topoDaFicha({ cliente, mensal, maquinas, gestao, agora, vitalicia }) {
+  const online = maquinas.filter((m) => hubAberto(m, agora));
+  const s = mensal ? SITUACAO[mensal.situacao] : null;
+  const selos = [
+    mensal ? pilula(s?.texto || mensal.situacao, s?.tom || "neutro")
+      : vitalicia ? pilula("Vitalícia", "marca") : pilula("Sem licença", "neutro"),
+    cliente.licenca_id && cliente.situacao !== "ativa" && !mensal ? pilulaSituacao(cliente.situacao) : null,
+    cliente.licenca_id && cliente.status && cliente.status !== "ativa" && mensal ? pilulaSituacao(cliente.status) : null,
+    online.length ? pilula(online.length > 1 ? `${online.length} computadores online` : "Online agora", "ok") : null,
+    ...(gestao?.etiquetas || []).map((t) => el("span", { classe: "etiqueta", texto: t })),
+  ];
+  const destaque = mensal
+    ? `${dinheiro(mensal.valor)} por mês · ${mensal.plano_nome ? `Plano ${mensal.plano_nome}` : "Montado à mão"}`
+    : vitalicia
+      ? `${(cliente.produtos_codigos || []).length ? contagem(cliente.produtos_codigos.length, "módulo") : "Nenhum módulo"}` +
+        (Number(cliente.total_comprado) ? ` · comprou ${dinheiro(cliente.total_comprado)}` : "")
+      : "Ainda não testou nem assinou";
+  const detalhe = mensal ? detalheDaSituacao(mensal) : "";
+
+  const acoes = [
+    botaoWhatsApp(cliente.telefone, `Olá, ${primeiro(cliente.nome)}! Aqui é da DumTech.`),
+    cliente.licenca_id
+      ? el("button", { classe: "botao botao-fantasma botao-mini", texto: "Enviar chave",
+                       title: "WhatsApp, e-mail ou Mercado Livre, com o link de download",
+                       onclick: () => enviarChave(cliente.licenca_id, { reserva: reservaDoCliente(cliente) }) })
+      : null,
+    el("button", { classe: "botao botao-fantasma botao-mini", texto: "Editar dados", onclick: () => editarCliente(cliente) }),
+    vitalicia
+      ? el("button", { classe: "botao botao-fantasma botao-mini", texto: "Computadores",
+                       title: "Em quantos computadores a licença vale", onclick: () => editarLicenca(cliente) })
+      : null,
+  ].filter(Boolean);
+
+  return el("section", { classe: "ficha-topo" }, [
+    el("div", { classe: "ficha-selos" }, selos.filter(Boolean)),
+    el("p", { classe: "ficha-destaque", texto: destaque }),
+    detalhe ? el("p", { classe: "sub-linha", texto: detalhe[0].toUpperCase() + detalhe.slice(1) }) : null,
+    el("div", { classe: "acoes-linha ficha-atalhos" }, acoes),
+    el("div", { classe: "dados" }, [
+      dado("E-mail", cliente.email || "—"),
+      dado("WhatsApp", telefone(cliente.telefone) || "—"),
+      dado("CPF ou CNPJ", fmtDocumento(cliente.documento) || "—"),
+      dado("Cliente desde", data(cliente.cliente_desde)),
+      dado("Chave", cliente.chave ? el("code", { texto: cliente.chave }) : "—"),
+      dado("Computadores", cliente.licenca_id ? `${cliente.computadores} de ${cliente.max_computadores}` : "—"),
+      dado("Hub falou com o servidor", cliente.ultima_checagem ? relativo(cliente.ultima_checagem, agora) : "nunca"),
+      dado("Canal", CANAIS[gestao?.canal] || (cliente.origem === "hub" ? "Pelo site ou Hub" : "Cadastrado no painel")),
+    ]),
+  ]);
+}
+
+/** Vitalício: os módulos que tem, os que está testando e o "liberar". */
+function cartaoModulos({ cliente, produtos, combos, tem, naoTem, testes, agora, depois }) {
+  const escolha = el("select", { "aria-label": "Módulo para liberar" }, [
+    el("option", { value: "", texto: "Liberar módulo…" }),
+    ...naoTem.map((p) => el("option", { value: `p:${p.codigo}`, texto: p.nome })),
+    ...combos.filter((c) => c.ativo).map((c) => el("option", { value: `c:${c.codigo}`, texto: `Combo ${c.nome}` })),
+  ]);
+  const liberar = el("button", {
+    classe: "botao botao-primario botao-mini", texto: "Liberar",
+    onclick: (e) => {
+      if (!escolha.value) return recado("Escolha um módulo primeiro.", "erro");
+      const [tipo, codigo] = escolha.value.split(":");
+      agir(e.target, async () => {
+        await rpc("dumtech_liberar_produtos", {
+          p_licenca_id: cliente.licenca_id,
+          p_produtos: tipo === "p" ? [codigo] : [],
+          p_combo: tipo === "c" ? codigo : null,
+        });
+        await depois();
+      }, { feito: `Módulo liberado. ${AVISO_HUB}` });
+    },
+  });
+
+  const pilulas = [
+    ...tem.map((codigo) => {
+      const pilulaDoModulo = pilulaModulo(codigo);
+      pilulaDoModulo.append(el("button", {
+        classe: "tirar-modulo", title: `Tirar ${modulo(codigo).nome} desta licença`, texto: "×",
+        "aria-label": `Tirar ${modulo(codigo).nome}`,
+        onclick: (evento) => {
+          evento.stopPropagation();
+          if (!confirmar(`Tirar ${modulo(codigo).nome} desta licença? Ele para de abrir no Hub do cliente em até 2 minutos.`)) return;
+          const produto = produtos.find((p) => p.codigo === codigo);
+          agir(evento.target, async () => {
+            await apagar("licenca_produtos", { licenca_id: `eq.${cliente.licenca_id}`, produto_id: `eq.${produto.id}` });
+            await depois();
+          }, { feito: "Módulo removido." });
+        },
+      }));
+      return pilulaDoModulo;
+    }),
+    // módulo em teste grátis aparece aceso, com o selo: ele abre no Hub até o fim do teste
+    ...naoTem.map((p) => {
+      const teste = (testes || []).find((t) => t.produto_id === p.id && estadoDoTeste(t, agora) !== "terminou");
+      if (!teste) return pilulaModulo(p.codigo, { apagada: true });
+      const emTeste = pilulaModulo(p.codigo);
+      emTeste.title = `Em teste grátis até ${data(teste.termina_em)}`;
+      emTeste.append(el("span", { classe: "selo-teste", texto: "teste" }));
+      return emTeste;
+    }),
+  ];
+
+  // teste grátis de um módulo (o modelo vitalício): dar, estender, encerrar
+  const blocoDoTeste = [];
+  if (testes) {
+    const testados = new Set(testes.map((t) => t.produto_id));
+    const paraTestar = naoTem.filter((p) => !testados.has(p.id));
+    if (testes.length) {
+      blocoDoTeste.push(tabela(
+        ["Teste grátis", "Situação", { texto: "Uso no teste", numero: true }, ""],
+        testes,
+        (t) => [pilulaModulo(t.codigo), periodo(t, agora), usoNoTeste(t),
+                el("div", { classe: "ferramentas" }, acoesDoTeste(t, cliente, agora, { depois }))]
+      ));
+    }
+    if (paraTestar.length) {
+      const escolhaTeste = el("select", { "aria-label": "Módulo para testar" }, [
+        el("option", { value: "", texto: "Dar 7 dias de teste…" }),
+        ...paraTestar.map((p) => el("option", { value: p.id, texto: modulo(p.codigo).nome })),
+      ]);
+      blocoDoTeste.push(el("div", { classe: "ferramentas" }, [
+        escolhaTeste,
+        el("button", {
+          classe: "botao botao-fantasma botao-mini", texto: "Dar teste",
+          onclick: (e) => {
+            const produto = paraTestar.find((p) => p.id === escolhaTeste.value);
+            if (!produto) return recado("Escolha o módulo do teste.", "erro");
+            darTeste(e.target, { licencaId: cliente.licenca_id, produto, depois });
+          },
+        }),
+      ]));
+    }
+  }
+
+  return cartao("Módulos", [
+    el("div", { classe: "modulos-lista" }, pilulas),
+    el("div", { classe: "ferramentas", estilo: "margin-top:14px" }, [escolha, liberar]),
+    ...blocoDoTeste.map((no) => el("div", { estilo: "margin-top:14px" }, [no])),
+  ]);
+}
+
+/** O fim da ficha: suspender, cancelar e excluir, com o que cada um faz. */
+function zonaDePerigo(cliente, { modulos, maquinas, depois }) {
+  const mudarStatus = (novo, texto, classe = "botao-fantasma") => el("button", {
+    classe: `botao ${classe} botao-mini`, texto,
+    onclick: (e) => {
+      if (novo === "cancelada" && !confirmar("Cancelar esta licença agora? Os módulos param de abrir no computador do " +
+                                             "cliente em até 2 minutos. Para assinante que quer sair, prefira Encerrar, em Assinatura.")) return;
+      agir(e.target, async () => {
+        await atualizar("licencas", { id: `eq.${cliente.licenca_id}` }, { status: novo });
+        await depois();
+      }, { feito: `Licença ${novo === "ativa" ? "reativada" : novo}. ${AVISO_HUB}` });
+    },
+  });
+  const botoes = [];
+  if (cliente.licenca_id) {
+    if (cliente.status !== "ativa") botoes.push(mudarStatus("ativa", "Reativar licença", "botao-primario"));
+    if (cliente.status === "ativa") botoes.push(mudarStatus("suspensa", "Suspender licença"));
+    if (cliente.status !== "cancelada") botoes.push(mudarStatus("cancelada", "Cancelar licença", "botao-perigo"));
+    botoes.push(el("button", { classe: "botao botao-perigo botao-mini", texto: "Excluir licença…",
+                               title: "Apaga a licença e tudo dela; o cadastro do cliente fica",
+                               onclick: () => excluirLicenca(cliente, { modulos, maquinas }) }));
+  }
+  botoes.push(el("button", { classe: "botao botao-perigo botao-mini", texto: "Excluir cliente…",
+                             onclick: () => excluirCliente(cliente, { modulos, maquinas }) }));
+  const zona = cartao("Bloquear ou excluir", [
+    el("p", { classe: "zona-texto", texto: cliente.licenca_id
+      ? "Suspender trava o Hub até você reativar. Cancelar e excluir param os módulos em até 2 minutos."
+      : "Apaga o cadastro. Os pedidos antigos continuam no histórico." }),
+    el("div", { classe: "acoes-linha" }, botoes),
+  ]);
+  zona.classList.add("zona-perigo");
+  return zona;
 }
 
 // ================================================================ excluir ====
@@ -712,8 +608,6 @@ const reservaDoCliente = (cliente) => ({
   tipo: cliente.tipo, expira_em: cliente.expira_em, max_computadores: cliente.max_computadores,
   modulos: (cliente.produtos_codigos || []).map((codigo) => modulo(codigo).nome),
 });
-
-const CANAIS = { hub: "Pelo Hub", site: "Pela loja", mercadolivre: "Mercado Livre", manual: "Venda direta" };
 
 async function copiar(texto, caixa) {
   try {
@@ -861,7 +755,7 @@ const dado = (rotulo, valor) =>
 const kitDoPedido = (pedido) =>
   (pedido.itens || []).map((i) => i.nome || i.codigo).join(" + ") || "—";
 
-const campo = (rotulo, entrada, dica = "") =>
+export const campo = (rotulo, entrada, dica = "") =>
   el("label", { classe: "campo" }, [
     el("span", { texto: rotulo }), entrada,
     dica ? el("small", { classe: "dica", texto: dica }) : null,
@@ -879,207 +773,7 @@ function traduzirErro(erro) {
   return erro;
 }
 
-// ============================================= nova venda (ML / direta) ====
-// Venda que nao passou pela loja: Mercado Livre, WhatsApp, telefone, balcao.
-// Cadastra quem precisar, entrega na licenca que o cliente ja tem (ou cria),
-// registra o valor recebido e abre "Enviar a chave".
-export async function novaVenda({ cliente = null } = {}) {
-  const destino = abrirGaveta({
-    acima: cliente ? "Registrar venda" : "Nova venda",
-    titulo: cliente ? (cliente.nome || cliente.email) : "Mercado Livre ou venda direta",
-  });
-  const [produtos, combos, itensDeCombo] = await Promise.all([
-    ler("produtos", { ordem: "codigo.asc" }),
-    ler("combos", { ordem: "codigo.asc" }),
-    ler("combo_produtos"),
-  ]);
-  const aVenda = produtos.filter((p) => p.ativo);
-  const combosAVenda = combos.filter((c) => c.ativo);
-  const tem = new Set(cliente?.produtos_codigos || []);
-
-  const canal = el("select", { id: "venda-canal" }, [
-    el("option", { value: "mercadolivre", texto: "Mercado Livre" }),
-    el("option", { value: "manual", texto: "Venda direta (WhatsApp, telefone, balcão)" }),
-  ]);
-  const referencia = el("input", { id: "venda-referencia", type: "text", placeholder: "Ex.: 2000012345678" });
-  const nome = el("input", { id: "venda-nome", type: "text", placeholder: "Nome que aparece na venda" });
-  const email = el("input", { id: "venda-email", type: "email", placeholder: "opcional" });
-  const whatsapp = el("input", { id: "venda-whatsapp", type: "tel", placeholder: "opcional" });
-  const combo = el("select", { id: "venda-combo" }, [
-    el("option", { value: "", texto: "Sem combo" }),
-    ...combosAVenda.map((c) => el("option", { value: c.codigo, texto: `${c.nome} — ${dinheiro(c.preco)}` })),
-  ]);
-  const escolhidos = new Set();
-  const valor = el("input", { id: "venda-valor", type: "number", min: "0", step: "0.01", placeholder: "0,00" });
-  let valorDigitado = false;
-  valor.addEventListener("input", () => { valorDigitado = true; });
-
-  const precoDeTabela = () => {
-    let total = 0;
-    const dentroDoCombo = new Set();
-    if (combo.value) {
-      const c = combos.find((x) => x.codigo === combo.value);
-      total += Number(c?.preco || 0);
-      for (const item of itensDeCombo.filter((i) => i.combo_id === c?.id)) {
-        dentroDoCombo.add(produtos.find((p) => p.id === item.produto_id)?.codigo);
-      }
-    }
-    for (const codigo of escolhidos) {
-      if (!dentroDoCombo.has(codigo)) total += Number(produtos.find((p) => p.codigo === codigo)?.preco || 0);
-    }
-    return total;
-  };
-  const tabelaTexto = el("small", { classe: "dica" });
-  const sugerirValor = () => {
-    const total = precoDeTabela();
-    tabelaTexto.textContent = `Preço de tabela: ${dinheiro(total)}. No Mercado Livre, informe o que você recebeu.`;
-    if (!valorDigitado) valor.value = total ? total.toFixed(2) : "";
-  };
-  combo.addEventListener("change", sugerirValor);
-
-  const listaModulos = el("div", { classe: "modulos-lista" }, aVenda.map((p) => {
-    const marca = el("input", {
-      type: "checkbox", disabled: tem.has(p.codigo),
-      onchange: (e) => { e.target.checked ? escolhidos.add(p.codigo) : escolhidos.delete(p.codigo); sugerirValor(); },
-    });
-    return el("label", { classe: "pilula", "data-tom": tem.has(p.codigo) ? "ok" : "neutro",
-                         estilo: "gap:7px;cursor:pointer", title: tem.has(p.codigo) ? "O cliente já tem" : "" },
-              [marca, `${modulo(p.codigo).nome} · ${dinheiro(p.preco)}`]);
-  }));
-  const tipo = el("select", { id: "venda-tipo" }, [
-    el("option", { value: "vitalicia", texto: "Vitalícia" }),
-    el("option", { value: "assinatura", texto: "Assinatura" }),
-    el("option", { value: "teste", texto: "Teste" }),
-  ]);
-  if (cliente?.tipo) tipo.value = cliente.tipo === "teste" ? "vitalicia" : cliente.tipo;
-  const validade = el("input", { id: "venda-validade", type: "date", value: cliente?.expira_em || "" });
-  const computadores = el("input", { id: "venda-computadores", type: "number", min: "1", max: "50",
-                                     value: String(cliente?.max_computadores || 1) });
-
-  const campoReferencia = campo("Número do pedido no Mercado Livre", referencia, "Aparece no histórico do cliente.");
-  const campoValidade = campo("Vence em", validade);
-  const ajustar = () => {
-    campoReferencia.hidden = canal.value !== "mercadolivre";
-    campoValidade.hidden = tipo.value === "vitalicia";
-  };
-  canal.addEventListener("change", ajustar);
-  tipo.addEventListener("change", ajustar);
-  ajustar();
-  sugerirValor();
-
-  const quem = cliente
-    ? [dado("Cliente", pessoa(cliente.nome, cliente.email || "sem e-mail"))]
-    : [
-        campo("Nome do comprador", nome),
-        campo("E-mail", email, "O Mercado Livre não mostra: deixe em branco. Quando ele ativar o Hub, o e-mail se liga sozinho."),
-        campo("WhatsApp", whatsapp),
-      ];
-
-  limpar(destino).append(cartao("", [
-    campo("Onde vendeu", canal),
-    campoReferencia,
-    ...quem,
-    campo("Combo", combo),
-    el("div", { classe: "campo" }, [el("span", { texto: "Módulos avulsos" }), listaModulos]),
-    el("div", { classe: "dados" }, [campo("Tipo de licença", tipo), campoValidade, campo("Computadores", computadores)]),
-    campo("Valor recebido (R$)", valor),
-    tabelaTexto,
-    el("div", { classe: "acoes-linha", estilo: "margin-top:14px" }, [
-      el("button", {
-        classe: "botao botao-primario", texto: "Registrar venda e gerar a chave",
-        onclick: (e) => {
-          if (!cliente && !nome.value.trim()) return recado("Informe o nome do comprador.", "erro");
-          if (!combo.value && !escolhidos.size) return recado("Escolha um combo ou pelo menos um módulo.", "erro");
-          if (tipo.value !== "vitalicia" && !validade.value) return recado("Assinatura e teste precisam de data de vencimento.", "erro");
-          const recebido = valor.value === "" ? null : Number(valor.value);
-          if (recebido !== null && (!Number.isFinite(recebido) || recebido < 0)) return recado("Confira o valor recebido.", "erro");
-
-          agir(e.target, async () => {
-            let resposta;
-            try {
-              resposta = await rpc("dumtech_venda_manual", {
-                p_nome: cliente ? (cliente.nome || "") : nome.value.trim(),
-                p_email: cliente ? "" : email.value.trim(),
-                p_telefone: cliente ? "" : whatsapp.value.trim(),
-                p_produtos: [...escolhidos],
-                p_combo: combo.value || null,
-                p_canal: canal.value,
-                p_referencia: canal.value === "mercadolivre" ? referencia.value.trim() : "",
-                p_total: recebido,
-                p_tipo: tipo.value,
-                p_expira_em: tipo.value === "vitalicia" ? null : validade.value,
-                p_max_computadores: Number(computadores.value) || 1,
-                p_cliente_id: cliente?.cliente_id || null,
-              });
-            } catch (erro) {
-              throw traduzirErro(erro);
-            }
-            recado(
-              resposta.licenca_nova ? `Venda registrada. Chave nova: ${resposta.chave}`
-              : resposta.reativada ? `Venda registrada. A licença ${resposta.chave} voltou a valer.`
-              : `Venda registrada na chave que o cliente já tem: ${resposta.chave}`, "ok");
-            recarregar();
-            const nomesVendidos = [
-              ...(combo.value ? [combos.find((c) => c.codigo === combo.value)?.nome] : []),
-              ...[...escolhidos].map((c) => modulo(c).nome),
-            ].filter(Boolean);
-            enviarChave(resposta.licenca_id, {
-              reserva: { nome: resposta.nome, email: resposta.email, telefone: resposta.telefone,
-                         chave: resposta.chave, modulos: nomesVendidos },
-              canal: canal.value === "mercadolivre" ? "mercadolivre" : "direto",
-              tentarEmail: canal.value !== "mercadolivre" && Boolean(resposta.email),
-            });
-          }, { feito: "", erro: "Não consegui registrar a venda." });
-        },
-      }),
-      el("button", { classe: "botao botao-fantasma", texto: "Cancelar", onclick: fecharGaveta }),
-    ]),
-  ]));
-}
-
 // ============================================== editar cliente e licenca ====
-/** Cadastro sem venda: o interessado que ligou, o contato do Mercado Livre. */
-function novoCliente() {
-  const nome = el("input", { id: "novo-cliente-nome", type: "text" });
-  const email = el("input", { id: "novo-cliente-email", type: "email" });
-  const telefoneCampo = el("input", { id: "novo-cliente-telefone", type: "tel" });
-  const documento = el("input", { id: "novo-cliente-documento", type: "text" });
-
-  abrirGaveta({
-    acima: "Novo cliente", titulo: "Cadastrar cliente",
-    conteudo: cartao("", [
-      campo("Nome", nome), campo("E-mail", email, "Pode ficar vazio: liga sozinho quando ele ativar o Hub."),
-      campo("WhatsApp / telefone", telefoneCampo), campo("CPF ou CNPJ", documento),
-      el("div", { classe: "acoes-linha", estilo: "margin-top:14px" }, [
-        el("button", {
-          classe: "botao botao-primario", texto: "Cadastrar",
-          onclick: (e) => {
-            if (!nome.value.trim()) return recado("O cliente precisa de um nome.", "erro");
-            const emailLimpo = email.value.trim().toLowerCase();
-            if (emailLimpo && !/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(emailLimpo)) return recado("Confira o e-mail.", "erro");
-            agir(e.target, async () => {
-              let criado;
-              try {
-                criado = await inserir("clientes", {
-                  nome: nome.value.trim(), email: emailLimpo, origem: "venda",
-                  telefone: telefoneCampo.value.trim(), documento: documento.value.replace(/\D/g, ""),
-                });
-              } catch (erro) {
-                throw traduzirErro(erro);
-              }
-              const id = (Array.isArray(criado) ? criado[0] : criado)?.id;
-              if (id) await reabrirFicha(id);
-              else { fecharGaveta(); await recarregar(); }
-            }, { feito: "Cliente cadastrado." });
-          },
-        }),
-        el("button", { classe: "botao botao-fantasma", texto: "Cancelar", onclick: fecharGaveta }),
-      ]),
-    ]),
-  });
-  nome.focus();
-}
-
 function editarCliente(cliente) {
   const nome = el("input", { id: "cliente-nome", type: "text", value: cliente.nome || "" });
   const email = el("input", { id: "cliente-email", type: "email", value: cliente.email || "" });
@@ -1119,38 +813,55 @@ function editarCliente(cliente) {
   });
 }
 
-function editarLicenca(cliente) {
-  const tipo = el("select", { id: "licenca-tipo" }, [
-    el("option", { value: "vitalicia", texto: "Vitalícia" }),
-    el("option", { value: "assinatura", texto: "Assinatura" }),
-    el("option", { value: "teste", texto: "Teste" }),
-  ]);
-  tipo.value = cliente.tipo || "vitalicia";
-  const validade = el("input", { id: "licenca-validade", type: "date", value: cliente.expira_em || "" });
+async function editarLicenca(cliente) {
+  const ativos = await ler("ativacoes", {
+    select: "maquina,apelido,versao", filtros: { licenca_id: `eq.${cliente.licenca_id}` },
+    ordem: "ativado_em.asc", fresco: true,
+  });
   const computadores = el("input", { id: "licenca-computadores", type: "number", min: "1", max: "50",
                                      value: String(cliente.max_computadores || 1) });
-  const campoValidade = campo("Vence em", validade, "Renovar é mudar esta data. O Hub do cliente recebe em até 2 minutos.");
-  const ajustar = () => { campoValidade.hidden = tipo.value === "vitalicia"; };
-  tipo.addEventListener("change", ajustar);
-  ajustar();
+
+  // reduzir vale de verdade: quem passa do limite novo precisa sair, e quem sai
+  // e escolha sua. O limite e as vagas mudam juntos no banco, ou nada muda.
+  const marcas = ativos.map((m) => ({ maquina: m.maquina, caixa: el("input", { type: "checkbox" }) }));
+  const aviso = el("small", { classe: "dica" });
+  const blocoVagas = el("div", { classe: "campo", hidden: true }, [
+    el("span", { texto: "Quais computadores desconectar?" }),
+    el("div", { classe: "acoes-linha" }, ativos.map((m, i) =>
+      el("label", { classe: "pilula" }, [marcas[i].caixa, m.apelido || m.maquina]))),
+    aviso,
+  ]);
+  const marcadas = () => marcas.filter((m) => m.caixa.checked).map((m) => m.maquina);
+  const faltam = () => vagasASoltar(ativos.length - marcadas().length, Math.max(1, Number(computadores.value) || 1));
+  const conferirVagas = () => {
+    const maximo = Math.max(1, Number(computadores.value) || 1);
+    blocoVagas.hidden = !vagasASoltar(ativos.length, maximo);
+    aviso.textContent = faltam() ? `Marque mais ${faltam()}.` : "O computador marcado perde a licença em até 2 minutos.";
+  };
+  computadores.addEventListener("input", conferirVagas);
+  marcas.forEach((m) => m.caixa.addEventListener("change", conferirVagas));
+  conferirVagas();
 
   abrirGaveta({
-    acima: "Editar licença", titulo: cliente.chave,
+    acima: "Computadores da licença", titulo: cliente.chave,
     conteudo: cartao("", [
-      campo("Tipo", tipo), campoValidade,
-      campo("Computadores", computadores, `Hoje ativada em ${cliente.computadores}. Diminuir não desliga ninguém: só impede ativar outro.`),
+      campo("Computadores", computadores, `Hoje ativada em ${ativos.length}. Passou desse limite, o próximo computador é recusado.`),
+      blocoVagas,
       el("div", { classe: "acoes-linha", estilo: "margin-top:14px" }, [
         el("button", {
           classe: "botao botao-primario", texto: "Salvar",
           onclick: (e) => {
-            if (tipo.value !== "vitalicia" && !validade.value) return recado("Assinatura e teste precisam de data de vencimento.", "erro");
+            if (faltam()) return recado(`Marque mais ${faltam()} computador(es) para desconectar.`, "erro");
+            const nomesSaindo = ativos.filter((m) => marcadas().includes(m.maquina)).map((m) => m.apelido || m.maquina);
+            if (nomesSaindo.length && !confirmar(`Desconectar ${nomesSaindo.join(", ")}? O Hub para de abrir ` +
+                                                 "nesses computadores, e a vaga fica livre.")) return;
             agir(e.target, async () => {
               try {
-                await atualizar("licencas", { id: `eq.${cliente.licenca_id}` }, {
-                  tipo: tipo.value,
-                  expira_em: tipo.value === "vitalicia" ? null : validade.value,
-                  max_computadores: Math.max(1, Number(computadores.value) || 1),
+                const resposta = await rpc("dumtech_ajustar_computadores", {
+                  p_licenca: cliente.licenca_id, p_maximo: Math.max(1, Number(computadores.value) || 1),
+                  p_soltar: marcadas(),
                 });
+                if (!resposta?.ok) throw new Error(resposta?.mensagem || "");
               } catch (erro) {
                 throw traduzirErro(erro);
               }
@@ -1194,16 +905,15 @@ const filtroVendas = { busca: "", limite: 50 };
 
 export async function pedidos(alvo) {
   const abertos = await ler("pedidos_abertos");
-  marcarPedidos(abertos.length);
 
   alvo.append(el("div", { classe: "pagina-cabeca" }, [
     el("div", {}, [
-      el("h1", { texto: "Pedidos" }),
-      el("p", { texto: "Aprovar entrega os módulos na licença que o cliente já tem (ou cria uma) e abre o envio da chave. " +
-                       "Clique num pedido para ver, editar ou excluir." }),
+      el("h1", { texto: "Pedidos antigos da loja" }),
+      el("p", { texto: "Do tempo em que a loja vendia módulo avulso. Aprovar entrega os módulos na licença que o cliente " +
+                       "já tem (ou cria uma) e abre o envio da chave. Clique num pedido para ver, editar ou excluir." }),
     ]),
     el("div", { classe: "ferramentas" }, [
-      el("button", { classe: "botao botao-primario", texto: "Nova venda", onclick: () => novaVenda() }),
+      el("button", { classe: "botao botao-fantasma", texto: "Voltar para Hoje", onclick: () => irPara("hoje") }),
     ]),
   ]));
 

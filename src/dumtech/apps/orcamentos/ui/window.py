@@ -28,6 +28,7 @@ class OrcamentosWindow(AppWindow):
                                                  mensageiro=self.mensagens,
                                                  contatos=self.context.contacts,
                                                  destinos=self.context.destinos,
+                                                 contas=self.context.contas,
                                                  catalogo=self.context.catalog)
         )
         self.orcamentos_view.data_changed.connect(self.refresh_all)

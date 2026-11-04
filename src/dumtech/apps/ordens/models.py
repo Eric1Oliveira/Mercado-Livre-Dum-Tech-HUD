@@ -112,6 +112,8 @@ class ItemOS:
     #: preenchido quando a peca veio do catalogo do Estoque (0 = texto livre)
     produto_id: int = 0
     codigo: str = ""
+    #: quanto saiu do estoque de verdade: a baixa pode ser recusada
+    baixado: float = 0.0
 
     @property
     def total(self) -> float:
@@ -144,7 +146,24 @@ class ItemOS:
             valor_unitario=float(row["valor_unitario"]),
             produto_id=int(row["produto_id"] or 0) if "produto_id" in row.keys() else 0,
             codigo=row["codigo"] if "codigo" in row.keys() else "",
+            baixado=float(row["baixado"] or 0) if "baixado" in row.keys() else 0.0,
         )
+
+
+@dataclass
+class TarefaOS:
+    """Uma linha do checklist."""
+
+    id: int | None = None
+    texto: str = ""
+    feito: bool = False
+
+
+@dataclass
+class FotoOS:
+    id: int | None = None
+    imagem: bytes = b""
+    criado_em: str = ""
 
 
 @dataclass

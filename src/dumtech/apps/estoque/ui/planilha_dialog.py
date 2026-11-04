@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ....core.exportar import gravar
 from ....ui.theme import Space, apply_window_theme, palette_for
 from ....ui.widgets.buttons import Button
 from ....ui.widgets.common import label, separator
@@ -51,8 +52,7 @@ def exportar(parent: QWidget, repository: EstoqueRepository, movimentacoes: bool
         if movimentacoes
         else repository.exportar_produtos_csv(incluir_inativos=True)
     )
-    # BOM: e o que faz o Excel abrir o arquivo com os acentos certos
-    Path(caminho).write_text(texto, encoding="utf-8-sig")
+    gravar(caminho, texto)
     QMessageBox.information(
         parent,
         "Exportado",

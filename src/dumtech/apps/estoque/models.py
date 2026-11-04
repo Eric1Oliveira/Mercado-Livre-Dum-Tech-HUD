@@ -96,6 +96,10 @@ class Produto:
     ativo: bool = True
     criado_em: str = ""
     atualizado_em: str = ""
+    tamanho: str = ""
+    cor: str = ""
+    #: codigo do produto de onde esta variacao saiu ("" = produto comum)
+    grupo: str = ""
 
     @property
     def estoque_baixo(self) -> bool:
@@ -146,6 +150,9 @@ class Produto:
             ativo=bool(row["ativo"]),
             criado_em=row["criado_em"],
             atualizado_em=row["atualizado_em"],
+            tamanho=(row["tamanho"] or "") if "tamanho" in row.keys() else "",
+            cor=(row["cor"] or "") if "cor" in row.keys() else "",
+            grupo=(row["grupo"] or "") if "grupo" in row.keys() else "",
         )
 
 
@@ -246,6 +253,9 @@ class ItemEntrada:
     produto_id: int
     quantidade: float
     custo_unitario: float = 0.0
+    #: so para o que tem validade; sem isto a linha nao gera lote
+    lote: str = ""
+    validade: str = ""
 
     @property
     def total(self) -> float:
@@ -266,6 +276,101 @@ class PreviaImportacao:
 
 
 @dataclass
+class Lote:
+    """Uma remessa com a sua validade."""
+
+    id: int | None = None
+    produto_id: int = 0
+    codigo: str = ""
+    validade: str = ""
+    quantidade: float = 0.0
+    produto_nome: str = ""
+
+    @classmethod
+    def from_row(cls, row: Row) -> "Lote":
+        return cls(
+            id=row["id"], produto_id=row["produto_id"], codigo=row["codigo"] or "",
+            validade=row["validade"] or "", quantidade=float(row["quantidade"]),
+            produto_nome=row["produto_nome"] if "produto_nome" in row.keys() else "",
+        )
+
+
+@dataclass
+class Fornecedor:
+    id: int | None = None
+    nome: str = ""
+    documento: str = ""
+    telefone: str = ""
+    email: str = ""
+    observacoes: str = ""
+    ativo: bool = True
+
+    @classmethod
+    def from_row(cls, row: Row) -> "Fornecedor":
+        return cls(
+            id=row["id"], nome=row["nome"], documento=row["documento"] or "",
+            telefone=row["telefone"] or "", email=row["email"] or "",
+            observacoes=row["observacoes"] or "", ativo=bool(row["ativo"]),
+        )
+
+
+PEDIDO_ABERTO = "aberto"
+PEDIDO_RECEBIDO = "recebido"
+PEDIDO_CANCELADO = "cancelado"
+PEDIDO_LABEL = {PEDIDO_ABERTO: "Aberto", PEDIDO_RECEBIDO: "Recebido",
+                PEDIDO_CANCELADO: "Cancelado"}
+PEDIDO_TOM = {PEDIDO_ABERTO: "warning", PEDIDO_RECEBIDO: "success", PEDIDO_CANCELADO: "muted"}
+
+
+@dataclass
+class ItemPedidoCompra:
+    produto_id: int
+    quantidade: float
+    custo_unitario: float = 0.0
+    produto_nome: str = ""
+    unidade: str = ""
+
+    @property
+    def total(self) -> float:
+        return round(self.quantidade * self.custo_unitario, 2)
+
+
+@dataclass
+class PedidoCompra:
+    """O que foi pedido ao fornecedor e ainda nao chegou."""
+
+    id: int | None = None
+    numero: str = ""
+    fornecedor: str = ""
+    data: str = ""
+    previsao: str = ""
+    status: str = PEDIDO_ABERTO
+    observacoes: str = ""
+    recebido_em: str = ""
+    itens: list[ItemPedidoCompra] = field(default_factory=list)
+
+    @property
+    def total(self) -> float:
+        return round(sum(item.total for item in self.itens), 2)
+
+    @property
+    def status_label(self) -> str:
+        return PEDIDO_LABEL.get(self.status, self.status)
+
+    @property
+    def status_tom(self) -> str:
+        return PEDIDO_TOM.get(self.status, "muted")
+
+    @classmethod
+    def from_row(cls, row: Row) -> "PedidoCompra":
+        return cls(
+            id=row["id"], numero=row["numero"], fornecedor=row["fornecedor"] or "",
+            data=row["data"], previsao=row["previsao"] or "", status=row["status"],
+            observacoes=row["observacoes"] or "", recebido_em=row["recebido_em"] or "",
+        )
+
+
+@dataclass
 class Resumo:
     """Numeros exibidos no painel inicial."""
 
@@ -281,3 +386,5 @@ class Resumo:
     baixos: list[Produto] = field(default_factory=list)
     a_comprar: list[Produto] = field(default_factory=list)
     maior_valor: list[Produto] = field(default_factory=list)
+    #: lotes que vencem logo, do que vence antes para o que vence depois
+    vencendo: list[Lote] = field(default_factory=list)

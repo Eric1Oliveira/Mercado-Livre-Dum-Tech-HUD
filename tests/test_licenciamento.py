@@ -499,11 +499,16 @@ class HubLicenciadoTestCase(LicencaBase):
         self.hub.launcher.notify = lambda *args: None
         self.addCleanup(self.hub.close)
 
+    def _nao_libera_para_gravar(self, app_id: str) -> None:
+        """Fora da licenca nao abre; com dados neste computador, abre so para ver."""
+        casca = self.hub.launcher.open(app_id, self.hub)
+        self.assertTrue(casca is None or casca.context.so_consulta)
+
     def test_sem_licenca_nada_e_liberado(self) -> None:
         self.assertFalse(self.service.ativada)
         self.assertEqual(self.hub.registry.available(), [])
         self.assertEqual(len(self.hub.registry.locked()), 7)
-        self.assertFalse(self.hub.launcher.open("estoque", self.hub))
+        self._nao_libera_para_gravar("estoque")
         self.assertTrue(self.hub.license_view.card_ativacao.isVisibleTo(self.hub.license_view))
 
     def test_apos_ativar_o_hub_mostra_so_o_que_foi_comprado(self) -> None:
@@ -513,7 +518,7 @@ class HubLicenciadoTestCase(LicencaBase):
         self.assertEqual([e.app_id for e in self.hub.registry.available()], ["estoque"])
         self.assertEqual(len(self.hub.registry.locked()), 6)
         self.assertTrue(self.hub.launcher.open("estoque", self.hub))
-        self.assertFalse(self.hub.launcher.open("financeiro", self.hub))
+        self._nao_libera_para_gravar("financeiro")
 
     def test_a_central_mostra_somente_os_aplicativos_comprados(self) -> None:
         from dumtech.ui.widgets.app_card import AppCard

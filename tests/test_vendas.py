@@ -140,7 +140,7 @@ class PagamentoTestCase(VendasBase):
         self.assertEqual(finalizada.status, CONCLUIDA)
 
     def test_venda_a_prazo_fica_pendente_ate_o_cliente_pagar(self) -> None:
-        venda = self._vender(pagamentos=[pagamento_unico("Prazo", 50.0)])
+        venda = self._vender(pagamentos=[pagamento_unico("Prazo", 50.0)], cliente="Ana")
         self.assertEqual(venda.status, PENDENTE)
 
         paga = self.repo.receber_pendente(
@@ -286,13 +286,14 @@ class CaixaTestCase(VendasBase):
 
         conferencia = self.repo.conferencia()
         self.assertEqual(conferencia.abertura, 100.0)
-        self.assertEqual(conferencia.vendas_dinheiro, 50.0)
+        # a pessoa entregou 100 por 50: o troco sai na linha de baixo
+        self.assertEqual(conferencia.vendas_dinheiro, 100.0)
         self.assertEqual(conferencia.trocos, 50.0)
         self.assertEqual(conferencia.sangrias, 30.0)
         self.assertEqual(conferencia.suprimentos, 20.0)
         self.assertEqual(conferencia.total_vendido, 100.0)
-        # 100 + 50 - 50 + 20 - 30
-        self.assertEqual(conferencia.esperado, 90.0)
+        # 100 + 100 - 50 + 20 - 30
+        self.assertEqual(conferencia.esperado, 140.0)
         self.assertEqual(dict(conferencia.por_forma), {"Dinheiro": 50.0, "Pix": 50.0})
 
     def test_venda_cancelada_sai_da_conta_do_caixa(self) -> None:

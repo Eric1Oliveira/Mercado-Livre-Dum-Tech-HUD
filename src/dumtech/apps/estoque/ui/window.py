@@ -8,7 +8,9 @@ from ..repository import EstoqueRepository
 from .contagem_view import ContagemView
 from .dashboard_view import DashboardView
 from .entradas_view import EntradasView
+from .fornecedores_view import FornecedoresView
 from .movimentacoes_view import MovimentacoesView
+from .pedidos_view import PedidosView
 from .produtos_view import ProdutosView
 
 
@@ -32,6 +34,12 @@ class EstoqueWindow(AppWindow):
             "Movimentações", "swap", MovimentacoesView(self.repository)
         )
         self.contagem_view = self.add_view("Contagem", "list", ContagemView(self.repository))
+        self.pedidos_view = self.add_view(
+            "Compras", "cart", PedidosView(self.repository, contas=self.context.contas)
+        )
+        self.fornecedores_view = self.add_view(
+            "Fornecedores", "users", FornecedoresView(self.repository)
+        )
 
         for tela in (
             self.dashboard_view,     # a reposicao registrada pelo Painel
@@ -39,6 +47,7 @@ class EstoqueWindow(AppWindow):
             self.entradas_view,
             self.movimentacoes_view,
             self.contagem_view,
+            self.pedidos_view,
         ):
             tela.data_changed.connect(self.refresh_all)
 

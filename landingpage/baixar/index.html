@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://kpiyhhmtteojqxhhmcyr.supabase.co; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Baixar o DumTech Hub</title>
 <meta name="description" content="Baixe o instalador do DumTech Hub para Windows, instale e ative com a sua chave.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect width='24' height='24' rx='6' fill='%237353F6'/><path d='M6 6h4v4H6z M14 6h4v4h-4z M6 14h4v4H6z M14 14h4v4h-4z' fill='none' stroke='white' stroke-width='2'/></svg>">
@@ -14,6 +14,7 @@
 <link rel="stylesheet" href="../css/paginas.css">
 <!-- sem zoom no celular: o iPhone ignora o meta, o script resolve -->
 <script src="../js/sem-zoom.js"></script>
+<script type="module" src="../js/baixar.js"></script>
 </head>
 <body>
 
@@ -38,7 +39,7 @@
     <p class="lede">Um programa só, para Windows. Instale, informe seu nome e e-mail e cole a chave que você recebeu: os módulos comprados aparecem na hora.</p>
 
     <div class="baixar-caixa">
-      <a class="botao botao-primario" href="DumTech-Hub-Setup.exe" download>
+      <a class="botao botao-primario" href="DumTech-Hub-Setup.exe" download="DumTech-Hub-Setup.exe" data-instalador>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11 M7 10l5 5 5-5 M5 20h14"/></svg>
         Baixar o instalador para Windows
       </a>

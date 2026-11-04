@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import csv
 import io
+import re
 
 from ..models import UNIDADE_PADRAO, UNIDADES, EstoqueError, PreviaImportacao, Produto
 from .comum import dinheiro, quantidade
@@ -83,17 +84,33 @@ def _normalizar(cabecalho: str) -> str:
 
 
 def _numero(valor: str) -> float:
-    """Aceita "1.234,56" (planilha brasileira) e "1234.56"."""
-    texto = (valor or "").strip()
+    """Le numero do jeito que a planilha trouxer.
+
+    Com os dois separadores, o ultimo e o dos centavos: "1.234,56" e "1,234.56".
+    So com ponto em grupos de tres, e milhar: "1.500" sao mil e quinhentos, e
+    nao um e meio. O que este programa exporta sai com virgula decimal, para
+    "12,345" (quilos) voltar igual.
+    """
+    texto = (valor or "").replace("R$", "").replace(" ", "").strip()
     if not texto:
         return 0.0
-    texto = texto.replace("R$", "").replace(" ", "")
-    if "," in texto:
-        texto = texto.replace(".", "").replace(",", ".")
+    virgula, ponto = texto.rfind(","), texto.rfind(".")
+    if virgula >= 0 and ponto >= 0:
+        milhar, decimal = (".", ",") if virgula > ponto else (",", ".")
+        texto = texto.replace(milhar, "").replace(decimal, ".")
+    elif virgula >= 0:
+        texto = texto.replace(",", "") if texto.count(",") > 1 else texto.replace(",", ".")
+    elif re.fullmatch(r"-?\d{1,3}(\.\d{3})+", texto):
+        texto = texto.replace(".", "")
     try:
         return float(texto)
     except ValueError as exc:
         raise ValueError(f"'{valor}' não é um número") from exc
+
+
+def _texto(numero: float) -> str:
+    """Numero com virgula decimal: o Excel daqui le, e `_numero` le de volta."""
+    return str(numero).replace(".", ",")
 
 
 class PlanilhaMixin:
@@ -107,8 +124,8 @@ class PlanilhaMixin:
         for p in self.listar(incluir_inativos=incluir_inativos):
             escritor.writerow([
                 p.codigo, p.nome, p.codigo_barras, p.categoria, p.unidade,
-                p.quantidade, p.estoque_minimo, p.estoque_maximo,
-                p.preco_custo, p.preco_venda, p.fornecedor, p.localizacao,
+                _texto(p.quantidade), _texto(p.estoque_minimo), _texto(p.estoque_maximo),
+                _texto(p.preco_custo), _texto(p.preco_venda), p.fornecedor, p.localizacao,
                 p.descricao,
             ])
         return saida.getvalue()
@@ -163,20 +180,21 @@ class PlanilhaMixin:
                 "colunas 'código' e 'nome'."
             )
 
-        criados = 0
-        for produto in previa.criar:
-            self.criar(produto)
-            criados += 1
+        # tudo ou nada: a planilha pela metade e a pior das duas
+        criados = atualizados = 0
+        with self.db.transaction():
+            for produto in previa.criar:
+                self.criar(produto)
+                criados += 1
 
-        atualizados = 0
-        if atualizar_existentes:
-            for produto in previa.atualizar:
-                atual = self.obter(produto.id)
-                # a quantidade nao vem da planilha numa atualizacao: quem manda
-                # no saldo e o historico de movimentacoes, nao um arquivo
-                produto.quantidade = atual.quantidade
-                self.atualizar(produto)
-                atualizados += 1
+            if atualizar_existentes:
+                for produto in previa.atualizar:
+                    atual = self.obter(produto.id)
+                    # a quantidade nao vem da planilha numa atualizacao: quem manda
+                    # no saldo e o historico de movimentacoes, nao um arquivo
+                    produto.quantidade = atual.quantidade
+                    self.atualizar(produto)
+                    atualizados += 1
         return criados, atualizados
 
     # ------------------------------------------------------------------ leitura

@@ -44,7 +44,7 @@ PERIODO_MES = "mes"
 PERIODO_ATRASADOS = "atrasados"
 
 CAMPOS = ("titulo, cliente, inicio, duracao_min, local, status, observacoes, tipo, grupo, repeticao,"
-          " telefone, origem, reserva")
+          " telefone, origem, reserva, profissional, sinal, documento")
 
 
 def agora() -> str:
@@ -76,6 +76,8 @@ class AgendaRepository:
         inicio: str = "",
         fim: str = "",
         limite: int = 500,
+        cliente: str = "",
+        profissional: str = "",
     ) -> list[Compromisso]:
         sql = "SELECT * FROM compromissos WHERE 1 = 1"
         params: list = []
@@ -90,6 +92,12 @@ class AgendaRepository:
         if tipo:
             sql += " AND tipo = ?"
             params.append(tipo)
+        if cliente.strip():
+            sql += " AND cliente = ? COLLATE NOCASE"
+            params.append(cliente.strip())
+        if profissional.strip():
+            sql += " AND profissional = ?"
+            params.append(profissional.strip())
 
         hoje = date.today()
         if periodo == PERIODO_HOJE:
@@ -117,8 +125,17 @@ class AgendaRepository:
 
         # concluido e cancelado ja passaram: historico, mais recente primeiro
         historico = bool(status) and status not in ABERTOS
-        sql += f" ORDER BY datetime(inicio) {'DESC' if historico else ''} LIMIT ?"
-        params.append(int(limite))
+        sem_datas = not (periodo or inicio or fim)
+        if sem_datas and not historico:
+            # o corte fica com o que esta perto de agora: cronologico puro lia
+            # os compromissos mais velhos, e hoje saia da lista
+            sql = (f"SELECT * FROM ({sql} ORDER BY"
+                   " ABS(julianday(inicio) - julianday(?)) LIMIT ?)"
+                   " ORDER BY datetime(inicio)")
+            params += [datetime.now().isoformat(timespec="seconds"), int(limite)]
+        else:
+            sql += f" ORDER BY datetime(inicio) {'DESC' if historico else ''} LIMIT ?"
+            params.append(int(limite))
         return [Compromisso.from_row(row) for row in self.db.query(sql, params)]
 
     def obter(self, compromisso_id: int) -> Compromisso | None:
@@ -150,6 +167,13 @@ class AgendaRepository:
             "ORDER BY ultimo DESC LIMIT ?", (int(limite),)
         )]
 
+    def profissionais(self) -> list[str]:
+        """Quem ja atendeu aqui, para filtrar e sugerir enquanto se digita."""
+        return [row["profissional"] for row in self.db.query(
+            "SELECT DISTINCT profissional FROM compromissos WHERE TRIM(profissional) <> ''"
+            " ORDER BY profissional COLLATE NOCASE"
+        )]
+
     def locais(self) -> list[str]:
         return [row["local"] for row in self.db.query(
             "SELECT DISTINCT local FROM compromissos WHERE TRIM(local) <> ''"
@@ -174,6 +198,9 @@ class AgendaRepository:
         return [
             outro for outro in vizinhos
             if outro.id != compromisso.id and compromisso.choca_com(outro)
+            # cada profissional tem a propria agenda; sem nome, o horario e da loja
+            and (not compromisso.profissional or not outro.profissional
+                 or compromisso.profissional == outro.profissional)
         ]
 
     # ------------------------------------------------------------------ escrita
@@ -194,6 +221,9 @@ class AgendaRepository:
             compromisso.telefone.strip(),
             compromisso.origem,
             compromisso.reserva,
+            compromisso.profissional.strip(),
+            round(float(compromisso.sinal or 0), 2),
+            compromisso.documento,
         )
         if compromisso.id is None:
             marcadores = ", ".join("?" for _ in valores)
@@ -236,7 +266,7 @@ class AgendaRepository:
                 duracao_min=base.duracao_min, local=base.local,
                 status=base.status, observacoes=base.observacoes,
                 tipo=base.tipo, grupo=grupo, repeticao=repeticao,
-                telefone=base.telefone,
+                telefone=base.telefone, profissional=base.profissional,
             )))
         return criados
 
@@ -245,6 +275,11 @@ class AgendaRepository:
             "UPDATE compromissos SET status = ? WHERE id = ?", (status, compromisso_id)
         )
         return self.obter(compromisso_id)
+
+    def marcar_documento(self, compromisso_id: int, numero: str) -> None:
+        """Guarda em que o atendimento virou: gerar de novo cobraria duas vezes."""
+        self.db.execute("UPDATE compromissos SET documento = ? WHERE id = ?",
+                        (numero.strip(), compromisso_id))
 
     def remarcar(self, compromisso_id: int, novo_inicio: str) -> Compromisso:
         compromisso = self.obter(compromisso_id)
@@ -283,11 +318,13 @@ class AgendaRepository:
         dias: int = 7,
         hora_inicial: int = HORA_INICIAL,
         hora_final: int = HORA_FINAL,
+        profissional: str = "",
     ) -> Grade:
         """O que a tela desenha: uma coluna por dia, com o que esta marcado."""
         ultimo = primeiro_dia + timedelta(days=dias - 1)
         compromissos = self.listar(
-            inicio=primeiro_dia.isoformat(), fim=ultimo.isoformat(), limite=2000
+            inicio=primeiro_dia.isoformat(), fim=ultimo.isoformat(), limite=2000,
+            profissional=profissional,
         )
 
         por_dia: dict[date, list[Compromisso]] = {}
@@ -314,7 +351,9 @@ class AgendaRepository:
     def resumo(self, limite_listas: int = 6) -> ResumoAgenda:
         hoje = date.today()
         primeiro = inicio_da_semana(hoje)
-        todos = self.listar(limite=2000)
+        # conta so o que importa agora, e sem corte: a agenda de anos atras nao
+        # pode empurrar o dia de hoje para fora da leitura
+        todos = self.listar(inicio=min(primeiro, hoje.replace(day=1)).isoformat(), limite=-1)
 
         do_dia = [c for c in todos if c.hoje and c.ocupa_horario]
         da_semana = [
@@ -322,9 +361,9 @@ class AgendaRepository:
             if c.dia and primeiro <= c.dia <= primeiro + timedelta(days=6)
             and c.ocupa_horario and not c.e_bloqueio
         ]
-        atrasados = [c for c in todos if c.atrasado]
+        atrasados = [c for c in self.listar(periodo=PERIODO_ATRASADOS, limite=-1) if c.atrasado]
         proximos = [
-            c for c in todos
+            c for c in self.listar(inicio=hoje.isoformat(), limite=-1)
             if c.inicio_dt and c.inicio_dt >= datetime.now() and c.em_aberto
             and not c.e_bloqueio
         ]
@@ -351,7 +390,11 @@ class AgendaRepository:
         )
 
     def abertos(self) -> list[Compromisso]:
-        return [c for c in self.listar(limite=1000) if c.status in ABERTOS]
+        marcadores = ", ".join("?" for _ in ABERTOS)
+        return [Compromisso.from_row(row) for row in self.db.query(
+            f"SELECT * FROM compromissos WHERE status IN ({marcadores})"
+            " ORDER BY datetime(inicio)", tuple(ABERTOS),
+        )]
 
     # ------------------------------------------------------- agendamento online
     def importar_reserva(self, reserva: dict) -> Compromisso | None:

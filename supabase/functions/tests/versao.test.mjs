@@ -124,9 +124,30 @@ test("o conteudo assinado tem o carimbo de uso", () => {
   const c = conteudoDaAtualizacao(PUBLICADA, { kid: "k1", agora: new Date(0) });
   assert.deepEqual(Object.keys(c), [
     "v", "kid", "uso", "versao", "url", "sha256", "tamanho", "obrigatoria",
-    "automatica", "silenciosa", "emitido_em",
+    "automatica", "silenciosa", "forcada", "emitido_em",
   ]);
   assert.equal(c.uso, "atualizacao");
+});
+
+test("versao forcada vai dentro do pacote assinado", async () => {
+  const r = await tratar(ambiente({ ...PUBLICADA, forcada: true }), { versao: "1.2.1" }, "");
+  assert.equal(r.corpo.forcada, true);
+  assert.equal(abrir(r.corpo.assinado).forcada, true);
+
+  const normal = await tratar(ambiente(PUBLICADA), { versao: "1.2.1" }, "");
+  assert.equal(abrir(normal.corpo.assinado).forcada, false);
+});
+
+test("sem impressao digital nada e forcado", async () => {
+  const r = await tratar(ambiente({ ...PUBLICADA, forcada: true, sha256: "" }), { versao: "1.2.1" }, "");
+  assert.equal(r.corpo.forcada, false);
+  assert.equal(abrir(r.corpo.assinado).forcada, false);
+});
+
+test("o freio do painel tambem segura a forcada", async () => {
+  const r = await tratar(ambiente({ ...PUBLICADA, forcada: true, automatica: false }), { versao: "1.2.1" }, "");
+  assert.equal(r.corpo.forcada, false);
+  assert.equal(abrir(r.corpo.assinado).forcada, false);
 });
 
 test("versao silenciosa vai dentro do pacote assinado", async () => {

@@ -29,7 +29,11 @@ param(
   [switch]$SemPublicar,   # so monta build\site (nem zip, nem envio)
   [switch]$Zip,           # monta e gera o zip do cPanel, sem tentar FTP
   [switch]$SemSsl,        # FTP sem TLS (use so se a HostGator recusar FTPS)
-  [switch]$Conferir       # so testa o FTP e mostra onde vai cair; nao monta nada
+  [switch]$Conferir,      # so testa o FTP e mostra onde vai cair; nao monta nada
+  # O instalador servido em /baixar/DumTech-Hub-Setup.exe. Vazio = o que saiu do
+  # build. Versao pendente passa aqui o instalador da versao que esta no ar:
+  # quem baixa pelo site nao pode receber o que ainda nao foi lancado.
+  [string]$Generico = ""
 )
 $ErrorActionPreference = "Stop"
 $raiz = Split-Path -Parent $PSScriptRoot
@@ -99,7 +103,7 @@ if ($Conferir) {
 }
 
 $saida = Join-Path $raiz "build\site"
-$instalador = Join-Path $raiz "build\dist\DumTech-Hub-Setup.exe"
+$instalador = if ($Generico) { $Generico } else { Join-Path $raiz "build\dist\DumTech-Hub-Setup.exe" }
 if (-not (Test-Path $instalador)) { throw "Falta o instalador: rode build\build.ps1 antes." }
 
 if (Test-Path $saida) { Remove-Item $saida -Recurse -Force }
@@ -116,11 +120,13 @@ if (-not (Test-Path (Join-Path $saida ".htaccess"))) {
   throw "O .htaccess da loja nao entrou no pacote - sem ele o site sobe sem https nem tipos certos."
 }
 
-# uma pagina por kit (/kit/comercio/...), com o preco e a imagem da previa do
-# WhatsApp escritos no arquivo - o kit vem da tela Kits do painel, agora
-Write-Host "     Paginas dos kits..." -ForegroundColor Cyan
-node (Join-Path $raiz "tools\paginas_de_kit.mjs") $saida
-if ($LASTEXITCODE -ne 0) { throw "Falha ao gerar as paginas dos kits." }
+# As paginas por kit (/kit/comercio/...) vendiam o kit vitalicio. Desde a
+# mensalidade (03/11/2026) elas nao sao mais geradas: o .htaccess leva o link
+# antigo ao plano da pagina inicial. tools/paginas_de_kit.mjs fica guardado.
+
+# o titulo e a descricao publicados em Textos do site (painel) vao para o HTML:
+# e o que o Google e a previa do WhatsApp leem. Nunca derruba a publicacao.
+node (Join-Path $raiz "tools/textos_publicados.mjs") $saida
 
 Write-Host "2/5  Painel..." -ForegroundColor Cyan
 $painel = Join-Path $saida "painel"

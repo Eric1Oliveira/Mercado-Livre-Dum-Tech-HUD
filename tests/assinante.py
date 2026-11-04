@@ -95,6 +95,26 @@ def pacote_atualizacao(versao: str, url: str, sha256: str = "", *, notas: str = 
     return {"v": 1, "kid": KID, "licenca": b64(bruto), "assinatura": b64(assinar(bruto))}
 
 
+def pacote_acesso(usuarios, *, exigir_conta: bool = False, computador: str = COMPUTADOR, uso: str = "acesso",
+                  chave: str = "7K4M-9QX2-BT5H-3DWZ", maquina: str = "AAAA-BBBB") -> dict:
+    """As contas assinadas que `licenca-assinada` e `acesso` devolvem."""
+    conteudo = {"v": 1, "kid": KID, "uso": uso, "chave": chave, "maquina": maquina, "computador": computador,
+                "exigir_conta": exigir_conta, "usuarios": list(usuarios),
+                "emitido_em": datetime.now(timezone.utc).isoformat()}
+    bruto = json.dumps(conteudo, ensure_ascii=False).encode("utf-8")
+    return {"v": 1, "kid": KID, "licenca": b64(bruto), "assinatura": b64(assinar(bruto))}
+
+
+def pacote_lembranca(usuario: str, senha_versao: int = 1, *, computador: str = COMPUTADOR, uso: str = "lembrar",
+                     chave: str = "7K4M-9QX2-BT5H-3DWZ", maquina: str = "AAAA-BBBB") -> dict:
+    """A lembranca que `acesso` devolve: abre o Hub direto, sem senha."""
+    conteudo = {"v": 1, "kid": KID, "uso": uso, "chave": chave, "maquina": maquina, "computador": computador,
+                "usuario": usuario, "senha_versao": senha_versao,
+                "emitido_em": datetime.now(timezone.utc).isoformat()}
+    bruto = json.dumps(conteudo, ensure_ascii=False).encode("utf-8")
+    return {"v": 1, "kid": KID, "licenca": b64(bruto), "assinatura": b64(assinar(bruto))}
+
+
 def assinar_licenca(licenca):
     """Devolve a mesma License, agora com o pacote assinado dentro."""
     from dataclasses import replace

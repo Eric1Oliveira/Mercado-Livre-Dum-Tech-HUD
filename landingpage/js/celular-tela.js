@@ -17,8 +17,8 @@ import {
   ERROS, aberturaDaTela, alertasDaTela, cartoesVisiveis, codigoDoEndereco, estaAntigo, formatar,
   haQuanto, hojePorExtenso, linkDaLoja, linkWhatsApp, moduloDoCodigo, montarTela, nomeDoAparelho,
   textoDaVariacao,
-} from "./celular.js?v=7";
-import { criar as criarGrafico, medidor, pintarTudo } from "./celular-graficos.js?v=7";
+} from "./celular.js?v=8";
+import { criar as criarGrafico, medidor, pintarTudo } from "./celular-graficos.js?v=8";
 
 const CHAVE = "dumtech.celular.acesso";
 const CHAVE_PC = "dumtech.celular.computador";
@@ -521,7 +521,7 @@ function desenhar() {
   if (inicio?.destaque) partes.push(blocoDeDestaque(inicio.secao, true));
   else if (inicio?.cartao) partes.push(aberturaSimples(inicio.cartao));
   // so o Hub que conhece alertas (formato 2) pode dizer "tudo em dia"
-  if (t.formato >= 2 && t.secoes.length) partes.push(atencao(alertasDaTela(t)));
+  if ((t.formato >= 2 && t.secoes.length) || t.reservas.length) partes.push(atencao(alertasDaTela(t)));
 
   for (const s of t.secoes) {
     partes.push(secao(s, moduloDoCodigo(s.app), inicio && s === inicio.secao ? inicio : null));

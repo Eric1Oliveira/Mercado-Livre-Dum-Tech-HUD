@@ -7,9 +7,12 @@ antes de qualquer leitura - a tabela embaixo tem os numeros de cada um.
 
 from __future__ import annotations
 
+from datetime import date
+
 from PySide6.QtWidgets import QCheckBox, QHBoxLayout, QWidget
 
 from ....core.contacts import ContactsStore, Indicacoes
+from ....core.contas import APagar, vencimento_padrao
 from ....ui import format as fmt
 from ....ui.graficos import GraficoBarras, fatias_de, maiores
 from ....ui.widgets.buttons import Button
@@ -29,11 +32,16 @@ class ParceirosView(CrudView):
     rotulo_novo = "Novo parceiro"
     dica_pesquisa = "Pesquisar parceiro por nome, telefone ou e-mail..."
     colunas = ["Parceiro", "Telefone", "Clientes indicados", "Ainda ativos",
-               "Neste mês", "Última indicação", "Situação"]
-    larguras = {1: 145, 2: 140, 3: 110, 4: 100, 5: 130, 6: 100}
+               "Neste mês", "Última indicação", "Vendido no mês", "Comissão", "Situação"]
+    larguras = {1: 145, 2: 140, 3: 110, 4: 100, 5: 130, 6: 125, 7: 110, 8: 100}
 
-    def __init__(self, store: ContactsStore, parent: QWidget | None = None) -> None:
+    def __init__(self, store: ContactsStore, parent: QWidget | None = None,
+                 consultas=None, contas=None) -> None:
         self.store = store
+        #: o Vendas, para somar o que os clientes indicados compraram
+        self.vendas = next((c for c in consultas or [] if c.app_id == "vendas"), None)
+        #: o Financeiro, para a comissao virar conta a pagar
+        self.contas = contas
         super().__init__(parent)
 
         self.grafico = GraficoBarras(largura_rotulo=170)
@@ -55,7 +63,23 @@ class ParceirosView(CrudView):
         self.botao_ativar.clicked.connect(self._alternar_ativo)
         layout.addWidget(self.botao_ativar)
 
+        self.botao_comissao = Button("Lançar comissão", "money")
+        self.botao_comissao.setToolTip("Vira conta a pagar no Financeiro, uma vez por mês")
+        self.botao_comissao.clicked.connect(self._lancar_comissao)
+        layout.addWidget(self.botao_comissao)
+        self.botao_comissao.setVisible(self.contas is not None and self.vendas is not None)
+
     # ------------------------------------------------------------------- dados
+    def vendido_no_mes(self, parceiro) -> float:
+        if self.vendas is None:
+            return 0.0
+        nomes = self.store.clientes_do_parceiro(parceiro.id)
+        inicio = date.today().replace(day=1).isoformat()
+        return round(sum(self.vendas.vendido_por_cliente(nomes, inicio).values()), 2)
+
+    def comissao_do_mes(self, parceiro) -> float:
+        return round(self.vendido_no_mes(parceiro) * parceiro.comissao / 100, 2)
+
     def refresh(self) -> None:
         self._desenhar()
         super().refresh()
@@ -81,6 +105,10 @@ class ParceirosView(CrudView):
             self.tabela.cell(fmt.numero(item.ativos), DIREITA),
             self.tabela.cell(fmt.numero(item.no_mes), DIREITA),
             self.tabela.cell(fmt.data(item.ultimo) if item.ultimo else "-"),
+            self.tabela.cell(fmt.moeda(self.vendido_no_mes(parceiro)) if self.vendas else "-",
+                             DIREITA),
+            self.tabela.cell(fmt.moeda(self.comissao_do_mes(parceiro)) if self.vendas else "-",
+                             DIREITA, "accent", bold=True),
             self.tabela.cell("Ativo" if parceiro.ativo else "Inativo",
                              tone="success" if parceiro.ativo else "muted"),
         ]
@@ -109,8 +137,32 @@ class ParceirosView(CrudView):
             ativo = item.parceiro.ativo
             self.botao_ativar.setText("  Inativar" if ativo else "  Reativar")
             self.botao_ativar.set_icon_name("close" if ativo else "check")
+        self.botao_comissao.setEnabled(item is not None and item.parceiro.comissao > 0)
 
     # ------------------------------------------------------------------- acoes
+    def _lancar_comissao(self) -> None:
+        """O numero do parceiro e do mes e a chave: nao paga duas vezes o mesmo mes."""
+        item = self.registro_selecionado()
+        if item is None or self.contas is None:
+            return
+        parceiro = item.parceiro
+        valor = self.comissao_do_mes(parceiro)
+        mes = date.today().strftime("%m/%Y")
+        documento = f"COM-{parceiro.id}-{date.today():%Y%m}"
+        if valor <= 0:
+            self.mostrar_aviso(f"{parceiro.nome} não tem comissão neste mês.")
+            return
+        if self.contas.ja_lancado(documento):
+            self.mostrar_aviso(f"A comissão de {mes} já foi lançada no Financeiro.", "warning")
+            return
+        self.contas.lancar_pagamento(APagar(
+            descricao=f"Comissão {parceiro.nome} {mes}", valor=valor,
+            vencimento=vencimento_padrao(), fornecedor=parceiro.nome,
+            categoria="Comissões", documento=documento,
+        ))
+        self.mostrar_aviso(f"Comissão de {fmt.moeda(valor)} lançada no Financeiro.", "success")
+        self.data_changed.emit()
+
     def _alternar_ativo(self) -> None:
         item = self.registro_selecionado()
         if item is None:

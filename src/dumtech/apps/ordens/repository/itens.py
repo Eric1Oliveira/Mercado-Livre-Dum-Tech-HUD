@@ -36,8 +36,8 @@ class ItensMixin:
                 conn.execute(
                     """
                     INSERT INTO os_itens (ordem_id, tipo, descricao, quantidade,
-                                          valor_unitario, produto_id, codigo)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                                          valor_unitario, produto_id, codigo, baixado)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         ordem.id,
@@ -49,6 +49,7 @@ class ItensMixin:
                         # na peca quando a ordem for entregue
                         int(item.produto_id or 0),
                         (item.codigo or "").strip(),
+                        quantidade(item.baixado),
                     ),
                 )
         ordem.itens = self.itens_de(ordem.id)

@@ -14,6 +14,7 @@ from ....core.pagamentos import formas_do_balcao
 from ....ui import format as fmt
 from ..models import (
     ANUAL,
+    CADA_30_DIAS,
     DESPESA,
     MENSAL,
     PARCELAMENTO,
@@ -49,6 +50,8 @@ def proximo_vencimento(inicio: date, frequencia: str, indice: int) -> date:
         return inicio + timedelta(weeks=indice)
     if frequencia == QUINZENAL:
         return inicio + timedelta(days=15 * indice)
+    if frequencia == CADA_30_DIAS:
+        return inicio + timedelta(days=30 * indice)
     if frequencia == ANUAL:
         return somar_meses(inicio, 12 * indice)
     return somar_meses(inicio, indice)
@@ -82,6 +85,7 @@ class LancamentosMixin:
         fixa: bool | None = None,
         serie: str = "",
         cancelados: bool = False,
+        cliente: str = "",
     ) -> list[Lancamento]:
         """Cancelado so vem a pedido: quem soma dinheiro nao pode enxergar."""
         sql = f"{SELECT_LANCAMENTO} WHERE 1 = 1"
@@ -100,6 +104,9 @@ class LancamentosMixin:
         if tipo:
             sql += " AND l.tipo = ?"
             params.append(tipo)
+        if cliente.strip():
+            sql += " AND l.cliente = ? COLLATE NOCASE"
+            params.append(cliente.strip())
         if fixa is not None:
             sql += " AND l.fixa = ?"
             params.append(int(fixa))
@@ -121,10 +128,17 @@ class LancamentosMixin:
             sql += f" AND l.pago_em IS NULL AND {BAIXADO} > 0"
 
         # "em aberto" e agenda, o que vence antes vem antes (o fluxo de caixa e o
-        # painel leem por aqui); o resto e historico: mais recente primeiro
-        ordem = "l.vencimento" if situacao == SITUACAO_ABERTO else "l.vencimento DESC"
-        sql += f" ORDER BY {ordem}, l.id DESC LIMIT ?"
-        params.append(int(limite))
+        # painel leem por aqui)
+        if situacao == SITUACAO_ABERTO:
+            sql += " ORDER BY l.vencimento, l.id DESC LIMIT ?"
+            params.append(int(limite))
+        else:
+            # o resto e historico: mais recente primeiro. Mas o corte fica com o
+            # que esta mais perto de hoje, e nao com as ultimas parcelas de um
+            # carne de 12 vezes: a conta de hoje nao pode cair fora da lista
+            sql = (f"SELECT * FROM ({sql} ORDER BY ABS(julianday(l.vencimento) - julianday(?)),"
+                   " l.id DESC LIMIT ?) AS l ORDER BY l.vencimento DESC, l.id DESC")
+            params += [date.today().isoformat(), int(limite)]
         return [Lancamento.from_row(row) for row in self.db.query(sql, params)]
 
     def obter(self, lancamento_id: int) -> Lancamento | None:

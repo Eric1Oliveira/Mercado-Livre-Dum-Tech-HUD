@@ -26,6 +26,8 @@ from PySide6.QtWidgets import (
 
 from ...core import avisos as nucleo_avisos
 from ...core import indicadores as nucleo_indicadores
+from ...core import mensalidade as nucleo_mensalidade
+from ...core.loja import WHATSAPP_SUPORTE
 from ...core.hub_store import HubStore
 from ...core.registry import AppEntry, AppRegistry
 from ...ui import format as fmt
@@ -80,6 +82,7 @@ class HomeView(QWidget):
         empresa=None,
         novidade=None,
         carregar: bool = True,
+        consultaveis=None,
     ) -> None:
         super().__init__(parent)
         self.registry = registry
@@ -90,6 +93,8 @@ class HomeView(QWidget):
         self.empresa = empresa
         #: funcao que devolve a versao nova ja conhecida (`core/versao.py`)
         self.novidade = novidade
+        #: funcao que devolve os modulos fora da licenca que ainda tem dados aqui
+        self.consultaveis = consultaveis
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -113,6 +118,15 @@ class HomeView(QWidget):
 
         self.empty = self._build_empty()
         pagina.addWidget(self.empty)
+        # funcionario sem modulo marcado: quem resolve e o administrador, nao a chave
+        self.empty_conta = EmptyState(
+            "Nenhum módulo liberado para você",
+            "Peça ao administrador da loja para marcar os módulos da sua conta.",
+            "users",
+        )
+        self.empty_conta.setMinimumHeight(260)
+        self.empty_conta.setVisible(False)
+        pagina.addWidget(self.empty_conta)
 
         self.coluna = QVBoxLayout()
         self.coluna.setContentsMargins(0, 0, 0, 0)
@@ -154,10 +168,12 @@ class HomeView(QWidget):
     # ------------------------------------------------------------------- dados
     def refresh(self) -> None:
         self._limpar()
+        #: a faixa do plano mensal desta pintura (None: vitalicia ou em dia)
+        self.faixa_mensal = None
         self.registry.load()
-        # o Inicio mostra SOMENTE o que a licenca liberou; o catalogo completo
-        # (com o que ainda nao foi comprado) fica na tela "Licenca"
-        disponiveis = self.registry.available()
+        # o Inicio mostra SOMENTE o que a licenca liberou E a conta da pessoa
+        # permite; o catalogo completo fica na tela "Licenca"
+        disponiveis = self.registry.visiveis()
         avisos = self._avisos(disponiveis)
 
         self.cabecalho.preencher(
@@ -165,11 +181,15 @@ class HomeView(QWidget):
             len(avisos) if self.paths is not None and disponiveis else None,
         )
         self.cabecalho.setVisible(True)
-        self.empty.setVisible(not disponiveis)
+        dono = self._e_dono()
+        self.empty.setVisible(not disponiveis and dono)
+        self.empty_conta.setVisible(not disponiveis and not dono)
 
         # antes de tudo: programa desatualizado e o unico recado que vale
         # interromper a leitura do painel
         self._faixa_versao()
+        self._faixa_mensalidade()
+        self._faixa_consulta()
 
         # Anuncio NAO mora aqui. O Inicio e do trabalho do cliente: o que
         # precisa de atencao hoje. Oferta chega por pop-up (AnuncioDialog), uma
@@ -203,6 +223,11 @@ class HomeView(QWidget):
             return self.empresa()
         return self.empresa
 
+    def _e_dono(self) -> bool:
+        """Sem conta ou com ADM aqui. Comprar modulo nao e assunto de funcionario."""
+        acesso = self.registry.acesso
+        return acesso is None or acesso.e_adm
+
     def _avisos(self, disponiveis: list[AppEntry]) -> list:
         if self.paths is None:
             return []
@@ -211,6 +236,9 @@ class HomeView(QWidget):
             encontrados += nucleo_avisos.coletar(
                 entrada.module, self.paths, self.config_avisos
             )
+        acesso = self.registry.acesso
+        if acesso is not None:
+            encontrados = [aviso for aviso in encontrados if acesso.permite_aviso(aviso.tipo)]
         return nucleo_avisos.ordenar(encontrados)
 
     # ------------------------------------------------------------ sinais vitais
@@ -302,6 +330,90 @@ class HomeView(QWidget):
         return painel
 
     # ------------------------------------------------------------ versao nova
+    # ------------------------------------------------------------ mensalidade
+    def _recado_mensal(self):
+        """O recado do plano mensal. Vitalicia: None, sempre (`core/mensalidade.py`)."""
+        servico = getattr(self.registry, "license_service", None)
+        licenca = getattr(servico, "current", None)
+        return nucleo_mensalidade.faixa(licenca) if licenca is not None else None
+
+    def _faixa_mensalidade(self) -> None:
+        """Teste gratis, mensalidade a confirmar ou so consulta - com o que fazer."""
+        recado = self._recado_mensal()
+        if recado is None:
+            return
+        modulos = []
+        if recado.situacao == "consulta":
+            # os modulos com dados abrem daqui mesmo, para ver e exportar
+            for entrada in (self.consultaveis() if callable(self.consultaveis) else []):
+                botao = Button(entrada.manifest.short_name, entrada.manifest.icon)
+                botao.clicked.connect(lambda _=False, i=entrada.app_id: self.open_app.emit(i))
+                modulos.append(botao)
+
+        card = Card()
+        card.setProperty("tom", recado.tom)
+        linha = QHBoxLayout()
+        linha.setSpacing(Space.md)
+        icone = "clock" if recado.situacao == "teste" else "key"
+        linha.addWidget(IconBadge(icone, recado.tom, size=38, radius=12), 0, Qt.AlignmentFlag.AlignTop)
+        textos = QVBoxLayout()
+        textos.setSpacing(2)
+        textos.addWidget(label(recado.titulo, "strong"))
+        texto = label(recado.texto, "muted")
+        texto.setWordWrap(True)
+        textos.addWidget(texto)
+        linha.addLayout(textos, 1)
+        for botao in modulos:
+            linha.addWidget(botao, 0, Qt.AlignmentFlag.AlignVCenter)
+        acao = self._botao_mensal(recado)
+        if acao is not None:
+            linha.addWidget(acao, 0, Qt.AlignmentFlag.AlignVCenter)
+        card.body.addLayout(linha)
+        self.coluna.addWidget(card)
+        self.faixa_mensal = card
+
+    def _botao_mensal(self, recado) -> Button | None:
+        if recado.acao == "assinar":
+            if not self._e_dono():   # quem assina e o dono, nao o funcionario
+                return None
+            botao = Button(recado.botao, "cart", "primary")
+            botao.setToolTip("Abre a loja DumTech no navegador")
+            botao.clicked.connect(self.adquirir.emit)
+            return botao
+        botao = Button(recado.botao, "chat", "primary")
+        botao.setToolTip("Abre a conversa com a DumTech no WhatsApp")
+        botao.clicked.connect(lambda: self.abrir_link.emit(f"https://wa.me/{WHATSAPP_SUPORTE}"))
+        return botao
+
+    def _faixa_consulta(self) -> None:
+        """A licenca acabou, os dados nao: o que e do cliente continua ao alcance."""
+        recado = self._recado_mensal()
+        if recado is not None and recado.situacao == "consulta":
+            return  # a faixa da mensalidade ja contou o motivo e tem os modulos
+        entradas = self.consultaveis() if callable(self.consultaveis) else []
+        if not entradas:
+            return
+        card = Card()
+        card.setProperty("tom", "warning")
+        linha = QHBoxLayout()
+        linha.setSpacing(Space.md)
+        linha.addWidget(IconBadge("key", "warning", size=38, radius=12), 0,
+                        Qt.AlignmentFlag.AlignTop)
+        textos = QVBoxLayout()
+        textos.setSpacing(2)
+        textos.addWidget(label("Seus dados continuam aqui", "strong"))
+        recado = label("Estes módulos saíram da licença. Você pode abrir para ver e exportar "
+                       "o que já lançou; para voltar a lançar, renove a licença.", "muted")
+        recado.setWordWrap(True)
+        textos.addWidget(recado)
+        linha.addLayout(textos, 1)
+        for entrada in entradas:
+            botao = Button(entrada.manifest.short_name, entrada.manifest.icon)
+            botao.clicked.connect(lambda _=False, i=entrada.app_id: self.open_app.emit(i))
+            linha.addWidget(botao, 0, Qt.AlignmentFlag.AlignVCenter)
+        card.body.addLayout(linha)
+        self.coluna.addWidget(card)
+
     def _faixa_versao(self) -> None:
         """Uma faixa fina no topo: o que mudou e o botao para baixar."""
         aviso = self.novidade() if callable(self.novidade) else self.novidade
@@ -341,7 +453,9 @@ class HomeView(QWidget):
         self.coluna.addWidget(card)
 
     # ------------------------------------------------------------------ ofertas
-    def _botao_adquirir(self, variante: str = "ghost") -> Button:
+    def _botao_adquirir(self, variante: str = "ghost") -> Button | None:
+        if not self._e_dono():
+            return None
         botao = Button("Adquirir novo produto", "cart", variante)
         botao.setToolTip("Abre a loja DumTech no navegador")
         botao.clicked.connect(self.adquirir.emit)

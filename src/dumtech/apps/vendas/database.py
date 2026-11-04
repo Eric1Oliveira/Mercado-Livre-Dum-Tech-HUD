@@ -174,6 +174,63 @@ MIGRATIONS = (
             """,
         ),
     ),
+    Migration(
+        version=6,
+        name="estoque por linha, vencimento e o que entra na gaveta",
+        statements=(
+            # O que ja deu baixa conta como saido por inteiro: era o que o
+            # cancelamento supunha, e o programa nao guardou o que foi recusado.
+            # As devolucoes antigas continuam tirando da gaveta o que tiravam.
+            """
+            ALTER TABLE venda_itens ADD COLUMN baixado REAL NOT NULL DEFAULT 0;
+            UPDATE venda_itens SET baixado = quantidade WHERE venda_id IN
+                (SELECT id FROM vendas WHERE TRIM(baixa_estoque) <> '');
+
+            ALTER TABLE vendas ADD COLUMN vencimento TEXT NOT NULL DEFAULT '';
+            ALTER TABLE vendas ADD COLUMN quitada_por TEXT NOT NULL DEFAULT '';
+
+            ALTER TABLE devolucoes ADD COLUMN em_dinheiro REAL NOT NULL DEFAULT 0;
+            UPDATE devolucoes SET em_dinheiro = valor;
+
+            CREATE TABLE caixa_movimentos_v2 (
+                id        INTEGER PRIMARY KEY AUTOINCREMENT,
+                caixa_id  INTEGER NOT NULL REFERENCES caixas(id) ON DELETE CASCADE,
+                tipo      TEXT    NOT NULL
+                          CHECK (tipo IN ('sangria', 'suprimento', 'recebimento')),
+                valor     REAL    NOT NULL DEFAULT 0,
+                motivo    TEXT    NOT NULL DEFAULT '',
+                documento TEXT    NOT NULL DEFAULT '',
+                criado_em TEXT    NOT NULL
+            );
+            INSERT INTO caixa_movimentos_v2 (id, caixa_id, tipo, valor, motivo, criado_em)
+                SELECT id, caixa_id, tipo, valor, motivo, criado_em FROM caixa_movimentos;
+            DROP TABLE caixa_movimentos;
+            ALTER TABLE caixa_movimentos_v2 RENAME TO caixa_movimentos;
+            CREATE INDEX IF NOT EXISTS idx_caixa_mov ON caixa_movimentos(caixa_id);
+            """,
+        ),
+    ),
+    Migration(
+        version=7,
+        name="custo, vendedor e comissao",
+        statements=(
+            # O custo fica na linha da venda: o custo medio do produto muda a
+            # cada compra, e o lucro de uma venda antiga nao pode mudar junto.
+            # O que ja foi vendido fica sem custo: nao ha como saber qual era.
+            """
+            ALTER TABLE venda_itens ADD COLUMN custo_unitario REAL NOT NULL DEFAULT 0;
+            ALTER TABLE vendas ADD COLUMN vendedor TEXT NOT NULL DEFAULT '';
+            CREATE INDEX IF NOT EXISTS idx_vendas_vendedor ON vendas(vendedor);
+
+            CREATE TABLE IF NOT EXISTS vendedores (
+                id       INTEGER PRIMARY KEY AUTOINCREMENT,
+                nome     TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                comissao REAL NOT NULL DEFAULT 0,
+                ativo    INTEGER NOT NULL DEFAULT 1
+            );
+            """,
+        ),
+    ),
 )
 
 

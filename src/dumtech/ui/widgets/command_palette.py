@@ -53,6 +53,10 @@ class Command:
     run: Callable[[], None] = field(default=lambda: None)
 
 
+#: quantas letras ate comecar a procurar nos dados
+MINIMO_BUSCA = 3
+
+
 def _simples(texto: str) -> str:
     """Sem acento e em minusculas: quem digita "orcamento" acha "Orcamentos"."""
     sem_acento = unicodedata.normalize("NFKD", texto)
@@ -167,7 +171,7 @@ class CommandPalette(QDialog):
 
         self.busca = QLineEdit()
         self.busca.setObjectName("CommandSearch")
-        self.busca.setPlaceholderText("Buscar aplicativo, tela ou comando...")
+        self.busca.setPlaceholderText("Buscar cliente, venda, OS, produto ou comando...")
         self.busca.setFont(font_for("subtitle"))
         self._lupa = self.busca.addAction(
             icons.icon("search", current_palette().text_muted, 18),
@@ -189,6 +193,8 @@ class CommandPalette(QDialog):
         dentro.addWidget(self.lista)
 
         self._comandos: list[Command] = []
+        #: quem procura nos dados (o Hub); recebe o texto, devolve mais comandos
+        self.buscar_dados: Callable[[str], list[Command]] | None = None
         self.busca.installEventFilter(self)
 
     # ------------------------------------------------------------------ abrir
@@ -240,7 +246,11 @@ class CommandPalette(QDialog):
     # ---------------------------------------------------------------- filtrar
     def _filtrar(self, texto: str) -> None:
         self.lista.clear()
-        for comando in filtrar(self._comandos, texto):
+        comandos = filtrar(self._comandos, texto)
+        # com duas letras ainda nao se procura: a lista viraria o banco inteiro
+        if self.buscar_dados is not None and len(texto.strip()) >= MINIMO_BUSCA:
+            comandos = comandos + self.buscar_dados(texto.strip())
+        for comando in comandos:
             item = QListWidgetItem()
             item.setData(PAPEL_COMANDO, comando)
             item.setSizeHint(QSize(self.lista.viewport().width(), LINHA))

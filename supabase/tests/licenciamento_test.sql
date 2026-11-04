@@ -290,7 +290,7 @@ begin
                                           'teste', current_date - 1, 1, '',
                                           'ZZZ2-TEST-IDAA-3333');
     v_resposta := public.dumtech_ativar_licenca('ZZZ2-TEST-IDAA-3333', 'zz-maquina-1');
-    assert v_resposta->>'mensagem' ilike '%teste terminou%',
+    assert v_resposta->>'mensagem' ilike '%teste grátis terminou%',
         format('mensagem errada para teste vencido: %s', v_resposta->>'mensagem');
 
     -- estado impossivel nao entra
@@ -484,7 +484,8 @@ begin
                              'dumtech_celular_parear', 'dumtech_celular_dados',
                              'dumtech_agenda_pagina', 'dumtech_agenda_horarios',
                              'dumtech_agenda_reservar', 'dumtech_agenda_cancelar',
-                             'dumtech_agenda_salvar', 'dumtech_agenda_sincronizar');
+                             'dumtech_agenda_salvar', 'dumtech_agenda_sincronizar',
+                             'dumtech_mensalidade_publica', 'dumtech_cupom_publico');
     assert v_sobra is null, 'a chave anon executa funcoes demais: ' || coalesce(v_sobra, '');
 
     -- 13.3 RLS ligado em todas as tabelas do licenciamento

@@ -139,6 +139,8 @@ class Orcamento:
     respondido_em: str = ""
     motivo_recusa: str = ""
     total_gravado: float = 0.0
+    #: numero da venda ou da ordem que a proposta virou
+    gerado: str = ""
     itens: list[ItemOrcamento] = field(default_factory=list)
 
     # ------------------------------------------------------------------ dinheiro
@@ -216,7 +218,7 @@ class Orcamento:
         proprios = {campo.name for campo in fields(cls)} - {"itens", "total_gravado"}
         dados = {chave: row[chave] for chave in set(row.keys()) & proprios}
         for texto in ("validade", "condicao_pagamento", "prazo_entrega",
-                      "enviado_em", "respondido_em", "motivo_recusa"):
+                      "enviado_em", "respondido_em", "motivo_recusa", "gerado"):
             dados[texto] = dados.get(texto) or ""
         dados["validade_dias"] = int(dados.get("validade_dias") or 0)
         orcamento = cls(**dados)

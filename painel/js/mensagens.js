@@ -94,6 +94,8 @@ export function mensagemDeAcompanhamento(motivo, { nome = "", modulo = "" } = {}
            "Precisa de ajuda com alguma coisa?",
     celular: `${ola} Sabia que dá para acompanhar o dia da empresa pelo celular? ` +
              "No DumTech Hub, abra o menu da empresa > Ver no celular e aponte a câmera para o QR Code.",
+    atualizar: `${ola} Saiu uma versão nova do DumTech Hub. Para instalar, clique em Atualizar, ` +
+               "no topo do programa. Leva menos de 1 minuto e os seus dados não são tocados.",
     loja: `${ola} Posso te ajudar a escolher os módulos do DumTech Hub? ` +
           "Se tiver qualquer dúvida sobre preço ou instalação, é só me chamar.",
   };

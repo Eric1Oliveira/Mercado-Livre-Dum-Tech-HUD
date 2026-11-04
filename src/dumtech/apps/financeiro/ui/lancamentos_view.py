@@ -32,6 +32,8 @@ FILTRO_RECORRENTES = "recorrentes"
 
 class LancamentosView(CrudView):
     titulo = "Lançamentos"
+    limite_lista = 500
+    exportavel = True
     nome_registro = "lançamento"
     nome_plural = "lançamentos"
     rotulo_novo = "Novo lançamento"
@@ -103,7 +105,7 @@ class LancamentosView(CrudView):
         layout.insertWidget(4, self.botao_repetir)
 
     # ------------------------------------------------------------------- dados
-    def carregar(self) -> list[Lancamento]:
+    def carregar(self, limite: int = 500) -> list[Lancamento]:
         tipo = self.filtro_tipo.currentData() or ""
         fixa = None
         serie = ""
@@ -120,6 +122,7 @@ class LancamentosView(CrudView):
             serie=serie,
             # "Todas as situações" inclui a cancelada: e aqui que ela consta
             cancelados=not situacao,
+            limite=limite,
         )
 
     def montar_linha(self, lancamento: Lancamento) -> list:

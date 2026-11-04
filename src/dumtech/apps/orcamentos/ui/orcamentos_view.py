@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
-from PySide6.QtWidgets import QComboBox, QHBoxLayout, QWidget
+import logging
 
+from PySide6.QtWidgets import QComboBox, QHBoxLayout, QMessageBox, QWidget
+
+from ....core.contas import AReceber, vencimento_padrao
 from ....ui import format as fmt
 from ....ui.widgets.buttons import Button
 from ....ui.widgets.documento import DocumentoDialog
@@ -24,12 +27,16 @@ from ..recibo import proposta
 from ..repository import OrcamentosRepository
 from .orcamento_dialog import OrcamentoDialog, RecusaDialog
 
+logger = logging.getLogger(__name__)
+
 FILTRO_TUDO = ""
 FILTRO_ABERTO = "aberto"
 
 
 class OrcamentosView(CrudView):
     titulo = "Orçamentos"
+    limite_lista = 500
+    exportavel = True
     nome_registro = "proposta"
     nome_plural = "propostas"
     genero = "f"
@@ -49,7 +56,10 @@ class OrcamentosView(CrudView):
         contatos=None,
         destinos=None,
         catalogo=None,
+        contas=None,
     ) -> None:
+        #: o Financeiro: sem Vendas nem Ordens, a proposta aprovada vira conta direto
+        self.contas = contas
         self.repository = repository
         self.clientes = clientes or []
         self.empresa = empresa
@@ -112,12 +122,13 @@ class OrcamentosView(CrudView):
         layout.insertWidget(5, self.botao_duplicar)
 
     # ------------------------------------------------------------------- dados
-    def carregar(self) -> list[Orcamento]:
+    def carregar(self, limite: int = 500) -> list[Orcamento]:
         escolha = self.filtro_status.currentData()
         return self.repository.listar(
             busca=self.busca.text(),
             status=escolha if escolha not in (FILTRO_TUDO, FILTRO_ABERTO) else "",
             em_aberto=escolha == FILTRO_ABERTO,
+            limite=limite,
         )
 
     def montar_linha(self, orcamento: Orcamento) -> list:
@@ -141,6 +152,8 @@ class OrcamentosView(CrudView):
             if dias:
                 return f"Enviada · esperando há {fmt.dias(dias)}"
             return "Enviada hoje"
+        if orcamento.gerado:
+            return f"Aprovada · virou {orcamento.gerado}"
         if orcamento.status == APROVADO and orcamento.respondido_em:
             return f"Aprovada em {fmt.data(orcamento.respondido_em)}"
         return orcamento.status_label
@@ -209,6 +222,8 @@ class OrcamentosView(CrudView):
         orcamento = self.registro_selecionado()
         if orcamento is None or not self.destinos:
             return
+        if orcamento.gerado and not self._gerar_de_novo(orcamento):
+            return
 
         destino = self.destinos[0]
         if len(self.destinos) > 1:
@@ -233,11 +248,25 @@ class OrcamentosView(CrudView):
         except Exception as erro:  # noqa: BLE001 - a proposta nao pode ser afetada
             self.mostrar_aviso(f"Não foi possível gerar: {erro}", "danger")
             return
+        self.repository.marcar_gerado(orcamento.id, numero)
+        self.refresh()
+        self.data_changed.emit()
         self.mostrar_aviso(
             f"{destino.titulo} {numero} criada a partir de {orcamento.numero}. "
             f"Abra o {destino.titulo.lower()} para conferir.",
             "success",
         )
+
+    def _gerar_de_novo(self, orcamento: Orcamento) -> bool:
+        """Clique duplo aqui virava duas vendas: quem insiste precisa dizer."""
+        resposta = QMessageBox.question(
+            self, "Proposta já gerada",
+            f"A proposta {orcamento.numero} já virou {orcamento.gerado}.\n\n"
+            "Gerar outro documento com os mesmos itens?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        return resposta == QMessageBox.StandardButton.Yes
 
     def _escolher_destino(self):
         """Com Vendas e Ordens na licenca, quem decide e quem esta olhando."""
@@ -257,7 +286,33 @@ class OrcamentosView(CrudView):
                     "marcada como enviada")
 
     def _aprovar(self) -> None:
+        orcamento = self.registro_selecionado()
         self._mudar(lambda ordem_id: self.repository.aprovar(ordem_id), "aprovada")
+        if orcamento is not None:
+            self._lancar_na_aprovacao(orcamento)
+
+    def _lancar_na_aprovacao(self, orcamento: Orcamento) -> None:
+        """Quem tem Vendas ou Ordens lanca ao gerar; quem nao tem, lanca aqui.
+
+        O numero da proposta e a chave: aprovar de novo nao dobra a conta.
+        """
+        if self.destinos or self.contas is None or orcamento.total <= 0:
+            return
+        try:
+            if self.contas.ja_lancado(orcamento.numero):
+                return
+            self.contas.lancar(AReceber(
+                descricao=f"Proposta {orcamento.numero}", valor=orcamento.total,
+                vencimento=vencimento_padrao(), cliente=orcamento.cliente,
+                categoria="Vendas", documento=orcamento.numero,
+            ))
+        except Exception:  # noqa: BLE001 - a proposta ja foi aprovada
+            logger.exception("Nao foi possivel lancar a proposta no Financeiro")
+            self.mostrar_aviso("Proposta aprovada, mas não consegui lançar no Financeiro.",
+                               "warning")
+            return
+        self.mostrar_aviso(f"Proposta {orcamento.numero} aprovada. Conta a receber criada.",
+                           "success")
 
     def _mudar(self, acao, recado: str) -> None:
         orcamento = self.registro_selecionado()

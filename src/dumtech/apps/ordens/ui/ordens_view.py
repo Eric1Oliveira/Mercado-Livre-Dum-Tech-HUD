@@ -21,9 +21,11 @@ from ..models import (
     Ordem,
     OrdemError,
 )
+from .. import financeiro
 from ..documento import entrega_a4
 from ..recibo import entrada, entrega
 from ..repository import OrdensRepository
+from .anexos_dialog import AnexosDialog
 from .dialogos import AprovacaoDialog, EntregaDialog, MotivoDialog
 from .ordem_dialog import OrdemDialog
 
@@ -35,6 +37,8 @@ FILTRO_GARANTIA = "garantia"
 
 class OrdensView(CrudView):
     titulo = "Ordens de Serviço"
+    limite_lista = 500
+    exportavel = True
     nome_registro = "OS"
     nome_plural = "OS"
     genero = "f"
@@ -44,8 +48,8 @@ class OrdensView(CrudView):
     # mostra o item quando existe e, quando nao existe, o que foi pedido - e
     # assim serve tanto para quem recebe aparelho quanto para quem presta
     # servico no local
-    colunas = ["Número", "Entrada", "Cliente", "Serviço", "Valor", "Etapa"]
-    larguras = {0: 130, 1: 165, 4: 125, 5: 165}
+    colunas = ["Número", "Entrada", "Cliente", "Serviço", "Valor", "Pagamento", "Etapa"]
+    larguras = {0: 130, 1: 165, 4: 125, 5: 130, 6: 165}
 
     def __init__(
         self,
@@ -58,7 +62,10 @@ class OrdensView(CrudView):
         contatos=None,
         contas=None,
         catalogo=None,
+        gaveta=None,
     ) -> None:
+        #: o caixa do dia: dinheiro recebido na entrega vai para a mesma gaveta
+        self.gaveta = gaveta
         self.repository = repository
         self.clientes = clientes or []
         self.empresa = empresa
@@ -111,6 +118,11 @@ class OrdensView(CrudView):
         self.botao_avancar.clicked.connect(self._avancar)
         layout.insertWidget(4, self.botao_avancar)
 
+        self.botao_anexos = Button("Checklist e fotos", "list")
+        self.botao_anexos.setToolTip("Checklist, fotos do item e assinatura do cliente")
+        self.botao_anexos.clicked.connect(self._anexos)
+        layout.insertWidget(5, self.botao_anexos)
+
         self.botao_financeiro = Button("Financeiro", "money")
         self.botao_financeiro.setToolTip(
             "Cria a conta a receber desta ordem no DumTech Financeiro"
@@ -138,7 +150,7 @@ class OrdensView(CrudView):
         self.filtro_tecnico.setCurrentIndex(max(indice, 0))
         self.filtro_tecnico.blockSignals(False)
 
-    def carregar(self) -> list[Ordem]:
+    def carregar(self, limite: int = 500) -> list[Ordem]:
         escolha = self.filtro_status.currentData()
         return self.repository.listar(
             busca=self.busca.text(),
@@ -147,6 +159,7 @@ class OrdensView(CrudView):
             tecnico=self.filtro_tecnico.currentData() or "",
             somente_abertas=escolha == FILTRO_ABERTAS,
             na_garantia=escolha == FILTRO_GARANTIA,
+            limite=limite,
         )
 
     def refresh(self) -> None:
@@ -160,8 +173,20 @@ class OrdensView(CrudView):
             self.tabela.cell(ordem.cliente or "-"),
             self.tabela.cell(ordem.assunto, bold=True),
             self.tabela.cell(fmt.moeda(ordem.total), DIREITA, "accent", bold=True),
+            self.tabela.cell(*self._pagamento(ordem)),
             self.tabela.cell(self._etapa(ordem), tone=self._tom(ordem)),
         ]
+
+    def _pagamento(self, ordem: Ordem) -> tuple:
+        """Quanto desta ordem ja entrou, segundo quem controla o dinheiro."""
+        situacao = self.contas.situacao(ordem.numero) if self.contas is not None else None
+        if situacao is None or not situacao.lancado:
+            return ("-",)
+        if situacao.quitado:
+            return ("Recebido", DIREITA, "success")
+        if situacao.recebido:
+            return (f"Falta {fmt.moeda(situacao.em_aberto)}", DIREITA, "warning")
+        return ("Em aberto", DIREITA, "warning")
 
     @staticmethod
     def _entrada_texto(ordem: Ordem) -> str:
@@ -190,6 +215,7 @@ class OrdensView(CrudView):
         tem = ordem is not None
         self.botao_entrada.setEnabled(tem)
         self.botao_whatsapp.setEnabled(tem)
+        self.botao_anexos.setEnabled(tem)
         self.botao_entrega.setEnabled(tem and ordem.status in (CONCLUIDA, ENTREGUE))
         self.botao_avancar.setEnabled(tem and ordem.status in PROXIMO_PASSO)
         self.botao_cancelar.setEnabled(tem and ordem.status != CANCELADA)
@@ -205,9 +231,15 @@ class OrdensView(CrudView):
 
     def excluir(self, ordem: Ordem) -> None:
         self.repository.excluir(ordem.id)
+        financeiro.cancelar(self.contas, ordem, "Ordem excluída")
 
     def descricao(self, ordem: Ordem) -> str:
         return f"{ordem.numero} - {ordem.equipamento}"
+
+    def _anexos(self) -> None:
+        ordem = self.registro_selecionado()
+        if ordem is not None:
+            AnexosDialog(self.repository, ordem, self).exec()
 
     def _papel_entrada(self) -> None:
         ordem = self.registro_selecionado()
@@ -220,7 +252,8 @@ class OrdensView(CrudView):
         ordem = self.registro_selecionado()
         if ordem is not None:
             DocumentoDialog(
-                entrega_a4(ordem, self.empresa, self.paths),
+                entrega_a4(ordem, self.empresa, self.paths,
+                           self.repository.assinatura_de(ordem.id)),
                 f"Entrega da {ordem.numero}",
                 f"Entrega {ordem.numero} - {ordem.cliente}",
                 entrega(ordem, self.empresa),
@@ -277,8 +310,8 @@ class OrdensView(CrudView):
         if ordem.status == AGUARDANDO:
             dialogo = AprovacaoDialog(self.repository, ordem, self)
         elif ordem.status == CONCLUIDA:
-            dialogo = EntregaDialog(self.repository, ordem, self,
-                                    empresa=self.empresa, contas=self.contas)
+            dialogo = EntregaDialog(self.repository, ordem, self, empresa=self.empresa,
+                                    contas=self.contas, gaveta=self.gaveta)
         else:
             dialogo = None
 
@@ -313,7 +346,10 @@ class OrdensView(CrudView):
         )
         if not dialogo.exec():
             return
-        self.repository.cancelar(ordem.id, dialogo.motivo)
+        cancelada = self.repository.cancelar(ordem.id, dialogo.motivo)
+        recado = financeiro.cancelar(self.contas, cancelada, dialogo.motivo)
         self.refresh()
-        self.mostrar_aviso(f"Ordem {ordem.numero} cancelada.", "success")
+        tom = "warning" if cancelada.avisos else "success"
+        self.mostrar_aviso(f"Ordem {ordem.numero} cancelada.{recado}"
+                           + "".join(f"  {aviso}" for aviso in cancelada.avisos), tom)
         self.data_changed.emit()

@@ -759,17 +759,17 @@ QCheckBox, QRadioButton {{
 QCheckBox:hover, QRadioButton:hover {{
     color: {p.text};
 }}
-QCheckBox::indicator {{
+QCheckBox::indicator, QListWidget::indicator {{
     width: 17px;
     height: 17px;
     border-radius: 6px;
     border: 1px solid {p.border_strong};
     background-color: {p.bg_soft};
 }}
-QCheckBox::indicator:hover {{
+QCheckBox::indicator:hover, QListWidget::indicator:hover {{
     border-color: {p.accent};
 }}
-QCheckBox::indicator:checked {{
+QCheckBox::indicator:checked, QListWidget::indicator:checked {{
     background-color: {p.accent};
     border-color: {p.accent};
 }}

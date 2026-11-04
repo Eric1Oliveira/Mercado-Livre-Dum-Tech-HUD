@@ -102,10 +102,27 @@ class ProdutosView(CrudView):
         self.botao_etiquetas.setMenu(self._menu_etiquetas())
         layout.addWidget(self.botao_etiquetas)
 
+        self.botao_variacoes = Button("Variações", "tag")
+        self.botao_variacoes.setToolTip("Cria tamanhos e cores a partir deste produto")
+        self.botao_variacoes.clicked.connect(self._variacoes)
+        layout.addWidget(self.botao_variacoes)
+
         self.botao_planilha = Button("Planilha", "file")
         self.botao_planilha.setToolTip("Importar ou exportar em CSV")
         self.botao_planilha.setMenu(self._menu_planilha())
         layout.addWidget(self.botao_planilha)
+
+    def _variacoes(self) -> None:
+        from .variacoes_dialog import VariacoesDialog
+
+        produto = self.registro_selecionado()
+        if produto is None:
+            return
+        dialogo = VariacoesDialog(self.repository, produto, self)
+        if dialogo.exec():
+            self.refresh()
+            self.mostrar_aviso(f"{len(dialogo.criadas)} variações criadas.", "success")
+            self.data_changed.emit()
 
     def _menu_planilha(self) -> QMenu:
         from . import planilha_dialog as planilha

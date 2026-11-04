@@ -40,16 +40,26 @@ def avisos(paths, config):
     finally:
         banco.close()
 
-    if not resumo.produtos_baixo:
-        return []
-    nomes = ", ".join(p.nome for p in resumo.baixos[:3])
-    return [Aviso(
-        app_id=MANIFEST.app_id, tipo="estoque_baixo",
-        titulo=f"{fmt.contagem(resumo.produtos_baixo, 'produto')} no estoque mínimo",
-        detalhe=nomes,
-        tom="warning", urgencia=50, icone="box",
-        quantidade=resumo.produtos_baixo,
-    )]
+    encontrados = []
+    if resumo.produtos_baixo:
+        nomes = ", ".join(p.nome for p in resumo.baixos[:3])
+        encontrados.append(Aviso(
+            app_id=MANIFEST.app_id, tipo="estoque_baixo",
+            titulo=f"{fmt.contagem(resumo.produtos_baixo, 'produto')} no estoque mínimo",
+            detalhe=nomes,
+            tom="warning", urgencia=50, icone="box",
+            quantidade=resumo.produtos_baixo,
+        ))
+    if resumo.vencendo:
+        primeiro = resumo.vencendo[0]
+        encontrados.append(Aviso(
+            app_id=MANIFEST.app_id, tipo="lote_vencendo",
+            titulo=f"{fmt.contagem(len(resumo.vencendo), 'lote')} perto da validade",
+            detalhe=f"{primeiro.produto_nome}: {fmt.data(primeiro.validade)}",
+            tom="warning", urgencia=55, icone="box",
+            quantidade=len(resumo.vencendo),
+        ))
+    return encontrados
 
 
 def indicadores(paths):

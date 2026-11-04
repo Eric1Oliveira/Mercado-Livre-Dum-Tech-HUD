@@ -161,6 +161,65 @@ MIGRATIONS = (
             """,
         ),
     ),
+    Migration(
+        version=4,
+        name="variacoes, lotes, fornecedores e pedidos de compra",
+        statements=(
+            # Quem ja digitava fornecedor no produto continua com o texto, e
+            # cada nome vira um cadastro: ninguem precisa redigitar.
+            """
+            ALTER TABLE produtos ADD COLUMN tamanho TEXT NOT NULL DEFAULT '';
+            ALTER TABLE produtos ADD COLUMN cor TEXT NOT NULL DEFAULT '';
+            ALTER TABLE produtos ADD COLUMN grupo TEXT NOT NULL DEFAULT '';
+            CREATE INDEX IF NOT EXISTS idx_produtos_grupo ON produtos(grupo);
+
+            CREATE TABLE IF NOT EXISTS lotes (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                produto_id INTEGER NOT NULL REFERENCES produtos(id) ON DELETE CASCADE,
+                codigo     TEXT    NOT NULL DEFAULT '',
+                validade   TEXT    NOT NULL DEFAULT '',
+                quantidade REAL    NOT NULL DEFAULT 0,
+                criado_em  TEXT    NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_lotes_produto ON lotes(produto_id, validade);
+
+            CREATE TABLE IF NOT EXISTS fornecedores (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                nome        TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                documento   TEXT NOT NULL DEFAULT '',
+                telefone    TEXT NOT NULL DEFAULT '',
+                email       TEXT NOT NULL DEFAULT '',
+                observacoes TEXT NOT NULL DEFAULT '',
+                ativo       INTEGER NOT NULL DEFAULT 1,
+                criado_em   TEXT NOT NULL
+            );
+            INSERT OR IGNORE INTO fornecedores (nome, criado_em)
+                SELECT DISTINCT TRIM(fornecedor), datetime('now') FROM produtos
+                WHERE TRIM(fornecedor) <> '';
+
+            CREATE TABLE IF NOT EXISTS pedidos_compra (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                numero      TEXT NOT NULL UNIQUE,
+                fornecedor  TEXT NOT NULL DEFAULT '',
+                data        TEXT NOT NULL,
+                previsao    TEXT NOT NULL DEFAULT '',
+                status      TEXT NOT NULL DEFAULT 'aberto'
+                            CHECK (status IN ('aberto', 'recebido', 'cancelado')),
+                observacoes TEXT NOT NULL DEFAULT '',
+                recebido_em TEXT NOT NULL DEFAULT '',
+                criado_em   TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS pedido_compra_itens (
+                id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                pedido_id      INTEGER NOT NULL REFERENCES pedidos_compra(id) ON DELETE CASCADE,
+                produto_id     INTEGER NOT NULL REFERENCES produtos(id),
+                quantidade     REAL    NOT NULL DEFAULT 0,
+                custo_unitario REAL    NOT NULL DEFAULT 0
+            );
+            CREATE INDEX IF NOT EXISTS idx_pedido_itens ON pedido_compra_itens(pedido_id);
+            """,
+        ),
+    ),
 )
 
 

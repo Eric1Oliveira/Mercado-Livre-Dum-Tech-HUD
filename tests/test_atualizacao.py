@@ -567,6 +567,21 @@ class SilenciosaNoHubTestCase(Base):
         self.assertEqual(argumentos[0], str(hub._silenciosa[0]))
         self.assertNotIn("/reabrir=1", argumentos)
 
+    def test_deixar_de_ser_silenciosa_aparece_e_ainda_instala_ao_fechar(self) -> None:
+        """Hub 1.5.1 a 1.9.0 forcado: e o que o servidor faz depois dos primeiros minutos."""
+        hub = self.hub(silenciosa=True, obrigatoria=True)
+        self.assertTrue(hub.botao_atualizar.isHidden())
+
+        hub.settings.set("versao", "assinado", pacote_atualizacao(
+            "9.9.0", self.servidor.url, sha(INSTALADOR), tamanho=len(INSTALADOR), obrigatoria=True))
+        hub._atualizar_botao_versao()
+        self.assertFalse(hub.botao_atualizar.isHidden(), "o aviso tem que aparecer")
+        self.assertIsNotNone(nucleo.para_avisar(hub.settings, "1.0.0"), "e nao se dispensa")
+
+        with mock.patch.object(nucleo.subprocess, "Popen") as popen:
+            hub.close()
+        self.assertNotIn("/reabrir=1", popen.call_args[0][0], "o que ja baixou instala ao fechar")
+
     def test_com_o_windows_desligando_nao_instala(self) -> None:
         hub = self.hub(silenciosa=True)
         hub._windows_desligando(None)
@@ -581,6 +596,192 @@ class SilenciosaNoHubTestCase(Base):
         with mock.patch.object(nucleo.subprocess, "Popen") as popen:
             hub.close()
         self.assertFalse(popen.called, "versao normal so instala com o clique")
+
+
+class ForcadaTestCase(Base):
+    """O painel mandou instalar: conferencias iguais, sem esperar o clique."""
+
+    URL = "https://dumtechsolution.com/baixar/DumTech-Hub-Setup.exe"
+
+    def test_vem_do_manifesto_assinado(self) -> None:
+        aviso = nucleo.abrir_manifesto(pacote_atualizacao(
+            "1.3.0", self.URL, sha(INSTALADOR), forcada=True))
+        self.assertTrue(aviso.forcada)
+        self.assertFalse(nucleo.abrir_manifesto(pacote_atualizacao(
+            "1.3.0", self.URL, sha(INSTALADOR))).forcada, "so forca quem manda forcar")
+
+    def test_sem_impressao_digital_nao_forca_nada(self) -> None:
+        self.assertFalse(nucleo.abrir_manifesto(pacote_atualizacao(
+            "1.3.0", self.URL, "", forcada=True)).forcada)
+
+    def test_endereco_de_fora_nao_passa_nem_forcado(self) -> None:
+        self.assertIsNone(nucleo.abrir_manifesto(pacote_atualizacao(
+            "1.3.0", "https://golpe.example/hub.exe", sha(INSTALADOR), forcada=True)))
+
+    def test_forcada_nunca_e_silenciosa(self) -> None:
+        aviso = nucleo.abrir_manifesto(pacote_atualizacao(
+            "1.3.0", self.URL, sha(INSTALADOR), forcada=True, silenciosa=True))
+        with mock.patch.object(nucleo, "pode_atualizar_aqui", return_value=True):
+            self.assertFalse(nucleo.em_silencio(self.settings, aviso))
+            self.assertTrue(nucleo.forcada_aqui(aviso))
+
+    def test_rodando_do_codigo_nao_tenta_instalar(self) -> None:
+        aviso = nucleo.abrir_manifesto(pacote_atualizacao(
+            "1.3.0", self.URL, sha(INSTALADOR), forcada=True))
+        with mock.patch.object(nucleo, "pode_atualizar_aqui", return_value=False):
+            self.assertFalse(nucleo.forcada_aqui(aviso))
+
+
+class ForcadaNoHubTestCase(Base):
+    """Baixa sozinha, conta o prazo por cima de tudo, instala e reabre."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.servidor = Servidor()
+        self.addCleanup(self.servidor.parar)
+        self.enterContext(mock.patch.object(nucleo, "pode_atualizar_aqui", return_value=True))
+
+    def hub(self, **extras):
+        from dumtech.hub.main_window import HubWindow
+
+        from .test_porta_entrada import esperar_tarefas
+
+        settings = Settings(self.raiz / "hub-janela.json")
+        settings.set("versao", "assinado", pacote_atualizacao(
+            "9.9.0", self.servidor.url, sha(INSTALADOR), tamanho=len(INSTALADOR),
+            obrigatoria=True, silenciosa=True, forcada=True, **extras))
+        janela = HubWindow(settings=settings)
+        janela.launcher.notify = lambda *args: None
+        janela.atualizacao_service.paths = self.paths
+        self.addCleanup(janela.deleteLater)
+        self.addCleanup(self._fechar, janela)
+        janela._atualizar_botao_versao()
+        esperar_tarefas(_app)
+        return janela
+
+    @staticmethod
+    def _fechar(janela) -> None:
+        """Fechar tira a janela dos eventos; sem isto, o proximo teste esbarra nela morta."""
+        janela._silenciosa = None       # e nao roda o instalador de mentira ao sair
+        janela.close()
+
+    def test_baixa_avisa_e_mostra_o_prazo(self) -> None:
+        hub = self.hub()
+        self.assertIsNotNone(hub._silenciosa, "o instalador ja devia estar baixado")
+        aviso = hub._aviso_forcada
+        self.assertIsNotNone(aviso, "a contagem devia ter comecado")
+        self.assertTrue(aviso.isVisible())
+        self.assertEqual(aviso.restam, nucleo.PRAZO_FORCADA_S)
+        self.assertIn("5:00", aviso.contagem.text())
+        self.assertFalse(hub.botao_atualizar.isHidden(), "o caminho para atualizar fica a vista")
+
+    def test_conferir_de_novo_nao_reinicia_o_prazo(self) -> None:
+        hub = self.hub()
+        aviso = hub._aviso_forcada
+        aviso.restam = 37
+        hub._atualizar_botao_versao()
+        self.assertIs(hub._aviso_forcada, aviso)
+        self.assertEqual(aviso.restam, 37)
+
+    def test_o_aviso_nao_se_fecha(self) -> None:
+        hub = self.hub()
+        hub._aviso_forcada.close()
+        self.assertTrue(hub._aviso_forcada.isVisible())
+
+    def test_o_prazo_acaba_instala_e_reabre(self) -> None:
+        hub = self.hub()
+        aviso = hub._aviso_forcada
+        aviso.restam = 1
+        with mock.patch.object(nucleo.subprocess, "Popen") as popen:
+            aviso._passo()
+        argumentos = popen.call_args[0][0]
+        self.assertEqual(argumentos[0], str(hub._silenciosa[0]))
+        self.assertIn("/reabrir=1", argumentos)
+        self.assertTrue(hub._atualizando)
+        self.assertIsNone(hub._aviso_forcada)
+
+    def test_instalar_agora_nao_espera_o_prazo(self) -> None:
+        hub = self.hub()
+        with mock.patch.object(nucleo.subprocess, "Popen") as popen:
+            hub._aviso_forcada.botao_instalar.click()
+        self.assertTrue(popen.called)
+
+    def test_janela_aberta_nao_segura_o_programa(self) -> None:
+        from PySide6.QtWidgets import QDialog
+
+        hub = self.hub()
+        dialogo = QDialog(hub)
+        dialogo.show()
+        with mock.patch.object(nucleo.subprocess, "Popen"):
+            hub._aviso_forcada.botao_instalar.click()
+        self.assertFalse(dialogo.isVisible(), "dialogo aberto deixaria o Hub no ar")
+
+    def test_windows_recusar_nao_derruba_o_hub(self) -> None:
+        hub = self.hub()
+        with mock.patch.object(nucleo.subprocess, "Popen", side_effect=OSError("negado")):
+            hub._aviso_forcada.botao_instalar.click()
+        self.assertFalse(getattr(hub, "_atualizando", False), "o Hub tem que continuar aberto")
+        self.assertIsNone(hub._aviso_forcada)
+        self.assertIsNone(hub._silenciosa, "a proxima conferencia baixa de novo")
+
+    def _ordem_nova(self, hub, versao="9.9.0", **extras) -> None:
+        """A proxima conferencia de versao trouxe outro manifesto."""
+        hub.settings.set("versao", "assinado", pacote_atualizacao(
+            versao, self.servidor.url, sha(INSTALADOR), tamanho=len(INSTALADOR), **extras))
+        hub._atualizar_botao_versao()
+
+    def test_recolher_no_meio_do_prazo_para_a_instalacao(self) -> None:
+        hub = self.hub()
+        aviso = hub._aviso_forcada
+        self._ordem_nova(hub, "0.0.1")          # voltou para uma versao mais velha
+        self.assertIsNone(hub._aviso_forcada, "a contagem tinha que parar")
+        with mock.patch.object(nucleo.subprocess, "Popen") as popen:
+            aviso._acabou()
+        self.assertFalse(popen.called, "versao recolhida nao pode instalar")
+
+    def test_a_conferencia_de_rotina_traz_o_recolhimento(self) -> None:
+        from .test_porta_entrada import esperar_tarefas
+
+        hub = self.hub()
+        pacote = pacote_atualizacao("0.0.1", self.servidor.url, sha(INSTALADOR))
+        hub.atualizacao_service.buscar = lambda *_: {"ok": True, "assinado": pacote}
+        with mock.patch.dict(os.environ, {"DUMTECH_LICENCA_LOCAL": "0"}):
+            hub.conferir_versao(forcar=True)
+            esperar_tarefas(_app)
+        self.assertIsNone(hub._aviso_forcada, "versao que nao e mais nova tambem tem que parar a contagem")
+        self.assertTrue(hub.botao_atualizar.isHidden())
+
+    def test_sem_internet_a_contagem_continua(self) -> None:
+        from .test_porta_entrada import esperar_tarefas
+
+        hub = self.hub()
+        aviso = hub._aviso_forcada
+        hub.atualizacao_service.buscar = mock.Mock(return_value=None)
+        with mock.patch.dict(os.environ, {"DUMTECH_LICENCA_LOCAL": "0"}):
+            hub.conferir_versao(forcar=True)
+            esperar_tarefas(_app)
+        self.assertTrue(hub.atualizacao_service.buscar.called)
+        self.assertIs(hub._aviso_forcada, aviso)
+
+    def test_cancelar_a_obrigacao_para_a_contagem(self) -> None:
+        hub = self.hub()
+        self._ordem_nova(hub)                   # a mesma versao, sem forcar
+        self.assertIsNone(hub._aviso_forcada)
+        self.assertFalse(hub.botao_atualizar.isHidden(), "continua disponivel, sem obrigar")
+
+    def test_fechar_depois_de_recolher_nao_instala(self) -> None:
+        hub = self.hub()
+        self._ordem_nova(hub, "0.0.1")
+        with mock.patch.object(nucleo.subprocess, "Popen") as popen:
+            hub.close()
+        self.assertFalse(popen.called)
+
+    def test_fechar_durante_o_prazo_instala_sem_reabrir(self) -> None:
+        hub = self.hub()
+        with mock.patch.object(nucleo.subprocess, "Popen") as popen:
+            hub.close()
+        self.assertNotIn("/reabrir=1", popen.call_args[0][0])
+        self.assertIsNone(hub._aviso_forcada)
 
 
 if __name__ == "__main__":

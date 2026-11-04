@@ -95,9 +95,11 @@ begin
 
         -- quem nao e cliente, ou nao e ESTA maquina, recebe vazio
         r := public.dumtech_hub_versao('AAAA-AAAA-AAAA-AAAA', v_maquina, '1.2.3');
-        assert r->>'licenca' = '', 'chave inventada recebeu impressao: ' || r::text;
+        -- quem nao esta ativado recebe sempre a mesma constante: nao entrega se a
+        -- chave existe, e o computador solto ainda percebe que mudou
+        assert r->>'licenca' = md5('dumtech:sem-ativacao'), 'chave inventada recebeu impressao: ' || r::text;
         r := public.dumtech_hub_versao(v_chave, 'OUTRA-MAQUINA', '1.2.3');
-        assert r->>'licenca' = '', 'maquina sem ativacao recebeu impressao: ' || r::text;
+        assert r->>'licenca' = md5('dumtech:sem-ativacao'), 'maquina sem ativacao recebeu impressao: ' || r::text;
 
         -- mudar as vagas no painel muda a impressao
         update public.licencas set max_computadores = max_computadores + 1 where id = v_licenca;
@@ -112,10 +114,11 @@ begin
         v_nova := public.dumtech_hub_versao(v_chave, v_maquina, '1.2.3')->>'licenca';
         assert v_nova <> v_marca, 'trocar o Pix nao mudou a impressao';
 
-        -- soltar este computador no painel: a impressao some
+        -- soltar este computador no painel: a impressao vira a constante, e o Hub
+        -- confere em 2 minutos (marca vazia ele ignora)
         delete from public.ativacoes where licenca_id = v_licenca and maquina = v_maquina;
         r := public.dumtech_hub_versao(v_chave, v_maquina, '1.2.3');
-        assert r->>'licenca' = '', 'computador solto continuou com impressao: ' || r::text;
+        assert r->>'licenca' = md5('dumtech:sem-ativacao'), 'computador solto continuou com impressao: ' || r::text;
 
         -- e o anon nao chama a funcao da impressao direto
         assert not has_function_privilege('anon', 'public.dumtech_licenca_marca(text, text)', 'execute'),

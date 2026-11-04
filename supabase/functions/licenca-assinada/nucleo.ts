@@ -37,6 +37,9 @@ export function conteudoDaLicenca(
   { kid, maquina, computador, agora = new Date(), diasOffline = 30 }:
     { kid: string; maquina: string; computador: string; agora?: Date; diasOffline?: number },
 ) {
+  // mensalidade: so assinatura e teste trazem. Vitalicia segue sem o campo, e o
+  // pacote dela fica igual ao de antes
+  const cobranca = cobrancaValida(dados.cobranca);
   return {
     v: 1,
     kid,
@@ -51,8 +54,44 @@ export function conteudoDaLicenca(
     testes: testesValidos(dados.testes),
     expira_em: dados.expira_em ?? null,
     max_computadores: Number(dados.max_computadores ?? 1),
+    // vai ASSINADO: sem isso, apagar o pacote de acessos do arquivo faria a loja
+    // parecer sem contas, e o Hub abriria sem pedir login
+    contas: dados.contas === true,
+    ...(cobranca ? { cobranca } : {}),
     emitida_em: agora.toISOString(),
     valida_ate: new Date(agora.getTime() + diasOffline * MS_DIA).toISOString(),
+  };
+}
+
+/** Quem pode entrar neste computador e o que cada um ve. `uso` separa da licenca. */
+export function conteudoAcesso(
+  { kid, chave, maquina, computador, resumo, agora = new Date() }:
+    { kid: string; chave: string; maquina: string; computador: string;
+      resumo: { exigir_conta?: boolean; usuarios?: unknown[] }; agora?: Date },
+) {
+  return {
+    v: 1, kid, uso: "acesso", chave, maquina, computador,
+    exigir_conta: Boolean(resumo?.exigir_conta), usuarios: resumo?.usuarios ?? [],
+    emitido_em: agora.toISOString(),
+  };
+}
+
+const SITUACOES = new Set(["teste", "em_dia", "pendente", "consulta"]);
+const MOTIVOS = new Set(["falhou", "cancelou"]);
+const dataOuNulo = (valor: unknown) =>
+  typeof valor === "string" && /^\d{4}-\d{2}-\d{2}$/.test(valor) ? valor : null;
+
+/** A cobranca da mensalidade como o banco manda; qualquer outra coisa vira null. */
+export function cobrancaValida(cobranca: unknown):
+  { situacao: string; ate: string | null; motivo: string | null; desde: string | null } | null {
+  if (!cobranca || typeof cobranca !== "object" || Array.isArray(cobranca)) return null;
+  const c = cobranca as Record<string, unknown>;
+  if (!SITUACOES.has(String(c.situacao))) return null;
+  return {
+    situacao: String(c.situacao),
+    ate: dataOuNulo(c.ate),
+    motivo: MOTIVOS.has(String(c.motivo)) ? String(c.motivo) : null,
+    desde: dataOuNulo(c.desde),
   };
 }
 

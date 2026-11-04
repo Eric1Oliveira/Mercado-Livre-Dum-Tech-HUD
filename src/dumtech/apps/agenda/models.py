@@ -12,18 +12,22 @@ AGENDADO = "agendado"
 CONFIRMADO = "confirmado"
 CONCLUIDO = "concluido"
 CANCELADO = "cancelado"
+#: o cliente nao veio e nao avisou: nao e o mesmo que cancelar
+FALTOU = "faltou"
 
 STATUS_LABEL = {
     AGENDADO: "Agendado",
     CONFIRMADO: "Confirmado",
     CONCLUIDO: "Concluído",
     CANCELADO: "Cancelado",
+    FALTOU: "Faltou",
 }
 STATUS_TOM = {
     AGENDADO: "warning",
     CONFIRMADO: "accent",
     CONCLUIDO: "success",
     CANCELADO: "danger",
+    FALTOU: "danger",
 }
 STATUS_OPCOES = [(rotulo, chave) for chave, rotulo in STATUS_LABEL.items()]
 ABERTOS = (AGENDADO, CONFIRMADO)
@@ -199,6 +203,12 @@ class Compromisso:
     origem: str = ""
     #: id da reserva no servidor (so o que veio do link)
     reserva: str = ""
+    #: quem atende; dois profissionais no mesmo horario nao sao um conflito
+    profissional: str = ""
+    #: quanto o cliente adiantou para segurar o horario
+    sinal: float = 0.0
+    #: a venda ou a ordem que este atendimento virou
+    documento: str = ""
 
     # ------------------------------------------------------------------- tempo
     @property
@@ -296,8 +306,10 @@ class Compromisso:
         proprios = {campo.name for campo in fields(cls)}
         dados = {chave: row[chave] for chave in set(row.keys()) & proprios}
         dados["tipo"] = dados.get("tipo") or ATENDIMENTO
-        for campo in ("grupo", "repeticao", "telefone", "origem", "reserva"):
+        for campo in ("grupo", "repeticao", "telefone", "origem", "reserva",
+                      "profissional", "documento"):
             dados[campo] = dados.get(campo) or ""
+        dados["sinal"] = float(dados.get("sinal") or 0)
         return cls(**dados)
 
 

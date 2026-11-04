@@ -121,11 +121,13 @@ class DevolucoesMixin:
 
         caixa = self.caixa_aberto()
         momento = agora()
+        em_dinheiro = self._sai_da_gaveta(venda, valor)
         with self.db.transaction() as conn:
             cursor = conn.execute(
                 """
-                INSERT INTO devolucoes (venda_id, data, motivo, valor, caixa_id, criado_em)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO devolucoes (venda_id, data, motivo, valor, caixa_id,
+                                        em_dinheiro, criado_em)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     venda_id,
@@ -133,6 +135,7 @@ class DevolucoesMixin:
                     motivo.strip(),
                     valor,
                     caixa.id if caixa is not None else 0,
+                    em_dinheiro,
                     momento,
                 ),
             )
@@ -161,11 +164,25 @@ class DevolucoesMixin:
             valor=valor,
             caixa_id=caixa.id if caixa is not None else 0,
             criado_em=momento,
+            em_dinheiro=em_dinheiro,
             itens=devolvidos,
         )
         devolucao.avisos = self._devolver_ao_estoque(
-            [(por_id[linha.venda_item_id], linha.quantidade) for linha in devolvidos],
+            [
+                (por_id[linha.venda_item_id],
+                 min(linha.quantidade, por_id[linha.venda_item_id].fora_do_estoque))
+                for linha in devolvidos
+            ],
             documento=venda.numero,
             motivo=f"Devolução da venda {venda.numero}",
         )
         return devolucao
+
+    def _sai_da_gaveta(self, venda, valor: float) -> float:
+        """A devolucao tira da gaveta so o dinheiro em especie que entrou nela."""
+        pago = sum(p.valor for p in venda.pagamentos if p.em_dinheiro)
+        ja_saiu = float(self.db.scalar(
+            "SELECT COALESCE(SUM(em_dinheiro), 0) FROM devolucoes WHERE venda_id = ?",
+            (venda.id,), default=0.0,
+        ))
+        return dinheiro(min(valor, max(pago - ja_saiu, 0.0)))

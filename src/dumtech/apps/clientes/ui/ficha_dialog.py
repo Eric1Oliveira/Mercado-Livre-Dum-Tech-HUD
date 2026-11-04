@@ -22,6 +22,7 @@ from ....ui import format as fmt
 from ....ui.theme import Space, apply_window_theme, palette_for
 from ....ui.widgets.buttons import Button
 from ....ui.widgets.common import Card, IconBadge, Pill, label, repolish, separator
+from ....ui.widgets.table import DIREITA, DataTable
 
 
 class FichaDialog(QDialog):
@@ -32,15 +33,21 @@ class FichaDialog(QDialog):
         store: ContactsStore,
         contato: Contato,
         parent: QWidget | None = None,
+        consultas=None,
+        contas=None,
     ) -> None:
         super().__init__(parent)
         self.store = store
         self.contato = contato
         self.houve_mudanca = False
+        #: os modulos da licenca, para contar a historia dele (`core/consulta.py`)
+        self.consultas = list(consultas or [])
+        #: o Financeiro, para dizer quanto ele deve
+        self.contas = contas
 
         self.setWindowTitle(f"Ficha - {contato.nome}")
         self.setModal(True)
-        self.setMinimumSize(720, 620)
+        self.setMinimumSize(760, 700)
 
         raiz = QVBoxLayout(self)
         raiz.setContentsMargins(26, 24, 26, 22)
@@ -49,6 +56,9 @@ class FichaDialog(QDialog):
         raiz.addLayout(self._cabecalho())
         raiz.addWidget(separator())
         raiz.addWidget(self._dados())
+        if self.consultas:
+            raiz.addLayout(self._titulo_historico())
+            raiz.addWidget(self._historico(), 1)
         raiz.addWidget(label("Anotações", "section"))
         raiz.addLayout(self._nova_nota())
         raiz.addWidget(self._lista_notas(), 1)
@@ -126,6 +136,43 @@ class FichaDialog(QDialog):
             linha.addWidget(texto, 1)
             card.body.addLayout(linha)
         return card
+
+    # --------------------------------------------------------------- historico
+    def historico(self) -> list:
+        """Tudo que ele tem nos modulos, do mais recente para o mais antigo."""
+        linhas = []
+        for consulta in self.consultas:
+            linhas += consulta.do_cliente(self.contato.nome)
+        return sorted(linhas, key=lambda achado: achado.data or "", reverse=True)
+
+    def _titulo_historico(self) -> QHBoxLayout:
+        linha = QHBoxLayout()
+        linha.addWidget(label("Histórico", "section"))
+        linha.addStretch(1)
+        divida = self.contas.divida_de(self.contato.nome) if self.contas else None
+        if divida is not None and divida.deve:
+            vencido = f"  ·  {fmt.moeda(divida.vencido)} vencidos" if divida.vencido else ""
+            linha.addWidget(Pill(f"Deve {fmt.moeda(divida.em_aberto)}{vencido}", "warning"))
+        return linha
+
+    def _historico(self) -> DataTable:
+        tabela = DataTable(["Data", "O que", "Documento", "Situação", "Valor"])
+        tabela.set_empty_message("Nenhuma compra, ordem ou horário deste cliente ainda.")
+        tabela.setMinimumHeight(170)
+        tabela.fill(
+            [
+                [
+                    tabela.cell(fmt.data(achado.data) if achado.data else "-"),
+                    tabela.cell(achado.tipo),
+                    tabela.cell(achado.titulo, bold=True),
+                    tabela.cell(achado.situacao, tone=achado.tom),
+                    tabela.cell(fmt.moeda(achado.valor) if achado.valor else "-", DIREITA),
+                ]
+                for achado in self.historico()
+            ],
+            {0: 100, 1: 90, 3: 130, 4: 110},
+        )
+        return tabela
 
     # --------------------------------------------------------------- anotacoes
     def _nova_nota(self) -> QHBoxLayout:

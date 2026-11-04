@@ -4,8 +4,10 @@
 // naquele computador". Não há hora nem sequência — nem aqui, nem no banco.
 // As regras (quem esfriou, quem sumiu, Hub aberto, versão) moram em saude.js.
 
-import { atualizar, ler } from "../api.js";
+import { ler } from "../api.js";
 import { contagem, dataHora, numero, quando, relativo } from "../formato.js";
+import { lerPresenca } from "../gestao-dados.js";
+import { comPresenca } from "../gestao.js";
 import { colunasPorDia, faixa, legendaDaFaixa } from "../graficos.js";
 import { mensagemDeAcompanhamento } from "../mensagens.js";
 import { cor, modulo } from "../modulos.js";
@@ -14,89 +16,11 @@ import {
   versaoEmDia, virouPedido,
 } from "../saude.js";
 import {
-  agir, barra, botaoWhatsApp, cartao, chips, el, icone, limpar, pessoa, pilula, pilulaModulo, tabela, tile,
-  vazio,
+  barra, botaoWhatsApp, cartao, chips, el, icone, limpar, pessoa, pilula, pilulaModulo, tabela, tile, vazio,
 } from "../ui.js";
 import { ficha } from "./comercial.js";
 
 const JANELA = 30;
-
-/**
- * A versao publicada do Hub: o que o cliente ve como "atualize", e quantos
- * computadores ja estao nela. Sem isto, a correcao fica parada no instalador.
- */
-function cartaoVersao(atual, ativacoes) {
-  const publicada = String(atual?.versao || "");
-  const instaladas = ativacoes.map((a) => String(a.versao || "")).filter(Boolean);
-  const naVersao = publicada ? instaladas.filter((v) => v === publicada).length : 0;
-  const atrasados = instaladas.length - naVersao;
-
-  const versao = campoSimples("Versao publicada", publicada, "1.2.0");
-  const url = campoSimples("Endereco para baixar", String(atual?.url || ""),
-                           "https://dumtechsolution.com/baixar/");
-  const notas = campoSimples("Recado (aparece no Hub)", String(atual?.notas || ""),
-                             "O que mudou nesta versao");
-  // a impressao digital do instalador: build\build.ps1 imprime no fim.
-  // Sem ela, o Hub NAO instala sozinho - so manda para a pagina de download.
-  const sha = campoSimples("SHA-256 do instalador", String(atual?.sha256 || ""),
-                           "64 caracteres - o build imprime");
-  const tamanho = campoSimples("Tamanho em bytes", String(atual?.tamanho || ""), "29781768");
-  const obrigatoria = el("input", { type: "checkbox" });
-  obrigatoria.checked = Boolean(atual?.obrigatoria);
-  const automatica = el("input", { type: "checkbox" });
-  automatica.checked = atual ? Boolean(atual.automatica) : true;
-
-  const salvar = el("button", { classe: "botao botao-primario", texto: "Publicar versao" });
-  salvar.addEventListener("click", () => agir(salvar, async () => {
-    const numero = versao.valor().trim();
-    if (numero && !/^[0-9]+(\.[0-9]+){0,3}$/.test(numero)) {
-      throw new Error("A versao e so numero e ponto: 1.2.0");
-    }
-    const impressao = sha.valor().trim().toLowerCase();
-    if (impressao && !/^[0-9a-f]{64}$/.test(impressao)) {
-      throw new Error("O SHA-256 tem 64 caracteres (0-9 e a-f).");
-    }
-    if (automatica.checked && !impressao) {
-      throw new Error("Para atualizar pelo Hub, informe o SHA-256 do instalador.");
-    }
-    await atualizar("hub_versoes", { id: "eq.1" }, {
-      versao: numero, url: url.valor().trim(), notas: notas.valor().trim(),
-      sha256: impressao, tamanho: Number(tamanho.valor().trim() || 0) || 0,
-      obrigatoria: obrigatoria.checked, automatica: automatica.checked,
-      // versao silenciosa so sai pelo lancar_versao.ps1 -Silenciosa: publicar
-      // por aqui e sempre com aviso (nao herda o silencio da anterior)
-      silenciosa: false,
-      atualizado_em: new Date().toISOString(),
-    });
-  }, { feito: "Versao publicada. O botao aparece no Hub do cliente em ate 2 minutos (Hub 1.2.2 ou anterior: quando o programa for aberto de novo).",
-       erro: "Nao foi possivel publicar." }));
-
-  return cartao("Versao do DumTech Hub", el("div", { classe: "form-versao" }, [
-    el("p", { classe: "explica-versao", texto: publicada
-      ? `${naVersao} computador(es) ja estao na ${publicada}` +
-        (atrasados > 0 ? ` · ${atrasados} ainda em versao antiga` : "")
-      : "Nenhuma versao publicada: os clientes nao recebem aviso de atualizacao." }),
-    versao.no, url.no, notas.no, sha.no, tamanho.no,
-    el("label", { classe: "campo-linha" }, [
-      automatica,
-      el("span", { texto: "Deixar o cliente atualizar pelo proprio Hub (um clique)" }),
-    ]),
-    el("label", { classe: "campo-linha" }, [
-      obrigatoria,
-      el("span", { texto: "Atualizacao importante (o aviso nao pode ser dispensado)" }),
-    ]),
-    el("div", { classe: "acoes-cartao" }, [salvar]),
-  ]));
-}
-
-function campoSimples(rotulo, valor, dica = "") {
-  const entrada = el("input", { value: valor, placeholder: dica });
-  return {
-    no: el("label", { classe: "campo" }, [el("span", { texto: rotulo }), entrada]),
-    entrada,
-    valor: () => String(entrada.value ?? ""),
-  };
-}
 
 // ==================================================================== uso ====
 // A pergunta da tela: meus clientes estão usando? Quem esfriou, quem pagou e
@@ -109,13 +33,14 @@ export async function uso(alvo) {
   const agora = new Date();
   // tudo chega somado pelo banco (uma linha por dia, uma por cliente): o
   // PostgREST corta leitura acima de 1000 linhas, e conta cortada mente calada
-  const [modulos, clientes, dias, faixas, ativacoes, aparelhos, modulosParadosDoBanco, versoes, cliques, pedidos] =
+  const [modulos, clientes, dias, faixas, registros, aparelhos, modulosParadosDoBanco, versoes, cliques, pedidos,
+         presencas] =
     await Promise.all([
       ler("painel_modulos", { ordem: "aberturas_30d.desc" }),
       ler("painel_clientes", { ordem: "nome.asc" }),
       ler("painel_uso_dias", { filtros: { dia: `gte.${diaDoPainel(2 * JANELA)}` } }).catch(() => null),
       ler("painel_uso_por_cliente").catch(() => null),
-      ler("ativacoes", { select: "licenca_id,apelido,versao,versao_em,ultima_checagem,ativado_em" }),
+      ler("ativacoes", { select: "licenca_id,maquina,apelido,versao,versao_em,ultima_checagem,ativado_em" }),
       ler("celular_aparelhos", { select: "licenca_id,revogado_em" }),
       ler("painel_modulos_da_licenca", { filtros: { situacao: "eq.ativa", aberturas_30d: "eq.0" } }).catch(() => null),
       ler("hub_versoes", { limite: 1 }).catch(() => null),
@@ -125,7 +50,9 @@ export async function uso(alvo) {
         filtros: { criado_em: `gte.${diaDoPainel(7)}` },
       }).catch(() => null),
       ler("pedidos_site", { select: "cliente_id,email,criado_em", filtros: { criado_em: `gte.${diaDoPainel(7)}` } }),
+      lerPresenca().catch(() => []),
     ]);
+  const ativacoes = comPresenca(registros, presencas);
   const publicada = String(versoes?.[0]?.versao || "");
   const porId = new Map(clientes.map((c) => [c.cliente_id, c]));
 
@@ -363,8 +290,6 @@ export async function seguranca(alvo) {
     ])
   );
 
-  if (versoes) alvo.append(cartaoVersao(versoes[0], ativacoes));
-
   if (insistentes.length) {
     alvo.append(cartao("Insistindo demais", tabela(
       ["Computador", { texto: "Tentativas 24h", numero: true }],
@@ -425,6 +350,8 @@ const TABELAS = {
   ativacoes: "Computador", produtos: "Módulo", combos: "Combo", combo_produtos: "Módulo do combo",
   comunicados: "Anúncio", pedidos_site: "Pedido", administradores: "Administrador",
   licenca_testes: "Teste grátis", celular_aparelhos: "Celular",
+  hub_versoes: "Versão publicada", hub_lancamentos: "Versão", hub_liberacoes: "Atualização do cliente",
+  cliente_notas: "Anotação",
 };
 const OPERACOES = { insert: "criou", update: "mudou", delete: "apagou" };
 
@@ -440,7 +367,8 @@ function detalhe(a) {
       .join(" · ");
   }
   const linha = a.depois || a.antes || {};
-  return curto(linha.nome || linha.titulo || linha.codigo || linha.chave || linha.maquina || linha.email || a.registro);
+  return curto(linha.nome || linha.titulo || linha.versao || linha.texto || linha.codigo || linha.chave
+               || linha.maquina || linha.email || a.registro);
 }
 
 const motivo = (erro) => ({

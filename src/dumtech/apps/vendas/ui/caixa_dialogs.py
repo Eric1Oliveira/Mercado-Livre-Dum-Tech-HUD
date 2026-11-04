@@ -7,6 +7,7 @@ from PySide6.QtWidgets import QWidget
 from ....ui import format as fmt
 from ....ui.widgets import form
 from ....ui.widgets.form import FormDialog
+from .. import financeiro
 from ..models import TIPO_SANGRIA, ConferenciaCaixa, VendaError
 from ..repository import VendasRepository
 
@@ -43,9 +44,13 @@ class MovimentoCaixaDialog(FormDialog):
         repository: VendasRepository,
         tipo: str = TIPO_SANGRIA,
         parent: QWidget | None = None,
+        contas=None,
     ) -> None:
         self.repository = repository
         self.tipo = tipo
+        #: ponte com o Financeiro; None quando a licenca nao o libera
+        self.contas = contas
+        self.recado = ""
         sangria = tipo == TIPO_SANGRIA
         super().__init__(
             "Sangria" if sangria else "Suprimento",
@@ -59,13 +64,24 @@ class MovimentoCaixaDialog(FormDialog):
             "", "Ex.: depósito no banco" if sangria else "Ex.: troco extra"
         )
         self.add_row("Motivo" if sangria else "Motivo (opcional)", self.motivo)
+        self.destino = form.escolha([
+            ("Foi para o banco ou para o cofre", "retirada"),
+            ("Pagou uma despesa", "despesa"),
+        ])
+        if sangria and contas is not None:
+            self.add_row("Para onde foi", self.destino)
         if sangria:
             self.add_note("A sangria precisa de motivo: é assim que o dinheiro se explica.")
         self.valor.setFocus()
         self.valor.selectAll()
 
     def salvar(self) -> None:
-        self.repository.registrar_movimento(self.tipo, self.valor.value(), self.motivo.text())
+        movimento = self.repository.registrar_movimento(
+            self.tipo, self.valor.value(), self.motivo.text()
+        )
+        self.recado = financeiro.movimento_de_caixa(
+            self.contas, movimento, self.destino.currentData()
+        )
 
 
 class FecharCaixaDialog(FormDialog):
@@ -76,9 +92,11 @@ class FecharCaixaDialog(FormDialog):
         repository: VendasRepository,
         conferencia: ConferenciaCaixa,
         parent: QWidget | None = None,
+        contas=None,
     ) -> None:
         self.repository = repository
         self.conferencia = conferencia
+        self.contas = contas
         self.resultado: ConferenciaCaixa | None = None
         super().__init__(
             "Fechar caixa",
@@ -114,6 +132,7 @@ class FecharCaixaDialog(FormDialog):
         self.resultado = self.repository.fechar_caixa(
             self.contado.value(), self.observacoes.toPlainText()
         )
+        financeiro.fechamento(self.contas, self.resultado)
 
 
 class MotivoDialog(FormDialog):

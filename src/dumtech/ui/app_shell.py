@@ -25,6 +25,7 @@ from ..core.app_module import AppContext
 from ..core.config import MemoryPreferences
 from ..core.mensagens import Mensageiro
 from . import motion
+from .widgets.common import tone_label
 from .widgets.pilha import Pilha
 from .widgets.rolagem import Rolagem
 from .theme import (
@@ -91,11 +92,25 @@ class AppSurface(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
+        if context.so_consulta:
+            motivo = getattr(context, "texto_consulta", "")
+            faixa = tone_label(
+                f"Somente consulta. {motivo}" if motivo else
+                "Somente consulta: este módulo saiu da licença. Dá para ver e exportar, "
+                "mas não para gravar.", "warning", "strong",
+            )
+            faixa.setContentsMargins(30, 10, 30, 10)
+            faixa.setWordWrap(True)
+            layout.addWidget(faixa)
         self.stack = Pilha()
         self.stack.currentChanged.connect(self._on_view_changed)
         layout.addWidget(self.stack, 1)
 
         self.build_views()
+        if context.so_consulta:
+            for view in self._views:
+                if hasattr(view.widget, "so_consulta"):
+                    view.widget.so_consulta()
 
         self._theme_mode = str(self.prefs.get("theme", MODO_AUTO))
         self._apply_theme_mode(self._theme_mode, salvar=False)
@@ -136,6 +151,15 @@ class AppSurface(QWidget):
         if 0 <= indice < len(self._views):
             return self._views[indice].widget
         return None
+
+    def procurar(self, texto: str) -> bool:
+        """Vai para a tela de lista e filtra por este texto (a busca geral)."""
+        for indice, view in enumerate(self._views):
+            if hasattr(view.widget, "procurar"):
+                self.show_view(indice)
+                view.widget.procurar(texto)
+                return True
+        return False
 
     @property
     def views(self) -> tuple[View, ...]:

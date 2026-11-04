@@ -8,6 +8,8 @@ e redundante de proposito, porque a lista e o resumo dependem dela.
 
 from __future__ import annotations
 
+import logging
+
 from ....ui import format as fmt
 from ..models import (
     CENTAVO,
@@ -18,6 +20,8 @@ from ..models import (
     ler_data,
 )
 from .comum import agora, dinheiro, maior_que
+
+logger = logging.getLogger(__name__)
 
 SELECT_BAIXA = """
     SELECT b.*, COALESCE(c.nome, '') AS conta_nome
@@ -79,6 +83,7 @@ class BaixasMixin:
             raise FinanceiroError("Data da baixa inválida.")
         if conta_id and self.obter_conta(conta_id) is None:
             raise FinanceiroError("Conta não encontrada.")
+        conta_id = self._conta_que_recebe(conta_id, lancamento)
 
         momento = agora()
         with self.db.transaction() as conn:
@@ -101,7 +106,7 @@ class BaixasMixin:
             baixa_id = int(cursor.lastrowid)
             self._recalcular_situacao(conn, lancamento)
 
-        return Baixa(
+        baixa = Baixa(
             id=baixa_id,
             lancamento_id=lancamento_id,
             data=data,
@@ -111,6 +116,8 @@ class BaixasMixin:
             observacao=observacao.strip(),
             criado_em=momento,
         )
+        self._avisar(self.ao_baixar, lancamento_id, baixa)
+        return baixa
 
     def quitar(self, lancamento_id: int, **campos) -> Baixa:
         """Baixa o que falta de uma vez."""
@@ -126,16 +133,20 @@ class BaixasMixin:
             conn.execute("DELETE FROM baixas WHERE id = ?", (baixa_id,))
             if lancamento is not None:
                 self._recalcular_situacao(conn, lancamento)
+        self._avisar(self.ao_estornar, row["lancamento_id"], Baixa.from_row(row))
 
     def estornar_tudo(self, lancamento_id: int) -> None:
         lancamento = self.obter(lancamento_id)
         if lancamento is None:
             raise FinanceiroError("Lançamento não encontrado.")
+        desfeitas = self.baixas_de(lancamento_id)
         with self.db.transaction() as conn:
             conn.execute("DELETE FROM baixas WHERE lancamento_id = ?", (lancamento_id,))
             conn.execute(
                 "UPDATE lancamentos SET pago_em = NULL WHERE id = ?", (lancamento_id,)
             )
+        for baixa in desfeitas:
+            self._avisar(self.ao_estornar, lancamento_id, baixa)
 
     def cancelar(self, lancamento_id: int, motivo: str = "", quando: str = "") -> None:
         """Tira o lancamento das contas sem apagar o registro.
@@ -212,6 +223,28 @@ class BaixasMixin:
         )
 
     # ------------------------------------------------------------------ interno
+    def _conta_que_recebe(self, conta_id: int, lancamento: Lancamento) -> int:
+        """Baixa sem conta nao soma no saldo: o dinheiro entrava e o saldo parava.
+
+        Quem escolheu, escolheu; depois vale a prevista no lancamento e, por
+        fim, a padrao ("Sem conta definida" e a opcao que o formulario ja traz).
+        """
+        conta_id = int(conta_id or lancamento.conta_id or 0)
+        if conta_id:
+            return conta_id
+        padrao = self.conta_padrao()
+        return padrao.id if padrao is not None else 0
+
+    @staticmethod
+    def _avisar(gancho, *dados) -> None:
+        """O dinheiro ja esta gravado: quem ouve nao pode desfazer a baixa."""
+        if gancho is None:
+            return
+        try:
+            gancho(*dados)
+        except Exception:  # noqa: BLE001
+            logger.exception("Baixa gravada, mas o modulo de origem nao acompanhou")
+
     @staticmethod
     def _recalcular_situacao(conn, lancamento: Lancamento) -> None:
         """`pago_em` = data da ultima baixa, quando elas cobrem o valor."""

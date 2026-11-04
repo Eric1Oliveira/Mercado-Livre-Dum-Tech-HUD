@@ -116,6 +116,15 @@ MIGRATIONS = (
             """,
         ),
     ),
+    Migration(
+        version=4,
+        name="comissao do parceiro",
+        statements=(
+            """
+            ALTER TABLE parceiros ADD COLUMN comissao REAL NOT NULL DEFAULT 0;
+            """,
+        ),
+    ),
 )
 
 
@@ -265,6 +274,8 @@ class Parceiro:
     ativo: bool = True
     criado_em: str = ""
     atualizado_em: str = ""
+    #: percentual sobre o que os clientes indicados compram (0 = sem comissao)
+    comissao: float = 0.0
 
     @property
     def telefone_formatado(self) -> str:
@@ -302,6 +313,9 @@ class ContactsStore:
 
     def __init__(self, db_path: Path | None = None) -> None:
         self.db = Database(db_path or get_paths().platform_db, MIGRATIONS)
+        #: quem precisa saber que um cliente mudou de nome: os outros modulos
+        #: gravaram o nome, e a venda de ontem nao pode sumir da ficha dele
+        self.ao_renomear = None
 
     # ------------------------------------------------------------------ leitura
     def listar(
@@ -394,6 +408,7 @@ class ContactsStore:
         if contato.id is None:
             raise ContatoError("Cliente sem identificação.")
         self._validar(contato)
+        antes = self.obter(contato.id)
         agora = _agora()
         atribuicoes = ", ".join(f"{campo} = ?" for campo in CAMPOS)
         self.db.execute(
@@ -401,6 +416,9 @@ class ContactsStore:
             (*self._valores(contato), agora, contato.id),
         )
         contato.atualizado_em = agora
+        novo = contato.nome.strip()
+        if antes is not None and self.ao_renomear is not None and antes.nome != novo:
+            self.ao_renomear(antes.nome, novo)
         eventos.avisar(APP_ID)
         return contato
 
@@ -518,8 +536,8 @@ class ContactsStore:
         self._validar_parceiro(parceiro)
         agora = _agora()
         cursor = self.db.execute(
-            "INSERT INTO parceiros (nome, telefone, email, observacoes, ativo, "
-            "criado_em, atualizado_em) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO parceiros (nome, telefone, email, observacoes, ativo, comissao, "
+            "criado_em, atualizado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (*self._valores_parceiro(parceiro), agora, agora),
         )
         parceiro.id = int(cursor.lastrowid)
@@ -534,7 +552,7 @@ class ContactsStore:
         agora = _agora()
         self.db.execute(
             "UPDATE parceiros SET nome = ?, telefone = ?, email = ?, observacoes = ?, "
-            "ativo = ?, atualizado_em = ? WHERE id = ?",
+            "ativo = ?, comissao = ?, atualizado_em = ? WHERE id = ?",
             (*self._valores_parceiro(parceiro), agora, parceiro.id),
         )
         parceiro.atualizado_em = agora
@@ -574,9 +592,18 @@ class ContactsStore:
         saida.sort(key=lambda i: (-i.clientes, i.parceiro.nome.lower()))
         return saida
 
+    def clientes_do_parceiro(self, parceiro_id: int) -> list[str]:
+        """Os nomes dos clientes que ele indicou, para somar o que compraram."""
+        return [row["nome"] for row in self.db.query(
+            "SELECT nome FROM contatos WHERE parceiro_id = ? ORDER BY nome COLLATE NOCASE",
+            (parceiro_id,),
+        )]
+
     def _validar_parceiro(self, parceiro: Parceiro) -> None:
         if not parceiro.nome.strip():
             raise ContatoError("Informe o nome do parceiro.")
+        if not 0 <= float(parceiro.comissao or 0) <= 100:
+            raise ContatoError("A comissão precisa ficar entre 0 e 100%.")
         repetido = self.db.query_one(
             "SELECT id FROM parceiros WHERE nome = ? COLLATE NOCASE AND id IS NOT ?",
             (parceiro.nome.strip(), parceiro.id),
@@ -592,6 +619,7 @@ class ContactsStore:
             parceiro.email.strip(),
             parceiro.observacoes.strip(),
             1 if parceiro.ativo else 0,
+            round(float(parceiro.comissao or 0), 2),
         )
 
     # ------------------------------------------------------------------ painel

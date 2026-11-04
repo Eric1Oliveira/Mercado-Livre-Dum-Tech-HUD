@@ -13,6 +13,7 @@ from ...core.licensing import (
     machine_id,
     normalize_key,
 )
+from ...core import mensalidade
 from ...core.registry import AppRegistry
 from ...ui import format as fmt
 from ...ui import tasks
@@ -157,12 +158,19 @@ class LicenseView(QWidget):
     def refresh(self) -> None:
         atual = self.license_service.reload()
         ativa = atual.ativa
+        # plano mensal so para consulta: a chave continua a mesma (assinou, volta
+        # sozinho), entao a tela mostra o plano, e nao o "ative uma chave"
+        recado = mensalidade.faixa(atual) if atual.key else None
+        consulta_mensal = recado is not None and recado.situacao == "consulta"
+        mostrar = ativa or consulta_mensal
 
-        self.card_ativacao.setVisible(not ativa)
-        self.card_dados.setVisible(ativa)
-        self.card_apps.setVisible(ativa)
+        self.card_ativacao.setVisible(not mostrar)
+        self.card_dados.setVisible(mostrar)
+        self.card_apps.setVisible(mostrar)
 
-        if ativa and atual.bloqueio:
+        if consulta_mensal:
+            self.subtitulo.setText(recado.titulo)
+        elif ativa and atual.bloqueio:
             # a chave continua aqui: quando a DumTech reativar, "Verificar" devolve tudo
             self.subtitulo.setText(
                 str(atual.extras.get("mensagem") or "A DumTech bloqueou esta licença.")
@@ -194,7 +202,7 @@ class LicenseView(QWidget):
             ("Computador", atual.machine or machine_id()),
             ("Ativada em", fmt.data_hora(atual.activated_at)),
             ("Última verificação", fmt.data_hora(atual.last_check)),
-            ("Validade", self._validade(atual)),
+            ("Plano" if atual.mensal else "Validade", self._validade(atual)),
             ("Origem", origem),
             ("Computadores", f"{atual.used_machines} de {atual.max_machines}"),
             ("Conta DumTech", self._conta_atual() or "-"),
@@ -219,6 +227,9 @@ class LicenseView(QWidget):
     @staticmethod
     def _validade(atual: License) -> str:
         """Prazo e plano na mesma linha: 'Assinatura ate 31/12/2027'."""
+        plano = mensalidade.linha_do_plano(atual)   # vitalicia: None, segue como era
+        if plano:
+            return plano
         if not atual.expires_at:
             return "Vitalícia" if atual.tipo == "vitalicia" else "Sem prazo"
         quando = fmt.data(atual.expires_at)

@@ -7,7 +7,7 @@
 //
 // SEGREDOS (Supabase > Edge Functions > Secrets)
 //   BREVO_API_KEY ou RESEND_API_KEY   quem entrega o e-mail (ver correio.ts)
-//   DUMTECH_EMAIL_REMETENTE           ex.: DumTech <licencas@seudominio.com.br>
+//   DUMTECH_EMAIL_REMETENTE           ex.: DumTech <dumtechsolutions@gmail.com>
 //   DUMTECH_EMAIL_RESPONDER           opcional: para onde vai a resposta do cliente
 //   DUMTECH_PAINEL_ORIGEM       opcional: ex. https://painel.seudominio.com.br
 //   SUPABASE_URL / SUPABASE_ANON_KEY ja vem de fabrica

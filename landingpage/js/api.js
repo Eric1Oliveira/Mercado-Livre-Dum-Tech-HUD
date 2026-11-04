@@ -55,6 +55,8 @@ export async function reconhecer(token) {
       nome: dados.nome || "",
       email: dados.email || "",
       produtos: (dados.produtos || []).map((c) => String(c).toUpperCase()),
+      // so vem quando o Hub provou a chave: vitalicio, assinatura ou teste
+      tipo: dados.tipo || "",
     };
   } catch (erro) {
     console.warn("Nao foi possivel reconhecer o codigo do Hub.", erro);
@@ -146,4 +148,45 @@ function codigosDaURL(nome) {
   // e texto de um estranho, e nunca pode chegar ate a tela
   return bruto.split(",").map((c) => c.trim().toUpperCase())
     .filter((c) => /^[A-Z][A-Z0-9_]{0,31}$/.test(c));
+}
+
+// ============================================================ mensalidade ==
+/** Preco do plano e o que da para assinar. null = servidor fora (fica o padrao). */
+export async function carregarMensalidade() {
+  try {
+    return await rpc("dumtech_mensalidade_publica");
+  } catch (erro) {
+    console.warn("Precos do servidor indisponiveis; usando os de seguranca.", erro);
+    return null;
+  }
+}
+
+/**
+ * Teste gratis ou assinatura. A chave vai SO por e-mail; a resposta e igual
+ * para todo mundo: { ok, link, valor, dias_teste } ou { ok:false, mensagem }.
+ */
+export async function cadastrar({ nome, email, whatsapp, adicionais, assinar, plano = null, cupom = "" }) {
+  try {
+    const resposta = await fetch(`${enderecoDasFuncoes(CONFIG.SUPABASE_URL)}/mensalidade/cadastro`, {
+      method: "POST",
+      headers: { apikey: CONFIG.SUPABASE_ANON, "Content-Type": "application/json" },
+      body: JSON.stringify({ nome, email, whatsapp, adicionais, assinar, plano, cupom }),
+    });
+    const dados = await resposta.json().catch(() => ({}));
+    if (resposta.status === 404) {
+      return { ok: false, mensagem: "O cadastro ainda não está no ar. Chame a DumTech no WhatsApp que a gente libera para você." };
+    }
+    return dados?.ok ? dados : { ok: false, mensagem: dados?.mensagem || "Não deu para concluir agora. Tente de novo em instantes." };
+  } catch {
+    return { ok: false, mensagem: "Sem conexão com a DumTech agora. Confira a internet e tente de novo." };
+  }
+}
+
+/** Confere um cupom da mensalidade: { ok, codigo, descricao, plano } ou { ok:false, mensagem }. */
+export async function conferirCupomMensal(codigo) {
+  try {
+    return await rpc("dumtech_cupom_publico", { p_codigo: codigo });
+  } catch {
+    return { ok: false, mensagem: "Não deu para conferir o cupom agora. Tente de novo em instantes." };
+  }
 }

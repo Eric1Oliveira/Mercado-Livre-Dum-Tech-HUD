@@ -52,6 +52,7 @@ from ..models import (
     OrdemError,
 )
 from ..repository import OrdensRepository
+from .. import financeiro
 from .dialogos import AprovacaoDialog, EntregaDialog, MotivoDialog
 
 ALTURA_CARTAO = 92
@@ -322,9 +323,10 @@ class BancadaView(QWidget):
     }
 
     def __init__(self, repository: OrdensRepository, parent: QWidget | None = None,
-                 empresa=None, contas=None) -> None:
+                 empresa=None, contas=None, gaveta=None) -> None:
         super().__init__(parent)
         self.repository = repository
+        self.gaveta = gaveta
         #: chave Pix da loja, para o QR Code da entrega
         self.empresa = empresa
         #: ponte com o Financeiro: a entrega ja registra o pagamento
@@ -511,13 +513,15 @@ class BancadaView(QWidget):
         if not dialogo.exec():
             return
         try:
-            self.repository.cancelar(ordem_id, dialogo.motivo)
+            cancelada = self.repository.cancelar(ordem_id, dialogo.motivo)
         except RegraError as erro:
             self._dizer(str(erro), "danger")
             return
+        recado = financeiro.cancelar(self.contas, cancelada, dialogo.motivo)
         self.selecionada = None
         self.refresh()
-        self._dizer(f"{ordem.numero} cancelada.", "warning")
+        self._dizer(f"{ordem.numero} cancelada.{recado}"
+                    + "".join(f"  {aviso}" for aviso in cancelada.avisos), "warning")
         self.data_changed.emit()
 
     def _excluir(self, ordem_id: int) -> None:
@@ -536,6 +540,7 @@ class BancadaView(QWidget):
         except RegraError as erro:
             self._dizer(str(erro), "danger")
             return
+        financeiro.cancelar(self.contas, ordem, "Ordem excluída")
         self.selecionada = None
         self.refresh()
         self._dizer(f"{ordem.numero} excluída.", "muted")
@@ -559,8 +564,8 @@ class BancadaView(QWidget):
         if ordem.status == AGUARDANDO:
             dialogo = AprovacaoDialog(self.repository, ordem, self)
         elif ordem.status == CONCLUIDA:
-            dialogo = EntregaDialog(self.repository, ordem, self,
-                                    empresa=self.empresa, contas=self.contas)
+            dialogo = EntregaDialog(self.repository, ordem, self, empresa=self.empresa,
+                                    contas=self.contas, gaveta=self.gaveta)
         else:
             dialogo = None
 

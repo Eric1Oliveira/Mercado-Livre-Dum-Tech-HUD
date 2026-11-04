@@ -11,7 +11,7 @@
 // SEGREDOS (Supabase > Edge Functions > Secrets)
 //   DUMTECH_LICENCA_CHAVE_PRIVADA   a MESMA de licenca-assinada
 //   DUMTECH_LICENCA_KID             a MESMA de licenca-assinada (ex.: k1)
-//   DUMTECH_EMAIL_REMETENTE         ex.: DumTech <seuemail@gmail.com>
+//   DUMTECH_EMAIL_REMETENTE         ex.: DumTech <dumtechsolutions@gmail.com>
 //   e UM provedor de e-mail (os dois tem plano gratis):
 //     BREVO_API_KEY    brevo.com - 300 e-mails/dia gratis; basta confirmar o e-mail remetente
 //     RESEND_API_KEY   resend.com - 3.000/mes gratis; exige dominio proprio verificado

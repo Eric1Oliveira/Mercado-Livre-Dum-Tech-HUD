@@ -30,6 +30,8 @@ PERIODOS = (("Hoje", 0), ("Últimos 7 dias", 7), ("Últimos 30 dias", 30), ("Tud
 
 class VendasView(CrudView):
     titulo = "Vendas"
+    limite_lista = 500
+    exportavel = True
     nome_registro = "venda"
     nome_plural = "vendas"
     genero = "f"
@@ -97,14 +99,19 @@ class VendasView(CrudView):
         self.botao_cancelar.clicked.connect(self._cancelar)
         layout.insertWidget(4, self.botao_cancelar)
 
+    def ver_tudo(self) -> None:
+        self.filtro_status.setCurrentIndex(0)
+        self.filtro_periodo.setCurrentIndex(self.filtro_periodo.findData(-1))
+
     # ------------------------------------------------------------------- dados
-    def carregar(self) -> list[Venda]:
+    def carregar(self, limite: int = 500) -> list[Venda]:
         dias = self.filtro_periodo.currentData()
         inicio = "" if dias < 0 else (date.today() - timedelta(days=dias)).isoformat()
         return self.repository.listar(
             busca=self.busca.text(),
             status=self.filtro_status.currentData() or "",
             inicio=inicio,
+            limite=limite,
         )
 
     def montar_linha(self, venda: Venda) -> list:

@@ -10,6 +10,7 @@ from typing import Any
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
+    QFileDialog,
     QHBoxLayout,
     QLineEdit,
     QMessageBox,
@@ -17,7 +18,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ...core import confirmacoes
+from ...core import confirmacoes, exportar
 from ...core.errors import RegraError
 from .. import icons
 from ..theme import palette_for
@@ -30,6 +31,11 @@ from .table import DataTable
 
 class CrudView(QWidget):
     """Base das telas de cadastro. Veja os "ganchos" no fim da classe."""
+
+    #: quantos registros o `carregar` da tela traz no maximo (0 = sem corte)
+    limite_lista = 0
+    #: mostra o botao que leva a lista para uma planilha
+    exportavel = False
 
     data_changed = Signal()
 
@@ -110,6 +116,11 @@ class CrudView(QWidget):
         acoes.addWidget(self.botao_excluir)
         self.botao_excluir.setVisible(self.permite_excluir)
         self.build_actions(acoes)
+        self.botao_exportar = Button("Exportar", "file")
+        self.botao_exportar.setToolTip("Leva esta lista para uma planilha, com os filtros de agora")
+        self.botao_exportar.clicked.connect(self.exportar)
+        acoes.addWidget(self.botao_exportar)
+        self.botao_exportar.setVisible(self.exportavel)
         self._barra_de_acoes = acoes
         raiz.addWidget(barra)
 
@@ -155,6 +166,34 @@ class CrudView(QWidget):
         self.mostrar_aviso("")
         self.refresh()
 
+    def linhas_para_exportar(self) -> list[list[str]]:
+        """O que a tela mostra, sem o corte da lista: a planilha vai inteira."""
+        registros = self.carregar(limite=-1) if self.limite_lista else self._registros
+        return [[celula.text() for celula in self.montar_linha(r)] for r in registros]
+
+    def exportar(self) -> None:
+        caminho, _ = QFileDialog.getSaveFileName(
+            self, "Exportar para planilha", f"{self.titulo}.csv", "Planilha CSV (*.csv)"
+        )
+        if not caminho:
+            return
+        linhas = self.linhas_para_exportar()
+        exportar.gravar(caminho, exportar.csv_de(self.colunas, linhas))
+        self.mostrar_aviso(f"{len(linhas)} linhas exportadas.", "success")
+
+    def so_consulta(self) -> None:
+        """Modulo fora da licenca: sem cadastrar nem apagar. Editar segue, para ver."""
+        self.botao_novo.setVisible(False)
+        self.botao_excluir.setVisible(False)
+
+    def procurar(self, texto: str) -> None:
+        """Mostra este registro, mesmo que os filtros de agora o escondam."""
+        self.ver_tudo()
+        self.busca.setText(texto)
+
+    def ver_tudo(self) -> None:
+        """Tira os filtros da tela. So quem tem filtro precisa de alguma coisa aqui."""
+
     def mostrar_aviso(self, texto: str, tom: str = "muted") -> None:
         """Escreve na linha de recado da tela (sem interromper o usuario)."""
         self.aviso.setText(texto)
@@ -176,6 +215,15 @@ class CrudView(QWidget):
         self.tabela.fill([self.montar_linha(r) for r in self._registros], self.larguras)
 
         total = len(self._registros)
+        if self.limite_lista and total >= self.limite_lista:
+            # lista cortada nao pode parecer lista inteira
+            self.subtitulo.setText(
+                f"Mostrando só {total} {self.nome_plural}. Use a busca ou os filtros "
+                "para achar as outras."
+            )
+            self._atualizar_acoes()
+            return
+
         feminino = self.genero == "f"
         nenhum = "Nenhuma" if feminino else "Nenhum"
         achado = "encontrada" if feminino else "encontrado"

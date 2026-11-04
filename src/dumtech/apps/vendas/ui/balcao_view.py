@@ -18,6 +18,7 @@ import logging
 from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtGui import QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
+    QComboBox,
     QDoubleSpinBox,
     QHBoxLayout,
     QLineEdit,
@@ -170,7 +171,11 @@ class BalcaoView(QWidget):
         linha = QHBoxLayout()
         linha.setSpacing(Space.md)
         self.cliente = form.sugestao("", "Consumidor", self.clientes)
+        self.cliente.editingFinished.connect(self._avisar_divida)
         linha.addWidget(form.campo("Cliente (opcional)", self.cliente), 3)
+        self.vendedor = QComboBox()
+        self.campo_vendedor = form.campo("Vendedor", self.vendedor)
+        linha.addWidget(self.campo_vendedor, 2)
         self.desconto = form.dinheiro(0.0)
         self.desconto.valueChanged.connect(self._atualizar_total)
         linha.addWidget(form.campo("Desconto", self.desconto), 1)
@@ -218,7 +223,19 @@ class BalcaoView(QWidget):
         atalho("Delete", self._remover)
 
     # ------------------------------------------------------------------- dados
+    def _carregar_vendedores(self) -> None:
+        """So aparece quando a loja cadastrou vendedores: quem vende sozinho nao ve."""
+        atual = self.vendedor.currentData()
+        vendedores = self.repository.vendedores()
+        self.vendedor.clear()
+        self.vendedor.addItem("Sem vendedor", "")
+        for vendedor in vendedores:
+            self.vendedor.addItem(vendedor.nome, vendedor.nome)
+        self.vendedor.setCurrentIndex(max(self.vendedor.findData(atual), 0))
+        self.campo_vendedor.setVisible(bool(vendedores))
+
     def refresh(self) -> None:
+        self._carregar_vendedores()
         caixa = self.repository.caixa_aberto()
         if caixa is None:
             self.estado_caixa.setText("Caixa fechado")
@@ -322,6 +339,7 @@ class BalcaoView(QWidget):
     def _montar(self) -> Venda:
         return Venda(
             cliente=self.cliente.text(),
+            vendedor=self.vendedor.currentData() or "",
             itens=list(self.itens),
             desconto=self.desconto.value(),
         )
@@ -479,6 +497,7 @@ class BalcaoView(QWidget):
         if not dialogo.exec():
             return
 
+        venda.vencimento = dialogo.vencimento_iso
         try:
             venda = self.repository.finalizar(venda, dialogo.pagamentos)
         except VendaError as erro:
@@ -494,6 +513,17 @@ class BalcaoView(QWidget):
         recado = self._lancar_no_financeiro(venda)
         self._anunciar(venda, recado)
         self.data_changed.emit()
+
+    def _avisar_divida(self) -> None:
+        """Quem atende fica sabendo antes de fechar outra venda a prazo. Nao trava."""
+        nome = self.cliente.text().strip()
+        if self.contas is None or not nome:
+            return
+        divida = self.contas.divida_de(nome)
+        if not divida.deve:
+            return
+        vencido = f", {fmt.moeda(divida.vencido)} já vencidos" if divida.vencido else ""
+        self._dizer(f"{nome} tem {fmt.moeda(divida.em_aberto)} em aberto{vencido}.", "warning")
 
     def _lancar_no_financeiro(self, venda) -> str:
         """A prazo vira conta a receber; a vista entra ja recebida."""

@@ -24,7 +24,7 @@ from ....ui.widgets.busca_catalogo import BuscaCatalogo
 from ....ui.widgets.buttons import Button
 from ....ui.widgets.common import Card, label, repolish
 from ....ui.widgets.table import DIREITA, DataTable
-from ....core.contas import APagar
+from ....core.contas import MAXIMO_PARCELAS, APagar
 from ..catalog import CatalogoEstoque
 from ..models import EstoqueError, ItemEntrada, Produto, quantidade_texto
 from ..repository import EstoqueRepository
@@ -101,12 +101,17 @@ class EntradasView(QWidget):
             self.vencimento = form.data()
             self.campo_vencimento = form.campo("Vencimento", self.vencimento)
             conta.addWidget(self.campo_vencimento)
+            self.parcelas = form.inteiro(1, minimo=1, maximo=MAXIMO_PARCELAS)
+            self.parcelas.setToolTip("Boletos da nota, um a cada 30 dias")
+            self.campo_parcelas = form.campo("Boletos", self.parcelas)
+            conta.addWidget(self.campo_parcelas)
             conta.addStretch(1)
             card.body.addLayout(conta)
         return card
 
     def _conta_mudou(self, marcado: bool) -> None:
         self.campo_vencimento.setVisible(marcado)
+        self.campo_parcelas.setVisible(marcado)
 
     def _linha_produto(self) -> Card:
         card = Card(padding=Space.lg)
@@ -138,6 +143,12 @@ class EntradasView(QWidget):
 
         self.custo = form.dinheiro(0.0)
         linha.addWidget(form.campo("Custo unitário", self.custo), 2)
+
+        # so preenche quem trabalha com validade: alimento, remedio, cosmetico
+        self.lote = form.texto("", "Opcional")
+        linha.addWidget(form.campo("Lote", self.lote), 1)
+        self.validade = form.data_opcional("")
+        linha.addWidget(form.campo("Validade", self.validade), 1)
 
         self.botao_adicionar = Button("Adicionar", "plus", "primary")
         self.botao_adicionar.clicked.connect(self._adicionar)
@@ -281,19 +292,24 @@ class EntradasView(QWidget):
             self._dizer("Informe uma quantidade maior que zero.", "danger")
             return
 
-        # o mesmo produto duas vezes na nota soma, em vez de virar duas linhas
+        # o mesmo produto duas vezes na nota soma, em vez de virar duas linhas;
+        # lote diferente e outra remessa, com outra validade
+        lote, validade = self.lote.text().strip(), self.validade.iso()
         for produto, item in self._linhas:
-            if produto.id == self._produto.id:
+            if produto.id == self._produto.id and (item.lote, item.validade) == (lote, validade):
                 item.quantidade += self.quantidade.value()
                 item.custo_unitario = self.custo.value()
                 break
         else:
             self._linhas.append((
                 self._produto,
-                ItemEntrada(self._produto.id, self.quantidade.value(), self.custo.value()),
+                ItemEntrada(self._produto.id, self.quantidade.value(), self.custo.value(),
+                            lote=lote, validade=validade),
             ))
 
         self._dizer(f"'{self._produto.nome}' adicionado a nota.", "success")
+        self.lote.clear()
+        self.validade.clear()
         self.bipe.clear()
         self._selecionar(None)
         self._preencher_tabela()
@@ -363,18 +379,25 @@ class EntradasView(QWidget):
         fornecedor = self.fornecedor.text().strip()
         if documento and self.contas.ja_lancado(documento):
             return f"  A nota {documento} já tinha conta no Financeiro - não lancei de novo."
+        parcelas = self.parcelas.value()
+        conta = APagar(
+            descricao=f"Compra {documento}".strip() if documento
+                      else f"Compra de mercadoria{f' - {fornecedor}' if fornecedor else ''}",
+            valor=total,
+            vencimento=form.iso_da_data(self.vencimento),
+            fornecedor=fornecedor,
+            categoria="Fornecedores",
+            documento=documento,
+        )
         try:
-            self.contas.lancar_pagamento(APagar(
-                descricao=f"Compra {documento}".strip() if documento
-                          else f"Compra de mercadoria{f' - {fornecedor}' if fornecedor else ''}",
-                valor=total,
-                vencimento=form.iso_da_data(self.vencimento),
-                fornecedor=fornecedor,
-                categoria="Fornecedores",
-                documento=documento,
-            ))
+            if parcelas > 1:
+                self.contas.lancar_pagamento_parcelado(conta, parcelas)
+            else:
+                self.contas.lancar_pagamento(conta)
         except Exception as erro:  # noqa: BLE001 - a compra ja entrou, nao se desfaz
             return f"  Não consegui lançar a conta a pagar ({erro}) - lance na mão."
+        if parcelas > 1:
+            return f"  {parcelas} boletos lançados no Financeiro, um a cada 30 dias."
         return "  A conta a pagar foi lançada no Financeiro."
 
     def apply_theme(self, palette) -> None:

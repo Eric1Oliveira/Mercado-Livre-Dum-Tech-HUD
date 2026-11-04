@@ -32,6 +32,8 @@ MENSAL = "mensal"
 SEMANAL = "semanal"
 QUINZENAL = "quinzenal"
 ANUAL = "anual"
+#: boleto de fornecedor: 30/60/90 dias contados, e nao o mesmo dia de cada mes
+CADA_30_DIAS = "30dias"
 
 FREQUENCIAS = ((MENSAL, "Todo mês"), (SEMANAL, "Toda semana"),
                (QUINZENAL, "A cada 15 dias"), (ANUAL, "Todo ano"))
@@ -161,6 +163,52 @@ class Transferencia:
             origem_nome=row["origem_nome"] if "origem_nome" in campos else "",
             destino_nome=row["destino_nome"] if "destino_nome" in campos else "",
         )
+
+
+@dataclass
+class LinhaDre:
+    categoria: str
+    valor: float
+
+
+@dataclass
+class Dre:
+    """O resultado do periodo: quanto entrou, quanto saiu e o que sobrou.
+
+    Regime de caixa, porque e nele que a loja pequena pensa: conta o dinheiro
+    que andou no periodo, pela baixa, e nao a data da venda.
+    """
+
+    inicio: str
+    fim: str
+    receitas: list[LinhaDre] = field(default_factory=list)
+    fixas: list[LinhaDre] = field(default_factory=list)
+    variaveis: list[LinhaDre] = field(default_factory=list)
+
+    @staticmethod
+    def _soma(linhas: list[LinhaDre]) -> float:
+        return round(sum(linha.valor for linha in linhas), 2)
+
+    @property
+    def total_receitas(self) -> float:
+        return self._soma(self.receitas)
+
+    @property
+    def total_fixas(self) -> float:
+        return self._soma(self.fixas)
+
+    @property
+    def total_variaveis(self) -> float:
+        return self._soma(self.variaveis)
+
+    @property
+    def resultado(self) -> float:
+        return round(self.total_receitas - self.total_fixas - self.total_variaveis, 2)
+
+    @property
+    def margem(self) -> float:
+        """Quanto sobra de cada real que entra, em porcentagem."""
+        return round(self.resultado / self.total_receitas * 100, 1) if self.total_receitas else 0.0
 
 
 @dataclass

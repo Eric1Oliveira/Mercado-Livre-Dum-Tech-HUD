@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from PySide6.QtWidgets import QCheckBox, QComboBox, QFileDialog, QHBoxLayout, QMessageBox, QWidget
 
+from ....core import exportar
 from ....core.contacts import Contato, ContactsStore
 from ....ui import format as fmt
 from ....ui.widgets.buttons import Button
@@ -24,9 +23,12 @@ class ClientesView(CrudView):
     larguras = {1: 165, 2: 145, 4: 140, 5: 120, 6: 110}
 
     def __init__(self, store: ContactsStore, parent: QWidget | None = None,
-                 mensageiro=None) -> None:
+                 mensageiro=None, consultas=None, contas=None) -> None:
         self.store = store
         self.mensageiro = mensageiro
+        #: o que os outros modulos sabem sobre o cliente, para a ficha
+        self.consultas = list(consultas or [])
+        self.contas = contas
         super().__init__(parent)
         self.tabela.doubleClicked.disconnect()
         self.tabela.doubleClicked.connect(self.abrir_ficha)
@@ -124,7 +126,8 @@ class ClientesView(CrudView):
         contato = self.registro_selecionado()
         if contato is None:
             return
-        ficha = FichaDialog(self.store, contato, self)
+        ficha = FichaDialog(self.store, contato, self, consultas=self.consultas,
+                            contas=self.contas)
         ficha.exec()
         if ficha.houve_mudanca:
             self.data_changed.emit()
@@ -159,8 +162,7 @@ class ClientesView(CrudView):
         )
         if not caminho:
             return
-        # BOM: e o que faz o Excel abrir com os acentos certos
-        Path(caminho).write_text(self.store.exportar_csv(), encoding="utf-8-sig")
+        exportar.gravar(caminho, self.store.exportar_csv())
         QMessageBox.information(self, "Exportado", f"Arquivo salvo em:\n{caminho}")
 
     # ------------------------------------------------------------------ ganchos

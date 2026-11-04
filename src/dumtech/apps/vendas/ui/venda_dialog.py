@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from PySide6.QtWidgets import QComboBox, QWidget
 
-from ....core.contas import MAXIMO_PARCELAS
+from ....core.contas import MAXIMO_PARCELAS, vencimento_padrao
 from ....core.pagamentos import PARCELADO, formas_do_balcao
 from ....core.recorrencia import Recorrencia
 from ....ui import format as fmt
@@ -23,7 +23,7 @@ from ..repository import VendasRepository, pagamento_unico
 from .pagamento_dialog import nota_parcelas
 
 #: campos que o item carrega mas o editor nao mostra (ligacao com o Estoque)
-EXTRAS = ("produto_id", "codigo", "unidade", "casas")
+EXTRAS = ("produto_id", "codigo", "unidade", "casas", "custo_unitario")
 
 
 class VendaDialog(FormDialog):
@@ -44,6 +44,8 @@ class VendaDialog(FormDialog):
         self.parcelavel = contas is not None and not self.editando
         #: o Financeiro so ouve falar da venda nova ou da que mudou de situacao
         self._status_antes = self.venda.status if self.editando else None
+        #: venda paga ja virou dinheiro e estoque: daqui so se corrige o cadastro
+        self.so_dados = self.editando and self.venda.status != PENDENTE
         #: o que a tela mostra depois de fechar ("" = nada a dizer)
         self.recado = ""
         self.contratos = recorrencias.repositorio(repository.db)
@@ -61,6 +63,14 @@ class VendaDialog(FormDialog):
         self.cliente = form.sugestao(self.venda.cliente, "Cliente (opcional)", clientes or [])
         self.add_row("Cliente", self.cliente)
 
+        self.vendedor = form.escolha(
+            [("Sem vendedor", "")]
+            + [(v.nome, v.nome) for v in repository.vendedores(incluir_inativos=True)],
+            self.venda.vendedor,
+        )
+        self.add_row("Vendedor", self.vendedor)
+        self.form.setRowVisible(self.vendedor, self.vendedor.count() > 1)
+
         self.forma = QComboBox()
         self.forma.setEditable(True)
         self.forma.addItems(formas_do_balcao(parcelavel=self.parcelavel))
@@ -74,7 +84,11 @@ class VendaDialog(FormDialog):
              if chave in (CONCLUIDA, PENDENTE) or chave == self.venda.status],
             self.venda.status,
         )
+        self.status.currentIndexChanged.connect(self._forma_mudou)
         self.add_row("Pagamento", form.linha(self.forma, "Situação", self.status))
+
+        self.vencimento = form.data(self.venda.vencimento or vencimento_padrao())
+        self.add_row("Vencimento", self.vencimento)
 
         self.parcelas = form.inteiro(PARCELAS_PADRAO, minimo=2, maximo=MAXIMO_PARCELAS)
         self.parcelas.valueChanged.connect(self._atualizar_total)
@@ -116,7 +130,16 @@ class VendaDialog(FormDialog):
 
         self.add_note("")
         self._nota_total = self.extras.itemAt(0).widget()
-        self._atualizar_total()
+        if self.so_dados:
+            for campo in (self.numero, self.data, self.forma, self.status,
+                          self.itens, self.desconto):
+                campo.setEnabled(False)
+            self.add_note(
+                "Venda paga: o dinheiro e o estoque já andaram, então aqui só mudam "
+                "o cliente e as observações. Para corrigir itens ou valores, use a "
+                "Devolução ou cancele e lance de novo."
+            )
+        self._forma_mudou()
         self.cliente.setFocus()
 
     def _em_parcelado(self) -> bool:
@@ -132,7 +155,13 @@ class VendaDialog(FormDialog):
             self.status.setCurrentIndex(self.status.findData(CONCLUIDA))
             self.repeticao.marcar.setChecked(False)
         self.form.setRowVisible(self.repeticao, not (parcelado or self.editando))
+        self.form.setRowVisible(self.vencimento, self._vira_conta())
         self._atualizar_total()
+
+    def _vira_conta(self) -> bool:
+        return not self.so_dados and (
+            self._em_parcelado() or self.status.currentData() == PENDENTE
+        )
 
     def _atualizar_total(self) -> None:
         subtotal = self.itens.total
@@ -165,21 +194,31 @@ class VendaDialog(FormDialog):
         return contrato
 
     def salvar(self) -> None:
+        if self.so_dados:
+            self.venda = self.repository.corrigir_dados(
+                self.venda.id, self.cliente.text(), self.observacoes.toPlainText()
+            )
+            self.recado = financeiro.ajustar(self.contas, self.venda).strip()
+            return
+
         parcelas = self.parcelas.value() if self._em_parcelado() else 0
         self.venda.numero = self.numero.text()
         self.venda.cliente = self.cliente.text()
+        self.venda.vendedor = self.vendedor.currentData() or ""
         self.venda.data = form.iso_da_data(self.data)
         self.venda.forma_pagamento = PARCELADO if parcelas else self.forma.currentText()
         self.venda.status = self.status.currentData()
         self.venda.desconto = self.desconto.value()
         self.venda.observacoes = self.observacoes.toPlainText()
+        self.venda.vencimento = form.iso_da_data(self.vencimento) if self._vira_conta() else ""
         self.venda.itens = [
             ItemVenda(
                 descricao=item["descricao"],
                 quantidade=item["quantidade"],
                 valor_unitario=item["valor_unitario"],
                 **{campo: item.get(campo) or padrao for campo, padrao in
-                   (("produto_id", 0), ("codigo", ""), ("unidade", "UN"), ("casas", 0))},
+                   (("produto_id", 0), ("codigo", ""), ("unidade", "UN"), ("casas", 0),
+                    ("custo_unitario", 0.0))},
             )
             for item in self.itens.items()
         ]
@@ -191,13 +230,16 @@ class VendaDialog(FormDialog):
         )
         contrato = self._contrato()
         # paga agora: baixa o estoque ja; pendente baixa quando o cliente pagar
-        self.venda = self.repository.lancar(self.venda)
+        self.venda = (self.repository.alterar_pendente(self.venda) if self.editando
+                      else self.repository.lancar(self.venda))
         recado = ""
         if contrato is not None:
             self.contratos.salvar(contrato)
             recado = f"  Repete {contrato.frequencia_label.lower()} ({contrato.numero})."
         if self.venda.status != self._status_antes:
             recado += financeiro.registrar(self.contas, self.venda)
+        elif self.editando:
+            recado += financeiro.ajustar(self.contas, self.venda)
         if self.venda.avisos:
             recado += f"  Confira o estoque: {'; '.join(self.venda.avisos)}"
         self.recado = recado.strip()

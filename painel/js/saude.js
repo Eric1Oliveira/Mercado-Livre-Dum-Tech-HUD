@@ -109,19 +109,22 @@ export function estadoDeUso({ ultimoUso = null, ativadoEm = null } = {}, hoje = 
 // ================================================================== Hub ====
 /** Quando o Hub deste computador falou com o servidor pela última vez. */
 export function vistoEm(ativacao) {
-  const tempos = [ativacao?.ultima_checagem, ativacao?.versao_em]
+  const tempos = [ativacao?.ultima_checagem, ativacao?.versao_em, ativacao?.visto_em]
     .filter(Boolean)
     .map((t) => new Date(t).getTime())
     .filter(Number.isFinite);
   return tempos.length ? new Date(Math.max(...tempos)) : null;
 }
 
-// O Hub pergunta a versão a cada 2 minutos, mas o banco só anota de hora em
-// hora (migration 20260917140000): "aberto" é ter falado na última hora e pouco.
+// O Hub pergunta a versão a cada 2 minutos e `hub_presenca` anota cada batida:
+// online é ter batido há pouco, tolerando uma batida perdida. Sem a batida,
+// vale o registro antigo, que o banco só atualiza de hora em hora.
+export const ONLINE_MS = 5 * 60000;
 export const ABERTO_MS = 75 * 60000;
 export function hubAberto(ativacao, agora = new Date()) {
   const visto = vistoEm(ativacao);
-  return Boolean(visto && new Date(agora) - visto <= ABERTO_MS);
+  const prazo = ativacao?.visto_em ? ONLINE_MS : ABERTO_MS;
+  return Boolean(visto && new Date(agora) - visto <= prazo);
 }
 
 /** 1.4.10 > 1.4.9 (compara número a número, não texto). */

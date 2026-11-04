@@ -75,9 +75,9 @@ class InterfaceTestCase(unittest.TestCase):
         nomes = [e.manifest.short_name for e in self.hub.registry.available()]
         self.assertIn("Estoque", nomes)
         self.assertGreaterEqual(len(nomes), 7)
-        # Inicio, Licenca, Configuracoes, Sobre, o aplicativo aberto e as
-        # boas-vindas do primeiro acesso
-        self.assertEqual(self.hub.stack.count(), 6)
+        # Inicio, Licenca, Configuracoes, Sobre, o aplicativo aberto, as
+        # boas-vindas do primeiro acesso, o login e o assistente de conta
+        self.assertEqual(self.hub.stack.count(), 8)
 
     def test_todo_aplicativo_liberado_esta_no_trilho(self) -> None:
         liberados = {e.app_id for e in self.hub.registry.available()}
@@ -137,12 +137,13 @@ class InterfaceTestCase(unittest.TestCase):
         self.assertEqual(titulos[0], "Painel")
         self.assertEqual(len(titulos), self.hub.launcher.get("estoque").stack.count())
 
-    def test_estoque_monta_as_cinco_telas(self) -> None:
+    def test_estoque_monta_as_telas(self) -> None:
         self.hub.open_app("estoque")
         casca = self.hub.launcher.get("estoque")
         self.assertEqual(
             [v.title for v in casca.views],
-            ["Painel", "Produtos", "Entradas", "Movimentações", "Contagem"],
+            ["Painel", "Produtos", "Entradas", "Movimentações", "Contagem", "Compras",
+             "Fornecedores"],
         )
 
     def test_estoque_movimenta_pela_lista_de_produtos(self) -> None:
@@ -289,7 +290,8 @@ class BalcaoTestCase(unittest.TestCase):
 
     def test_vendas_comeca_pelo_balcao(self) -> None:
         self.assertEqual(
-            [v.title for v in self.casca.views], ["Balcão", "Painel", "Vendas", "Caixa"]
+            [v.title for v in self.casca.views],
+            ["Balcão", "Painel", "Vendas", "Caixa", "Resultado"],
         )
 
     def test_item_avulso_entra_na_venda(self) -> None:
@@ -339,6 +341,27 @@ class BalcaoTestCase(unittest.TestCase):
     def test_receber_sem_item_avisa_em_vez_de_abrir_o_pagamento(self) -> None:
         self.balcao.receber()
         self.assertIn("Adicione um item", self.balcao.aviso.text())
+
+    def test_receber_abre_o_pagamento_de_verdade_e_guarda_o_vendedor(self) -> None:
+        """Os outros testes trocam o dialogo por um falso, e foi assim que um
+        argumento que ele nao aceita chegou ao cliente e travou o Receber."""
+        from unittest import mock
+
+        from dumtech.apps.vendas.repository import pagamento_unico
+        from dumtech.apps.vendas.ui.pagamento_dialog import PagamentoDialog
+
+        def pagar(dialogo) -> int:
+            dialogo.pagamentos = [pagamento_unico("Dinheiro", 50.0)]
+            return 1
+
+        self.balcao.vendedor.addItem("Bia", "Bia")
+        self.balcao.vendedor.setCurrentIndex(1)
+        self._bipar("Item", 1, 50.0)
+        with mock.patch.object(PagamentoDialog, "exec", pagar):
+            self.balcao.receber()
+        vendas = self.casca.repository.listar()
+        self.assertEqual(len(vendas), 1, self.balcao.aviso.text())
+        self.assertEqual(vendas[0].vendedor, "Bia")
 
     def test_descartar_a_venda_nao_grava_nada(self) -> None:
         self._bipar("Item", 1, 50.0)
@@ -431,7 +454,7 @@ class FluxoDeCaixaTestCase(unittest.TestCase):
     def test_financeiro_comeca_pelo_fluxo(self) -> None:
         self.assertEqual(
             [v.title for v in self.casca.views],
-            ["Fluxo de caixa", "Visão geral", "Lançamentos", "Contas bancárias"],
+            ["Fluxo de caixa", "Visão geral", "Lançamentos", "Resultado", "Contas bancárias"],
         )
 
     def test_sem_conta_a_tela_ensina_o_proximo_passo(self) -> None:
@@ -722,7 +745,7 @@ class OficinaTestCase(unittest.TestCase):
         lista.refresh()
         self.assertEqual(lista.tabela.rowCount(), 1)
         limite = (date.today() + timedelta(days=90)).strftime("%d/%m/%Y")
-        self.assertIn(f"garantia até {limite}", lista.tabela.item(0, 5).text())
+        self.assertIn(f"garantia até {limite}", lista.tabela.item(0, 6).text())
 
     def test_o_filtro_padrao_mostra_o_que_esta_na_oficina(self) -> None:
         na_oficina = self._ordem()

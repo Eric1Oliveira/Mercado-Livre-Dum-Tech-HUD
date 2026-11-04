@@ -11,28 +11,85 @@
 //     sem perder a rolagem nem o que está sendo digitado.
 
 import {
-  aoMudarDados, aoPerderSessao, confirmarCodigo, conferirTudo, entrar, invalidar, sair, sessao,
-  sessaoCompleta, token, um,
+  aoMudarDados, aoPerderSessao, confirmarCodigo, conferirTudo, entrar, invalidar, ler, sair, sessao,
+  sessaoCompleta, token,
 } from "./api.js";
 import { CONFIG } from "./config.js";
+import { montarFila, urgentes } from "./fila.js";
+import { lerPresenca } from "./gestao-dados.js";
+import { versaoPendente } from "./gestao.js";
 import { ouvir } from "./tempo-real.js";
-import { carregando, limpar, recado } from "./ui.js";
+import { carregando, el, limpar, recado } from "./ui.js";
 
 const $ = (id) => document.getElementById(id);
 
-const TELAS = {
-  resumo:    () => import("./telas/comercial.js").then((m) => m.resumo),
-  clientes:  () => import("./telas/comercial.js").then((m) => m.clientes),
-  pedidos:   () => import("./telas/comercial.js").then((m) => m.pedidos),
-  catalogo:  () => import("./telas/catalogo.js").then((m) => m.catalogo),
-  kits:      () => import("./telas/kits.js").then((m) => m.kits),
-  cupons:    () => import("./telas/cupons.js").then((m) => m.cupons),
-  anuncios:  () => import("./telas/catalogo.js").then((m) => m.anuncios),
-  uso:       () => import("./telas/uso.js").then((m) => m.uso),
-  testes:    () => import("./telas/testes.js").then((m) => m.testes),
-  celulares: () => import("./telas/celulares.js").then((m) => m.celulares),
-  seguranca: () => import("./telas/uso.js").then((m) => m.seguranca),
+// Seis lugares, cada um com um trabalho:
+//   hoje       o que precisa de você agora, com o botão que resolve
+//   clientes   todo mundo, e a ficha de cada um
+//   planos     preços, planos prontos, links e cupons
+//   site       textos do site e a faixa de aviso
+//   hub        versões do programa, uso e anúncios
+//   seguranca  tentativas, auditoria e contas de acesso
+// Planos, Site, Hub e Segurança têm abas; "tela:aba" abre direto numa delas.
+// Pedidos (o checkout antigo da loja) fica fora do menu: Hoje leva até lá.
+const tela = (arquivo, funcao) => () => import(arquivo).then((m) => m[funcao]);
+
+const ABAS = {
+  planos: [
+    { id: "precos", texto: "Planos e preços", tela: tela("./telas/planos.js", "planos") },
+    { id: "cupons", texto: "Cupons", tela: tela("./telas/promocoes.js", "cupons") },
+  ],
+  site: [
+    { id: "textos", texto: "Textos do site", tela: tela("./telas/textos-site.js", "textosSite") },
+    { id: "faixa", texto: "Faixa de aviso", tela: tela("./telas/promocoes.js", "faixas") },
+  ],
+  hub: [
+    { id: "atualizacoes", texto: "Atualizações", tela: tela("./telas/atualizacoes.js", "atualizacoes") },
+    { id: "uso", texto: "Uso", tela: tela("./telas/uso.js", "uso") },
+    { id: "anuncios", texto: "Anúncios", tela: tela("./telas/catalogo.js", "anuncios") },
+  ],
+  seguranca: [
+    { id: "tentativas", texto: "Tentativas e auditoria", tela: tela("./telas/uso.js", "seguranca") },
+    { id: "acessos", texto: "Contas de acesso", tela: tela("./telas/acessos.js", "acessos") },
+  ],
 };
+
+const TELAS = {
+  hoje: tela("./telas/hoje.js", "hoje"),
+  clientes: tela("./telas/clientes.js", "clientes"),
+  pedidos: tela("./telas/comercial.js", "pedidos"),
+  ...Object.fromEntries(Object.keys(ABAS).map((nome) => [nome, async () => comAbas(nome)])),
+};
+
+// --------------------------------------------------------------- abas -----
+const CHAVE_ABAS = "dumtech.painel.abas";
+const abaEscolhida = (() => {
+  try { return JSON.parse(localStorage.getItem(CHAVE_ABAS) || "{}"); } catch { return {}; }
+})();
+
+function lembrarAba(nome, aba) {
+  if (!ABAS[nome]?.some((a) => a.id === aba)) return;
+  abaEscolhida[nome] = aba;
+  try { localStorage.setItem(CHAVE_ABAS, JSON.stringify(abaEscolhida)); } catch { /* vale até recarregar */ }
+}
+
+/** Desenha a barra de abas e, embaixo, a aba escolhida (cada aba é uma tela de sempre). */
+function comAbas(nome) {
+  return async (alvo) => {
+    const abas = ABAS[nome];
+    const atual = abas.find((a) => a.id === abaEscolhida[nome]) || abas[0];
+    const corpo = document.createElement("div");
+    await (await atual.tela())(corpo);
+    alvo.append(
+      el("nav", { classe: "abas", "aria-label": "Abas" }, abas.map((aba) => el("button", {
+        type: "button", classe: "aba", "aria-current": aba === atual ? "page" : null, texto: aba.texto,
+        onclick: () => { if (aba !== atual) irPara(`${nome}:${aba.id}`); },
+        onpointerenter: () => aba.tela().catch(() => {}),
+      }))),
+      corpo,
+    );
+  };
+}
 
 // ================================================================== entrar ===
 $("form-entrar").addEventListener("submit", async (evento) => {
@@ -175,7 +232,7 @@ function abrirPainel() {
   $("entrada").hidden = true;
   $("painel").hidden = false;
   $("usuario-email").textContent = atual?.email || "";
-  irPara(lembrarTela() || "resumo").then(aquecer);
+  irPara(lembrarTela() || "hoje").then(aquecer);
   ligarTempoReal();
 }
 
@@ -196,7 +253,15 @@ for (const botao of document.querySelectorAll("#navegacao button")) {
                          { once: true });
 }
 
-const telaAtual = () => document.querySelector("#navegacao button.ativo")?.dataset.tela || "resumo";
+const telaAtual = () => document.querySelector("#navegacao button.ativo")?.dataset.tela || "hoje";
+
+// Telas que mudaram de casa: um favorito ou a memória do navegador não caem no vazio.
+const MUDOU = {
+  resumo: "hoje", mensalidades: "clientes", testes: "clientes", celulares: "clientes",
+  planos: "planos", promocoes: "planos:cupons", cupons: "planos:cupons", textos: "site:textos",
+  atualizacoes: "hub:atualizacoes", uso: "hub:uso", anuncios: "hub:anuncios", catalogo: "hub:anuncios",
+  kits: "planos", acessos: "seguranca:acessos",
+};
 
 // Quem clica em duas abas seguidas — ou clica numa enquanto a primeira ainda
 // carrega — não pode acabar com as duas telas desenhadas uma embaixo da outra.
@@ -208,13 +273,19 @@ let pedidoAtual = 0;
  * isso leva milissegundos; sem eles, o "Carregando" aparece se passar de 150 ms.
  * `silencioso`: redesenho da mesma tela (não sobe a rolagem, não mostra aviso).
  */
-export async function irPara(nome, { silencioso = false } = {}) {
+export async function irPara(pedido, { silencioso = false } = {}) {
   const meu = ++pedidoAtual;
-  const tela = TELAS[nome] ? nome : "resumo";
+  const [nome, aba] = String(MUDOU[pedido] || pedido || "").split(":");
+  if (aba) lembrarAba(nome, aba);
+  const tela = TELAS[nome] ? nome : "hoje";
   const area = $("tela");
 
+  // Pedidos não está no menu: o botão aceso continua o de Hoje, de onde se chega lá
+  const doMenu = tela === "pedidos" ? "hoje" : tela;
   for (const botao of document.querySelectorAll("#navegacao button")) {
-    botao.classList.toggle("ativo", botao.dataset.tela === tela);
+    botao.classList.toggle("ativo", botao.dataset.tela === doMenu);
+    if (botao.dataset.tela === doMenu) botao.setAttribute("aria-current", "page");
+    else botao.removeAttribute("aria-current");
   }
   lembrarTela(tela);
 
@@ -223,6 +294,7 @@ export async function irPara(nome, { silencioso = false } = {}) {
   }, 150);
 
   const folha = document.createElement("div");
+  folha.dataset.tela = tela;
   try {
     const desenhar = await TELAS[tela]();
     await desenhar(folha);
@@ -255,9 +327,11 @@ function trocar(area, folha, { manterRolagem }) {
  * A tela chama quando mexeu em algo. Redesenha na hora com o que a memória já
  * sabe (inclusive o que acabou de ser salvo) e confere com o banco por trás.
  */
+const telaNaPagina = () => $("tela").firstElementChild?.dataset.tela || telaAtual();
+
 export async function recarregar() {
   invalidar();
-  await irPara(telaAtual(), { silencioso: true });
+  await irPara(telaNaPagina(), { silencioso: true });
   conferirTudo().catch(() => {});
 }
 
@@ -273,12 +347,12 @@ aoMudarDados.add(() => {
       redesenhoPendente = true;
       foco.addEventListener("blur", () => {
         redesenhoPendente = false;
-        irPara(telaAtual(), { silencioso: true });
+        irPara(telaNaPagina(), { silencioso: true });
       }, { once: true });
     }
     return;
   }
-  irPara(telaAtual(), { silencioso: true });
+  irPara(telaNaPagina(), { silencioso: true });
 });
 
 /** Prepara as outras abas em segundo plano (código e dados), uma de cada vez. */
@@ -287,8 +361,7 @@ async function aquecer() {
     ? new Promise((pronto) => requestIdleCallback(() => pronto(fn()), { timeout: 1500 }))
     : new Promise((pronto) => setTimeout(() => pronto(fn()), 200)));
 
-  for (const nome of ["pedidos", "clientes", "catalogo", "kits", "cupons", "resumo", "anuncios", "uso",
-                      "testes", "celulares", "seguranca"]) {
+  for (const nome of ["hoje", "clientes", "planos", "hub", "site", "seguranca"]) {
     if ($("painel").hidden) return; // saiu no meio
     if (nome === telaAtual()) continue;
     await ocioso(async () => {
@@ -304,7 +377,7 @@ async function aquecer() {
 
 // ============================================================= tempo real ====
 let canal = null;
-let pedidosAntes = null;
+let filaAntes = null;
 
 function ligarTempoReal() {
   desligarTempoReal();
@@ -314,7 +387,7 @@ function ligarTempoReal() {
   // conferência — sem setTimeout, que o navegador segura em aba de fundo.
   let conferindo = false;
   let deNovo = false;
-  let pedidosTambem = false;
+  let filaTambem = false;
   const conferirAgora = async () => {
     if (conferindo) {
       deNovo = true;
@@ -324,10 +397,10 @@ function ligarTempoReal() {
     try {
       do {
         deNovo = false;
-        const comPedidos = pedidosTambem;
-        pedidosTambem = false;
+        const comFila = filaTambem;
+        filaTambem = false;
         invalidar();
-        await Promise.all([conferirTudo(), comPedidos ? conferirPedidos() : null]);
+        await Promise.all([conferirTudo(), comFila ? conferirHoje() : null]);
       } while (deNovo);
     } catch {
       /* a próxima mudança (ou a volta para a aba) confere de novo */
@@ -349,29 +422,51 @@ function ligarTempoReal() {
         : "Reconectando… os dados continuam sendo conferidos ao voltar para a aba";
     },
     aoMudar: ({ tabela }) => {
-      if (!tabela || tabela === "pedidos_site") pedidosTambem = true;
+      if (!tabela || ["pedidos_site", "licencas", "clientes", "assinatura_pedidos"].includes(tabela)) filaTambem = true;
+      if (tabela === "hub_lancamentos" || tabela === "hub_versoes") conferirPendente();
       conferirAgora();
     },
   });
-  conferirPedidos();
+  conferirHoje();
+  conferirPendente();
 }
 
 function desligarTempoReal() {
   canal?.parar();
   canal = null;
-  pedidosAntes = null;
+  filaAntes = null;
 }
 
-/** O selo de pedidos fica certo em qualquer aba — e avisa quando chega um. */
-async function conferirPedidos() {
+/**
+ * O selo de Hoje fica certo em qualquer aba (assinatura para confirmar,
+ * pagamento pendente, pedido antigo) e avisa quando chega algo novo.
+ */
+async function conferirHoje() {
   try {
-    const resumo = await um("painel_resumo", { select: "pedidos_abertos", fresco: true });
-    const quantos = Number(resumo?.pedidos_abertos || 0);
-    if (pedidosAntes !== null && quantos > pedidosAntes) {
-      recado(quantos - pedidosAntes === 1 ? "Chegou um pedido novo." : "Chegaram pedidos novos.", "ok");
+    const [pedidos, mensalidades, pedidosLoja] = await Promise.all([
+      ler("painel_assinatura_pedidos", { filtros: { situacao: "eq.aguardando" }, ordem: "criado_em.desc", fresco: true })
+        .catch(() => []),
+      ler("painel_mensalidades", { ordem: "criado_em.desc", fresco: true }).catch(() => []),
+      ler("pedidos_abertos", { fresco: true }).catch(() => []),
+    ]);
+    const quantos = urgentes(montarFila({ pedidos, mensalidades, pedidosLoja }));
+    if (filaAntes !== null && pedidos.length > filaAntes) {
+      recado(pedidos.length - filaAntes === 1 ? "Chegou um pedido de assinatura para confirmar." : "Chegaram pedidos de assinatura.", "ok");
     }
-    pedidosAntes = quantos;
-    marcarPedidos(quantos);
+    filaAntes = pedidos.length;
+    marcarHoje(quantos);
+  } catch {
+    /* o selo espera a próxima */
+  }
+}
+
+/** O selo de Atualizações: há versão esperando a sua decisão. */
+async function conferirPendente() {
+  try {
+    const [lancamentos, versoes] = await Promise.all([
+      ler("hub_lancamentos", { ordem: "criado_em.desc" }), ler("hub_versoes", { limite: 1 }),
+    ]);
+    $("selo-hub").hidden = !versaoPendente(lancamentos, String(versoes?.[0]?.versao || ""));
   } catch {
     /* o selo espera a próxima */
   }
@@ -381,8 +476,18 @@ async function conferirPedidos() {
 document.addEventListener("visibilitychange", () => {
   if (document.hidden || $("painel").hidden) return;
   conferirTudo().catch(() => {});
-  conferirPedidos();
+  conferirHoje();
+  conferirPendente();
 });
+
+// Quem está online muda sem passar pelo tempo real: cada Hub bate de 2 em 2
+// minutos, e avisar cada batida redesenharia o painel à toa. A leitura confere
+// em segundo plano e só redesenha se algo mudou (aoMudarDados).
+const TELAS_COM_PRESENCA = new Set(["hoje", "clientes", "hub"]);
+setInterval(() => {
+  if (document.hidden || $("painel").hidden || !TELAS_COM_PRESENCA.has(telaAtual())) return;
+  lerPresenca().catch(() => {});
+}, 60_000);
 
 // ================================================================= gaveta ====
 const gaveta = $("gaveta");
@@ -427,9 +532,9 @@ export function fecharGaveta() {
   document.body.style.overflow = "";
 }
 
-/** O selo vermelho de pedidos esperando. */
-export function marcarPedidos(quantos) {
-  const selo = $("selo-pedidos");
+/** O selo vermelho de Hoje: o que não pode esperar. */
+export function marcarHoje(quantos) {
+  const selo = $("selo-hoje");
   selo.textContent = quantos > 9 ? "9+" : String(quantos || "");
   selo.hidden = !quantos;
 }

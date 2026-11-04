@@ -33,6 +33,11 @@ Options -Indexes
   # 4) o link de agendamento de cada empresa: /agendar/<endereco> abre a
   #    mesma pagina, que le o endereco e pergunta ao servidor (js/agendar.js)
   RewriteRule ^agendar/[a-z0-9-]+/?$ agendar/index.html [L]
+
+  # 5) desde a mensalidade (03/11/2026) nao ha mais kit vitalicio a venda: o
+  #    link antigo de kit (/kit/comercio/...), que pode estar em anuncio, leva
+  #    ao plano na pagina inicial em vez de dar erro
+  RewriteRule ^kit(/.*)?$ /#plano [NE,L,R=302]
 </IfModule>
 
 # ---------------------------------------------------------------- tipos -----

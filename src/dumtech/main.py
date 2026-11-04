@@ -6,8 +6,10 @@ import logging
 import sys
 from logging.handlers import RotatingFileHandler
 
-from PySide6.QtCore import QLibraryInfo, QLocale, QTranslator
-from PySide6.QtWidgets import QApplication
+from pathlib import Path
+
+from PySide6.QtCore import QLibraryInfo, QLocale, QLockFile, QTranslator
+from PySide6.QtWidgets import QApplication, QMessageBox
 
 from . import __version__
 from .core.config import Settings
@@ -70,6 +72,20 @@ def _windows_taskbar_identity() -> None:
         pass
 
 
+def travar_instancia(pasta: Path, espera_ms: int = 3000) -> QLockFile | None:
+    """Garante um Hub so por usuario; None quando outro ja esta aberto.
+
+    Dois Hubs sobre os mesmos bancos gravam por cima um do outro: o caixa de um
+    nao ve o do outro, e restaurar um backup com o segundo aberto trava no meio.
+    A espera cobre a atualizacao, em que o Hub velho ainda esta saindo quando o
+    novo abre. Quem cai sem soltar a trava nao bloqueia ninguem: o Qt confere
+    se o dono ainda existe.
+    """
+    trava = QLockFile(str(pasta / "hub.lock"))
+    trava.setStaleLockTime(0)
+    return trava if trava.tryLock(espera_ms) else None
+
+
 def run() -> int:
     setup_logging()
     logging.getLogger(__name__).info("Iniciando DumTech Hub %s", __version__)
@@ -82,6 +98,15 @@ def run() -> int:
     app.setApplicationName("DumTech Hub")
     app.setApplicationVersion(__version__)
     app.setOrganizationName("DumTech")
+
+    trava = travar_instancia(get_paths().root)
+    if trava is None:
+        QMessageBox.information(
+            None, "DumTech Hub",
+            "O DumTech Hub já está aberto neste computador. Procure a janela dele "
+            "na barra de tarefas.",
+        )
+        return 0
 
     settings = Settings()
     theme = ThemeManager(app, str(settings.get("hub", "theme", MODO_ESCURO)))

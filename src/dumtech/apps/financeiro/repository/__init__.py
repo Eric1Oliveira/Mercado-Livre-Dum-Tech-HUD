@@ -50,3 +50,7 @@ class FinanceiroRepository(LancamentosMixin, BaixasMixin, ContasMixin, FluxoMixi
 
     def __init__(self, database: Database) -> None:
         self.db = database
+        #: quem quer saber que o dinheiro andou (`contas.ligar_modulos`). So a
+        #: tela do Financeiro liga: a ponte fala pelo proprio modulo de origem
+        self.ao_baixar = None
+        self.ao_estornar = None

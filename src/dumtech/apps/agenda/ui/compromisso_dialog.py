@@ -17,6 +17,7 @@ from ..models import (
     TIPO_OPCOES,
     Compromisso,
 )
+from .. import financeiro
 from ..repository import AgendaRepository
 
 SEM_REPETICAO = ""
@@ -31,8 +32,13 @@ class CompromissoDialog(FormDialog):
         compromisso: Compromisso | None = None,
         clientes: list[str] | None = None,
         parent: QWidget | None = None,
+        contas=None,
     ) -> None:
         self.repository = repository
+        #: o Financeiro, para onde vai o sinal; None sem ele na licenca
+        self.contas = contas
+        #: o que a tela pode contar depois de fechar
+        self.recado = ""
         self.compromisso = compromisso or Compromisso()
         self.editando = compromisso is not None
         self.criados: list[Compromisso] = []
@@ -85,6 +91,14 @@ class CompromissoDialog(FormDialog):
 
         self.status = form.escolha(STATUS_OPCOES, self.compromisso.status)
         self.add_row("Situação", self.status)
+
+        self.profissional = form.sugestao(
+            self.compromisso.profissional, "Quem atende (opcional)",
+            repository.profissionais(),
+        )
+        self.profissional.textChanged.connect(self._conferir_conflito)
+        self.sinal = form.dinheiro(self.compromisso.sinal)
+        self.add_row("Profissional", form.linha(self.profissional, "Sinal", self.sinal))
 
         # repetir so no cadastro: mexer nisso depois seria refazer a serie
         if not self.editando:
@@ -147,6 +161,7 @@ class CompromissoDialog(FormDialog):
             duracao_min=self.duracao.currentData() or 60,
             status=self.status.currentData(),
             tipo=self.tipo.currentData(),
+            profissional=self.profissional.text().strip(),
         )
         return provisorio
 
@@ -191,6 +206,8 @@ class CompromissoDialog(FormDialog):
         self.compromisso.status = self.status.currentData()
         self.compromisso.tipo = self.tipo.currentData()
         self.compromisso.observacoes = self.observacoes.toPlainText()
+        self.compromisso.profissional = self.profissional.text()
+        self.compromisso.sinal = self.sinal.value()
 
         if self.em_serie:
             self.criados = self.repository.repetir(
@@ -198,4 +215,5 @@ class CompromissoDialog(FormDialog):
             )
             return None
         self.repository.salvar(self.compromisso)
+        self.recado = financeiro.lancar_sinal(self.contas, self.compromisso)
         return None

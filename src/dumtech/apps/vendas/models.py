@@ -34,8 +34,20 @@ FECHADO = "fechado"
 
 TIPO_SANGRIA = "sangria"
 TIPO_SUPRIMENTO = "suprimento"
+#: dinheiro em especie que entrou por fora da venda (OS, conta do Financeiro)
+TIPO_RECEBIMENTO = "recebimento"
 
-TIPO_LABEL = {TIPO_SANGRIA: "Sangria", TIPO_SUPRIMENTO: "Suprimento"}
+TIPO_LABEL = {
+    TIPO_SANGRIA: "Sangria",
+    TIPO_SUPRIMENTO: "Suprimento",
+    TIPO_RECEBIMENTO: "Recebimento",
+}
+
+#: a venda foi fechada pela baixa da conta no Financeiro
+QUITADA_NO_FINANCEIRO = "financeiro"
+
+#: forma do pagamento quando o Financeiro nao disse qual foi
+RECEBIDO_NO_FINANCEIRO = "Recebido no Financeiro"
 
 #: Diferenca de caixa que nao vale discussao (arredondamento de centavo).
 TOLERANCIA = 0.005
@@ -69,12 +81,21 @@ class ItemVenda:
     codigo: str = ""
     unidade: str = "UN"
     casas: int = 0
+    #: quanto deste item saiu do estoque de verdade: a baixa pode ser recusada
+    baixado: float = 0.0
+    #: custo de uma unidade no dia da venda (0 = nao se sabe)
+    custo_unitario: float = 0.0
     #: quanto deste item ja voltou (calculado na leitura, nao gravado)
     devolvido: float = 0.0
 
     @property
     def total(self) -> float:
         return round(self.quantidade * self.valor_unitario, 2)
+
+    @property
+    def fora_do_estoque(self) -> float:
+        """O que saiu da prateleira e ainda nao voltou."""
+        return max(self.baixado - self.devolvido, 0.0)
 
     @property
     def restante(self) -> float:
@@ -101,6 +122,9 @@ class ItemVenda:
             codigo=row["codigo"] or "",
             unidade=row["unidade"] or "UN",
             casas=int(row["casas"] or 0),
+            baixado=float(row["baixado"] or 0) if "baixado" in campos else 0.0,
+            custo_unitario=(float(row["custo_unitario"] or 0)
+                            if "custo_unitario" in campos else 0.0),
             devolvido=float(row["devolvido"] or 0) if "devolvido" in campos else 0.0,
         )
 
@@ -156,6 +180,12 @@ class Venda:
     motivo_cancelamento: str = ""
     #: numero do contrato recorrente que gerou esta venda ("" = venda comum)
     recorrencia: str = ""
+    #: quando vence a conta da venda a prazo, ou a 1a parcela ("" = dia da venda)
+    vencimento: str = ""
+    #: quem fechou a venda, quando nao foi o caixa
+    quitada_por: str = ""
+    #: quem vendeu ("" = ninguem em especial)
+    vendedor: str = ""
     itens: list[ItemVenda] = field(default_factory=list)
     pagamentos: list[Pagamento] = field(default_factory=list)
     #: valor ja devolvido desta venda (calculado na leitura)
@@ -188,6 +218,10 @@ class Venda:
     def parcelamento(self) -> Pagamento | None:
         """A linha parcelada do pagamento, se houver (so pode haver uma)."""
         return next((p for p in self.pagamentos if p.parcelado), None)
+
+    @property
+    def a_prazo(self) -> bool:
+        return any(p.forma.strip().lower() == "prazo" for p in self.pagamentos)
 
     @property
     def conta(self) -> bool:
@@ -224,6 +258,9 @@ class Venda:
             cancelada_em=row["cancelada_em"] or "",
             motivo_cancelamento=row["motivo_cancelamento"] or "",
             recorrencia=(row["recorrencia"] or "") if "recorrencia" in row.keys() else "",
+            vencimento=(row["vencimento"] or "") if "vencimento" in row.keys() else "",
+            quitada_por=(row["quitada_por"] or "") if "quitada_por" in row.keys() else "",
+            vendedor=(row["vendedor"] or "") if "vendedor" in row.keys() else "",
         )
 
 
@@ -252,6 +289,8 @@ class Devolucao:
     valor: float = 0.0
     caixa_id: int = 0
     criado_em: str = ""
+    #: quanto saiu da gaveta: venda paga no Pix devolve por fora dela
+    em_dinheiro: float = 0.0
     itens: list[ItemDevolucao] = field(default_factory=list)
     #: recados da volta ao estoque; so em memoria
     avisos: list[str] = field(default_factory=list)
@@ -268,6 +307,7 @@ class Devolucao:
             valor=float(row["valor"]),
             caixa_id=int(row["caixa_id"] or 0),
             criado_em=row["criado_em"],
+            em_dinheiro=float(row["em_dinheiro"] or 0) if "em_dinheiro" in campos else 0.0,
         )
 
 
@@ -279,6 +319,8 @@ class MovimentoCaixa:
     valor: float = 0.0
     motivo: str = ""
     criado_em: str = ""
+    #: de onde veio o recebimento (OS-2026-0001)
+    documento: str = ""
 
     @property
     def tipo_label(self) -> str:
@@ -286,8 +328,8 @@ class MovimentoCaixa:
 
     @property
     def sinal(self) -> float:
-        """Sangria tira da gaveta, suprimento coloca."""
-        return self.valor if self.tipo == TIPO_SUPRIMENTO else -self.valor
+        """So a sangria tira da gaveta."""
+        return -self.valor if self.tipo == TIPO_SANGRIA else self.valor
 
     @classmethod
     def from_row(cls, row: Row) -> "MovimentoCaixa":
@@ -298,6 +340,7 @@ class MovimentoCaixa:
             valor=float(row["valor"]),
             motivo=row["motivo"] or "",
             criado_em=row["criado_em"],
+            documento=(row["documento"] or "") if "documento" in row.keys() else "",
         )
 
 
@@ -336,8 +379,10 @@ class ConferenciaCaixa:
 
     caixa: Caixa | None = None
     abertura: float = 0.0
+    #: o que os clientes entregaram em especie; o troco sai na linha de baixo
     vendas_dinheiro: float = 0.0
     trocos: float = 0.0
+    recebimentos: float = 0.0
     suprimentos: float = 0.0
     sangrias: float = 0.0
     devolucoes_dinheiro: float = 0.0
@@ -353,11 +398,76 @@ class ConferenciaCaixa:
             self.abertura
             + self.vendas_dinheiro
             - self.trocos
+            + self.recebimentos
             + self.suprimentos
             - self.sangrias
             - self.devolucoes_dinheiro,
             2,
         )
+
+
+@dataclass
+class Vendedor:
+    id: int | None = None
+    nome: str = ""
+    #: percentual sobre o que ele vendeu
+    comissao: float = 0.0
+    ativo: bool = True
+
+    @classmethod
+    def from_row(cls, row: Row) -> "Vendedor":
+        return cls(id=row["id"], nome=row["nome"], comissao=float(row["comissao"] or 0),
+                   ativo=bool(row["ativo"]))
+
+
+@dataclass
+class LinhaResultado:
+    """Um produto, ou um vendedor, no resultado do periodo."""
+
+    nome: str
+    quantidade: float = 0.0
+    receita: float = 0.0
+    custo: float = 0.0
+    comissao: float = 0.0
+
+    @property
+    def lucro(self) -> float:
+        return round(self.receita - self.custo, 2)
+
+    @property
+    def margem(self) -> float:
+        return round(self.lucro / self.receita * 100, 1) if self.receita else 0.0
+
+
+@dataclass
+class ResultadoVendas:
+    """O lucro de verdade: o que entrou menos o que a mercadoria custou.
+
+    Item sem custo conhecido entra na receita e nao no custo, entao o lucro fica
+    maior do que o real. A tela conta quantos sao, em vez de esconder.
+    """
+
+    inicio: str
+    fim: str
+    vendas: int = 0
+    receita: float = 0.0
+    custo: float = 0.0
+    comissoes: float = 0.0
+    itens_sem_custo: int = 0
+    produtos: list[LinhaResultado] = field(default_factory=list)
+    vendedores: list[LinhaResultado] = field(default_factory=list)
+
+    @property
+    def lucro(self) -> float:
+        return round(self.receita - self.custo, 2)
+
+    @property
+    def margem(self) -> float:
+        return round(self.lucro / self.receita * 100, 1) if self.receita else 0.0
+
+    @property
+    def ticket_medio(self) -> float:
+        return round(self.receita / self.vendas, 2) if self.vendas else 0.0
 
 
 @dataclass

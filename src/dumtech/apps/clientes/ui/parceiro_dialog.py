@@ -33,8 +33,11 @@ class ParceiroDialog(FormDialog):
         self.email = form.texto(self.parceiro.email, "email@exemplo.com")
         self.add_row("Telefone", form.linha(self.telefone, "E-mail", self.email))
 
+        self.comissao = form.percentual(self.parceiro.comissao)
+        self.add_row("Comissão", self.comissao)
+
         self.observacoes = form.area(
-            self.parceiro.observacoes, "Ex.: comissão de 5% sobre a primeira compra"
+            self.parceiro.observacoes, "Ex.: paga no dia 5, por transferência"
         )
         self.add_row("Observações", self.observacoes)
 
@@ -54,6 +57,7 @@ class ParceiroDialog(FormDialog):
         self.parceiro.telefone = self.telefone.text()
         self.parceiro.email = self.email.text()
         self.parceiro.observacoes = self.observacoes.toPlainText()
+        self.parceiro.comissao = self.comissao.value()
         if self.editando:
             self.parceiro.ativo = self.ativo.isChecked()
             self.store.atualizar_parceiro(self.parceiro)

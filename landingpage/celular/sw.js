@@ -14,7 +14,7 @@
 // MUDOU CSS OU JS DO CELULAR? SOBE O NUMERO AQUI.
 // E o que faz o aparelho jogar fora a copia antiga: sem isto, quem ja abriu a
 // pagina continua vendo a tela velha na primeira vez que abre de novo.
-const VERSAO = "celular-v7";
+const VERSAO = "celular-v8";
 // O ?v= tambem esta no index.html e nos import: o HTML novo pede os arquivos
 // novos pelo nome, e uma copia velha guardada nunca se mistura com ele.
 const CASCA = [
@@ -24,12 +24,12 @@ const CASCA = [
   "./icone-192.png",
   "./icone-512.png",
   "./icone-180.png",
-  "../css/celular.css?v=7",
+  "../css/celular.css?v=8",
   "../js/tema.js",
   "../js/sem-zoom.js",
-  "../js/celular-tela.js?v=7",
-  "../js/celular-graficos.js?v=7",
-  "../js/celular.js?v=7",
+  "../js/celular-tela.js?v=8",
+  "../js/celular-graficos.js?v=8",
+  "../js/celular.js?v=8",
   "../js/config.js",
   "../js/dados.js",
 ];

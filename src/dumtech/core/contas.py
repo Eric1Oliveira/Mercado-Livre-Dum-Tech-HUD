@@ -14,10 +14,18 @@ o Financeiro: o Hub entrega `None` e a ponte simplesmente nao existe.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date, timedelta
 from typing import Protocol, runtime_checkable
 
 #: teto de seguranca: ninguem parcela em 500x sem querer
 MAXIMO_PARCELAS = 120
+
+#: quanto tempo a venda a prazo da quando ninguem diz outra coisa
+PRAZO_PADRAO_DIAS = 30
+
+
+def vencimento_padrao() -> str:
+    return (date.today() + timedelta(days=PRAZO_PADRAO_DIAS)).isoformat()
 
 
 @dataclass(frozen=True)
@@ -56,6 +64,73 @@ class APagar:
     documento: str = ""
 
 
+#: quanto dinheiro mudou de lugar no caixa, sem ser receita nem despesa da loja
+SANGRIA = "Sangria de caixa"
+SUPRIMENTO = "Suprimento de caixa"
+#: o DRE nao conta estas categorias: tirar da gaveta nao e gastar
+FORA_DO_RESULTADO = (SANGRIA, SUPRIMENTO)
+
+
+@dataclass(frozen=True)
+class MovimentoDeCaixa:
+    """O que aconteceu com o dinheiro da gaveta, dito ao Financeiro."""
+
+    #: "despesa", "retirada", "suprimento", "sobra" ou "quebra"
+    tipo: str
+    valor: float
+    descricao: str
+    data: str
+    documento: str = ""
+
+
+@dataclass(frozen=True)
+class Situacao:
+    """Como esta, no Financeiro, o dinheiro de um documento."""
+
+    #: o documento virou conta? Sem Financeiro, ou sem conta, fica False
+    lancado: bool = False
+    recebido: float = 0.0
+    em_aberto: float = 0.0
+    #: forma e data da ultima baixa
+    forma: str = ""
+    data: str = ""
+
+    @property
+    def quitado(self) -> bool:
+        return self.lancado and self.em_aberto <= 0.005
+
+
+@dataclass(frozen=True)
+class Divida:
+    """Quanto um cliente deve agora, somando tudo."""
+
+    em_aberto: float = 0.0
+    vencido: float = 0.0
+
+    @property
+    def deve(self) -> bool:
+        return self.em_aberto > 0.005
+
+
+@runtime_checkable
+class Origem(Protocol):
+    """O modulo que criou a conta, ouvindo o que aconteceu com ela no Financeiro.
+
+    O contrario de `Contas`: a venda a prazo vira conta la, mas e na lista de
+    contas que o dono costuma dar baixa. Sem esta volta, o Financeiro dizia
+    "Recebido" e o Vendas continuava "Pendente", com o estoque sem baixar.
+    """
+
+    def dona_de(self, documento: str) -> bool:
+        """Este documento nasceu aqui?"""
+
+    def conta_recebida(self, documento: str, forma: str = "", data: str = "") -> bool:
+        """A conta foi quitada no Financeiro. True se o documento fechou."""
+
+    def conta_reaberta(self, documento: str) -> bool:
+        """A baixa foi desfeita no Financeiro. True se o documento reabriu."""
+
+
 @runtime_checkable
 class Contas(Protocol):
     """O que um aplicativo pode pedir ao Financeiro da plataforma."""
@@ -79,6 +154,19 @@ class Contas(Protocol):
         `conta.valor` e o TOTAL e `conta.vencimento` e o da primeira parcela.
         """
 
+    def lancar_pagamento_parcelado(self, conta: APagar, parcelas: int) -> int:
+        """A compra em boletos: uma conta a pagar a cada 30 dias.
+
+        `conta.valor` e o TOTAL e `conta.vencimento` e o do primeiro boleto.
+        """
+
+    def movimento_de_caixa(self, movimento: MovimentoDeCaixa) -> bool:
+        """Leva ao Financeiro o que mudou na gaveta sem passar por venda.
+
+        `False` quando o documento ja foi lancado: fechar o mesmo caixa duas
+        vezes nao pode dobrar a quebra.
+        """
+
     def quitar(self, documento: str, forma: str = "") -> bool:
         """Da baixa na conta criada por este documento.
 
@@ -86,6 +174,23 @@ class Contas(Protocol):
         paga no balcao, e o Financeiro continuaria cobrando. `False` quando nao
         existe conta daquele documento - situacao normal, nao erro.
         """
+
+    def ajustar(
+        self, documento: str, valor: float | None = None, cliente: str | None = None,
+        vencimento: str = "",
+    ) -> bool:
+        """O documento mudou depois de virar conta: a conta acompanha.
+
+        Cliente vale para todas as contas do documento. Valor e vencimento, so
+        quando ele tem uma conta so e ela ainda nao foi quitada. `False` quando
+        nao ha conta - situacao normal, nao erro.
+        """
+
+    def situacao(self, documento: str) -> Situacao:
+        """Quanto deste documento ja entrou e quanto falta."""
+
+    def divida_de(self, cliente: str) -> Divida:
+        """O que este cliente deve, para o balcao saber antes de vender a prazo."""
 
     def cancelar(
         self, documento: str, motivo: str = "", manter_pagos: bool = False, quando: str = ""

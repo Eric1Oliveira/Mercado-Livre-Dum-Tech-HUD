@@ -16,6 +16,7 @@ from ..repository import VendasRepository
 from .balcao_view import BalcaoView
 from .caixa_view import CaixaView
 from .dashboard_view import DashboardView
+from .resultado_view import ResultadoView
 from .vendas_view import VendasView
 
 logger = logging.getLogger(__name__)
@@ -66,11 +67,16 @@ class VendasWindow(AppWindow):
                                          contas=self.context.contas)
         )
         self.caixa_view = self.add_view(
-            "Caixa", "money", CaixaView(self.repository, empresa=self.empresa)
+            "Caixa", "money", CaixaView(self.repository, empresa=self.empresa,
+                                        contas=self.context.contas)
+        )
+
+        self.resultado_view = self.add_view(
+            "Resultado", "chart", ResultadoView(self.repository)
         )
 
         self.vendas_view.botao_recorrentes.clicked.connect(self.abrir_recorrentes)
-        for tela in (self.balcao_view, self.vendas_view, self.caixa_view):
+        for tela in (self.balcao_view, self.vendas_view, self.caixa_view, self.resultado_view):
             tela.data_changed.connect(self.refresh_all)
 
     def dialogo_recorrentes(self) -> RecorrenciasDialog:

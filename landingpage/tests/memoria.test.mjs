@@ -135,3 +135,11 @@ test("catalogo vencido ou estragado e ignorado", () => {
     assert.equal(catalogoLembrado(armazemFalso({ [CHAVE_CATALOGO]: lixo })), null, lixo);
   }
 });
+
+test("lembra o tipo da licenca, e so os tres tipos de verdade", () => {
+  const armazem = armazemFalso();
+  lembrar(armazem, { nome: "Ana", email: "ana@x.com", produtos: ["VENDAS"], tipo: "vitalicia" });
+  assert.equal(lembrado(armazem).tipo, "vitalicia");
+  lembrar(armazem, { nome: "Ana", email: "ana@x.com", tipo: "gratis-para-sempre" });
+  assert.equal(lembrado(armazem).tipo, "");
+});

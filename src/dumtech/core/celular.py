@@ -270,6 +270,7 @@ class CelularError(Exception):
 #: o que o servidor responde -> o que o dono le
 ERROS = {
     "licenca_invalida": "Esta licença não está ativa neste computador. Confira em Licença.",
+    "so_adm": "Ver no celular é só para administradores. Confirme a sua senha e tente de novo.",
     "muitas_tentativas": "Muitas tentativas seguidas. Espere alguns minutos e tente de novo.",
     "resumo_invalido": "O resumo ficou grande demais para o celular.",
 }
@@ -281,10 +282,12 @@ class CelularService:
     Rede pura - chamar de `ui.tasks.executar`, nunca da thread da tela.
     """
 
-    def __init__(self, licenca, client: SupabaseClient | None = None) -> None:
+    def __init__(self, licenca, client: SupabaseClient | None = None, sessao=None) -> None:
         #: funcao que devolve a licenca atual (muda quando o cliente ativa)
         self._licenca = licenca
         self.client = client or SupabaseClient()
+        #: funcao que devolve a sessao de gestao: com contas, o celular e so do ADM
+        self._sessao = sessao
 
     def _credenciais(self) -> dict:
         atual = self._licenca()
@@ -305,16 +308,21 @@ class CelularService:
             raise CelularError(ERROS.get(erro, "Não foi possível falar com o servidor da DumTech."))
         return resposta
 
+    def _gestao(self) -> dict:
+        """Sem sessao nao manda o parametro: servidor antigo nao o conhece."""
+        sessao = self._sessao() if callable(self._sessao) else ""
+        return {"p_sessao": sessao} if sessao else {}
+
     def iniciar(self) -> dict:
         """Codigo novo para o QR: {"codigo", "expira_em", "link"}."""
-        resposta = self._chamar("dumtech_celular_iniciar")
+        resposta = self._chamar("dumtech_celular_iniciar", self._gestao())
         return {**resposta, "link": link_de_pareamento(str(resposta["codigo"]))}
 
     def aparelhos(self) -> list[dict]:
-        return list(self._chamar("dumtech_celular_aparelhos").get("aparelhos") or [])
+        return list(self._chamar("dumtech_celular_aparelhos", self._gestao()).get("aparelhos") or [])
 
     def revogar(self, aparelho_id: str) -> None:
-        self._chamar("dumtech_celular_revogar", {"p_aparelho": aparelho_id})
+        self._chamar("dumtech_celular_revogar", {"p_aparelho": aparelho_id, **self._gestao()})
 
     def publicar(self, resumo: dict[str, Any]) -> int:
         """Manda o resumo. Devolve quantos celulares estao pareados (0 = pare de mandar)."""

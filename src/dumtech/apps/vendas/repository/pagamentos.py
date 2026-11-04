@@ -14,9 +14,11 @@ from ..models import (
     DINHEIRO,
     PARCELADO,
     PENDENTE,
+    QUITADA_NO_FINANCEIRO,
     Pagamento,
     Venda,
     VendaError,
+    hoje_iso,
 )
 from .comum import CENTAVO, agora, dinheiro
 
@@ -121,8 +123,7 @@ class PagamentosMixin:
         venda.pagamentos = [p for p in pagamentos if dinheiro(p.valor) > 0]
         venda.troco = self.troco_de(venda.pagamentos)
         # venda a prazo nao entrou na gaveta: fica pendente ate o cliente pagar
-        a_prazo = any(p.forma.strip().lower() == "prazo" for p in venda.pagamentos)
-        venda.status = PENDENTE if a_prazo else CONCLUIDA
+        venda.status = PENDENTE if venda.a_prazo else CONCLUIDA
 
         caixa = self.caixa_aberto()
         venda.caixa_id = caixa.id if caixa is not None else 0
@@ -131,8 +132,15 @@ class PagamentosMixin:
         venda.avisos = self._baixar_uma_vez(venda)
         return venda
 
-    def receber_pendente(self, venda_id: int, pagamentos: list[Pagamento]) -> Venda:
-        """Cliente voltou para pagar a venda a prazo."""
+    def receber_pendente(
+        self, venda_id: int, pagamentos: list[Pagamento],
+        gaveta: bool = True, quitada_por: str = "",
+    ) -> Venda:
+        """Cliente voltou para pagar a venda a prazo.
+
+        `gaveta=False` e para acerto de conta que ja foi recebida faz tempo: o
+        dinheiro nao esta entrando agora, entao o caixa de hoje nao o conta.
+        """
         venda = self.obter(venda_id)
         if venda is None:
             raise VendaError("Venda não encontrada.")
@@ -143,9 +151,10 @@ class PagamentosMixin:
         venda.pagamentos = [p for p in pagamentos if dinheiro(p.valor) > 0]
         venda.troco = self.troco_de(venda.pagamentos)
         venda.status = CONCLUIDA
-        caixa = self.caixa_aberto()
-        if caixa is not None:
-            venda.caixa_id = caixa.id
+        venda.quitada_por = quitada_por
+        # sem caixa aberto, fica sem caixa: o da venda ja pode ter sido fechado
+        caixa = self.caixa_aberto() if gaveta else None
+        venda.caixa_id = caixa.id if caixa is not None else 0
         salva = self.salvar(venda)
         # a venda que veio do Orcamento ainda nao tirou nada do estoque: sai
         # agora. A do balcao a prazo ja tirou e nao repete.
@@ -157,11 +166,45 @@ class PagamentosMixin:
 
         Venda pendente nao tira nada agora - sai quando o cliente pagar, em
         `receber_pendente`, igual a que vem da proposta. Salvar de novo a mesma
-        venda nao baixa outra vez.
+        venda nao baixa outra vez. A venda paga hoje com caixa aberto entra
+        nele, como a do balcao; a lancada com data passada nao passou por ele.
         """
+        if venda.status == CONCLUIDA and not venda.caixa_id and venda.data == hoje_iso():
+            caixa = self.caixa_aberto()
+            venda.caixa_id = caixa.id if caixa is not None else 0
         salva = self.salvar(venda)
         salva.avisos = self._baixar_uma_vez(salva) if salva.status == CONCLUIDA else []
         return salva
+
+    def alterar_pendente(self, venda: Venda) -> Venda:
+        """Venda ainda nao paga pode mudar; o que ja saiu do estoque acompanha."""
+        antes = self.obter(venda.id)
+        if antes is None:
+            raise VendaError("Venda não encontrada.")
+        if antes.status != PENDENTE:
+            raise VendaError(f"A venda {antes.numero} já foi paga e não pode mudar de itens.")
+        ja_saiu = self._deu_baixa(venda.id)
+        salva = self.lancar(venda)
+        if ja_saiu:
+            salva.avisos = self._acertar_estoque(antes, salva)
+        return salva
+
+    def desfazer_quitacao(self, venda_id: int) -> Venda | None:
+        """A baixa foi desfeita no Financeiro: a venda volta a esperar pagamento.
+
+        So a que foi fechada por la. A que foi paga no balcao teve o dinheiro na
+        gaveta, e o que se desfaz na conta nao tira nota nenhuma de la. O
+        estoque fica como esta: a mercadoria ja foi embora.
+        """
+        venda = self.obter(venda_id)
+        if venda is None or venda.quitada_por != QUITADA_NO_FINANCEIRO:
+            return None
+        venda.status = PENDENTE
+        venda.quitada_por = ""
+        venda.caixa_id = 0
+        venda.troco = 0.0
+        venda.pagamentos = []
+        return self.salvar(venda)
 
     def _baixar_uma_vez(self, venda: Venda) -> list[str]:
         """Da baixa no estoque se esta venda ainda nao deu. Anota que deu."""

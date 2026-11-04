@@ -12,7 +12,7 @@ import { generateKeyPairSync, verify } from "node:crypto";
 import { writeFileSync } from "node:fs";
 
 import {
-  assinar, base64url, computadorValido, conteudoDaLicenca, importarChavePrivada, ipDoVisitante, normalizar,
+  assinar, base64url, computadorValido, conteudoAcesso, conteudoDaLicenca, importarChavePrivada, ipDoVisitante, normalizar,
 } from "../licenca-assinada/nucleo.ts";
 
 const RESPOSTA = {
@@ -36,6 +36,26 @@ test("conteudo tem prazo offline e produtos em maiusculas", () => {
   assert.deepEqual(c.produtos, ["ESTOQUE", "VENDAS"]);
   assert.equal(c.valida_ate, "2026-10-12T12:00:00.000Z");
   assert.equal(c.maquina, "AB12-CD34");
+});
+
+test("a licenca assinada diz se ha contas, e so a verdade conta", () => {
+  const base = { kid: "k1", maquina: "AB12-CD34", computador: "f".repeat(32) };
+  assert.equal(conteudoDaLicenca({ ...RESPOSTA, contas: true }, base).contas, true);
+  assert.equal(conteudoDaLicenca(RESPOSTA, base).contas, false, "servidor antigo nao diz: sem contas");
+  assert.equal(conteudoDaLicenca({ ...RESPOSTA, contas: "sim" }, base).contas, false);
+});
+
+test("o pacote de acesso e outro documento, preso ao computador", () => {
+  const c = conteudoAcesso({
+    kid: "k1", chave: "7K4M", maquina: "AB12", computador: "f".repeat(32),
+    resumo: { exigir_conta: true, usuarios: [{ id: "u1", login: "dona" }] },
+    agora: new Date("2026-11-02T12:00:00Z"),
+  });
+  assert.equal(c.uso, "acesso");
+  assert.equal(c.exigir_conta, true);
+  assert.equal(c.computador, "f".repeat(32));
+  assert.deepEqual(c.usuarios, [{ id: "u1", login: "dona" }]);
+  assert.equal(c.emitido_em, "2026-11-02T12:00:00.000Z");
 });
 
 test("assina os bytes do JSON e a assinatura confere", async () => {
@@ -85,4 +105,30 @@ test("teste com lixo nao entra no pacote", () => {
                    { ORDENS: "2026-10-01T00:00:00.000Z" });
   assert.deepEqual(testesValidos(null), {});
   assert.deepEqual(testesValidos(["AGENDA"]), {});
+});
+
+test("a cobranca da mensalidade vai assinada, e vitalicia nao ganha o campo", () => {
+  const base = { kid: "k1", maquina: "AB12-CD34", computador: "f".repeat(32) };
+  assert.ok(!("cobranca" in conteudoDaLicenca(RESPOSTA, base)), "vitalicia ganhou cobranca");
+  assert.ok(!("cobranca" in conteudoDaLicenca({ ...RESPOSTA, cobranca: null }, base)));
+
+  const teste = conteudoDaLicenca({
+    ...RESPOSTA, tipo: "teste",
+    cobranca: { situacao: "teste", ate: "2026-11-10", motivo: null, desde: null, extra: "<script>" },
+  }, base);
+  assert.deepEqual(teste.cobranca, { situacao: "teste", ate: "2026-11-10", motivo: null, desde: null });
+
+  const pendente = conteudoDaLicenca({
+    ...RESPOSTA, tipo: "assinatura",
+    cobranca: { situacao: "pendente", ate: "2026-11-10", motivo: "falhou", desde: "2026-10-01" },
+  }, base);
+  assert.equal(pendente.cobranca.motivo, "falhou");
+
+  // lixo nao entra: situacao inventada, data torta, motivo estranho
+  assert.ok(!("cobranca" in conteudoDaLicenca({ ...RESPOSTA, cobranca: { situacao: "gratis_para_sempre" } }, base)));
+  const torta = conteudoDaLicenca({
+    ...RESPOSTA, tipo: "assinatura",
+    cobranca: { situacao: "em_dia", ate: "amanha", motivo: "porque sim", desde: 5 },
+  }, base);
+  assert.deepEqual(torta.cobranca, { situacao: "em_dia", ate: null, motivo: null, desde: null });
 });

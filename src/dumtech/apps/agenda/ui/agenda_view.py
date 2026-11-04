@@ -117,6 +117,11 @@ class AgendaView(QWidget):
         self.faixa.currentIndexChanged.connect(self._faixa_mudou)
         linha.addWidget(self.faixa)
 
+        # so aparece quando a loja tem mais de uma pessoa atendendo
+        self.profissional = QComboBox()
+        self.profissional.currentIndexChanged.connect(self.refresh)
+        linha.addWidget(self.profissional)
+
         self.botao_novo = Button("Novo compromisso", "plus", "primary")
         self.botao_novo.setMinimumHeight(38)
         self.botao_novo.clicked.connect(lambda: self.abrir_ficha.emit(0))
@@ -197,6 +202,18 @@ class AgendaView(QWidget):
         return linha
 
     # ------------------------------------------------------------------- dados
+    def _carregar_profissionais(self) -> None:
+        atual = self.profissional.currentData()
+        nomes = self.repository.profissionais()
+        self.profissional.blockSignals(True)
+        self.profissional.clear()
+        self.profissional.addItem("Todos os profissionais", "")
+        for nome in nomes:
+            self.profissional.addItem(nome, nome)
+        self.profissional.setCurrentIndex(max(self.profissional.findData(atual), 0))
+        self.profissional.blockSignals(False)
+        self.profissional.setVisible(bool(nomes))
+
     def refresh(self) -> None:
         dias = self.modo.currentData() or 7
         # o horario de atendimento da aba Online: faixa, sombra do fechado e ocupacao
@@ -205,8 +222,10 @@ class AgendaView(QWidget):
         self.faixa.setItemText(0, f"Horário da loja ({loja[0]}h às {loja[1]}h)")
         chave = self.faixa.currentData() or FAIXA_PADRAO
         inicial, final = loja if chave == FAIXA_LOJA else faixa_por_chave(chave)
+        self._carregar_profissionais()
         grade = self.repository.grade(self.primeiro_dia, dias=dias,
-                                      hora_inicial=inicial, hora_final=final)
+                                      hora_inicial=inicial, hora_final=final,
+                                      profissional=self.profissional.currentData() or "")
         self.grade.selecao = self.selecionado
         self.grade.set_grade(grade, expediente)
         # depois que o layout assentar: antes disso a barra ainda nao tem

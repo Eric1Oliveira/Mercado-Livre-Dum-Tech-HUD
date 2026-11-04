@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import date
 
 from ....core.errors import RegraError
-from ..models import CANCELADA, ItemVenda, Venda, VendaError
+from ..models import CANCELADA, PENDENTE, ItemVenda, Venda, VendaError
 from .comum import agora, dinheiro, quantidade
 
 #: soma o que ja foi devolvido de cada item, sem gravar isso duas vezes
@@ -34,6 +34,7 @@ class VendasMixin:
         inicio: str = "",
         fim: str = "",
         limite: int = 500,
+        cliente: str = "",
     ) -> list[Venda]:
         sql = "SELECT * FROM vendas WHERE 1 = 1"
         params: list = []
@@ -44,6 +45,9 @@ class VendasMixin:
         if status:
             sql += " AND status = ?"
             params.append(status)
+        if cliente.strip():
+            sql += " AND cliente = ? COLLATE NOCASE"
+            params.append(cliente.strip())
         if inicio:
             sql += " AND date(data) >= date(?)"
             params.append(inicio)
@@ -97,8 +101,12 @@ class VendasMixin:
 
     # ------------------------------------------------------------------ escrita
     def salvar(self, venda: Venda) -> Venda:
-        """Grava a venda inteira (cabecalho, itens e pagamentos)."""
+        """Grava a venda inteira (cabecalho, itens e pagamentos), tudo ou nada."""
         self._validar(venda)
+        with self.db.transaction():
+            return self._gravar(venda)
+
+    def _gravar(self, venda: Venda) -> Venda:
         momento = agora()
         valores = (
             venda.numero.strip(),
@@ -111,14 +119,17 @@ class VendasMixin:
             int(venda.caixa_id or 0),
             dinheiro(venda.troco),
             venda.recorrencia.strip(),
+            venda.vencimento or "",
+            venda.quitada_por,
+            venda.vendedor.strip(),
         )
         if venda.id is None:
             cursor = self.db.execute(
                 """
                 INSERT INTO vendas (numero, cliente, data, forma_pagamento, status,
                                     desconto, observacoes, caixa_id, troco,
-                                    recorrencia, criado_em)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                    recorrencia, vencimento, quitada_por, vendedor, criado_em)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 valores + (momento,),
             )
@@ -129,7 +140,8 @@ class VendasMixin:
                 """
                 UPDATE vendas SET numero = ?, cliente = ?, data = ?, forma_pagamento = ?,
                                   status = ?, desconto = ?, observacoes = ?,
-                                  caixa_id = ?, troco = ?, recorrencia = ?
+                                  caixa_id = ?, troco = ?, recorrencia = ?,
+                                  vencimento = ?, quitada_por = ?, vendedor = ?
                 WHERE id = ?
                 """,
                 valores + (venda.id,),
@@ -139,6 +151,14 @@ class VendasMixin:
         self.gravar_pagamentos(venda.id, venda.pagamentos)
         venda.itens = self.itens_de(venda.id)
         return venda
+
+    def corrigir_dados(self, venda_id: int, cliente: str, observacoes: str) -> Venda:
+        """O que se corrige numa venda paga: o resto ja virou dinheiro e estoque."""
+        self.db.execute(
+            "UPDATE vendas SET cliente = ?, observacoes = ? WHERE id = ?",
+            (cliente.strip(), observacoes.strip(), venda_id),
+        )
+        return self.obter(venda_id)
 
     def definir_status(self, venda_id: int, status: str) -> None:
         self.db.execute("UPDATE vendas SET status = ? WHERE id = ?", (status, venda_id))
@@ -167,14 +187,13 @@ class VendasMixin:
         )
         venda.status = CANCELADA
         venda.motivo_cancelamento = motivo
-        # a venda pendente ainda nao tirou nada do estoque: devolver criaria
-        # saldo do nada. E o que ja voltou por devolucao nao volta de novo
-        if self._deu_baixa(venda_id):
-            venda.avisos = self._devolver_ao_estoque(
-                [(item, item.restante) for item in venda.itens],
-                documento=venda.numero,
-                motivo=f"Cancelamento: {motivo}",
-            )
+        # so volta o que saiu de verdade: a pendente nao tirou nada, a baixa
+        # recusada por falta de saldo tambem nao, e o devolvido ja voltou
+        venda.avisos = self._devolver_ao_estoque(
+            [(item, item.fora_do_estoque) for item in venda.itens],
+            documento=venda.numero,
+            motivo=f"Cancelamento: {motivo}",
+        )
         return venda
 
     def excluir(self, venda_id: int) -> None:
@@ -195,8 +214,8 @@ class VendasMixin:
                     """
                     INSERT INTO venda_itens (venda_id, descricao, quantidade,
                                              valor_unitario, produto_id, codigo,
-                                             unidade, casas)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                                             unidade, casas, baixado, custo_unitario)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         venda.id,
@@ -207,8 +226,19 @@ class VendasMixin:
                         item.codigo.strip(),
                         (item.unidade or "UN").strip(),
                         int(item.casas or 0),
+                        quantidade(item.baixado),
+                        dinheiro(item.custo_unitario or self._custo_de(item)),
                     ),
                 )
+
+    def _custo_de(self, item: ItemVenda) -> float:
+        """O custo do dia: e o que faz o lucro desta venda nao mudar depois."""
+        if self.catalogo is None or not item.do_estoque:
+            return 0.0
+        try:
+            return float(self.catalogo.custo_de(item.produto_id))
+        except Exception:  # noqa: BLE001 - sem custo a venda segue; o lucro avisa
+            return 0.0
 
     # ---------------------------------------------------------------- estoque
     def _deu_baixa(self, venda_id: int) -> bool:
@@ -240,6 +270,51 @@ class VendasMixin:
                 avisos.append(f"{item.descricao}: {erro}")
             except Exception as erro:  # noqa: BLE001 - o estoque nunca derruba a venda
                 avisos.append(f"{item.descricao}: não foi possível dar baixa ({erro})")
+            else:
+                item.baixado = item.quantidade
+                self.db.execute("UPDATE venda_itens SET baixado = ? WHERE id = ?",
+                                (quantidade(item.baixado), item.id))
+        return avisos
+
+    def _acertar_estoque(self, antes: Venda, depois: Venda) -> list[str]:
+        """Os itens de uma venda que ja tinha saido do estoque mudaram.
+
+        Compara por produto, e nao por linha: trocar a ordem dos itens ou juntar
+        duas linhas do mesmo produto nao muda nada na prateleira.
+        """
+        if self.catalogo is None:
+            return []
+        saiu: dict[int, float] = {}
+        for item in antes.itens:
+            if item.do_estoque:
+                saiu[item.produto_id] = saiu.get(item.produto_id, 0.0) + item.fora_do_estoque
+        pedido: dict[int, float] = {}
+        for item in depois.itens:
+            if item.do_estoque:
+                pedido[item.produto_id] = pedido.get(item.produto_id, 0.0) + item.quantidade
+
+        avisos: list[str] = []
+        for produto_id in {*saiu, *pedido}:
+            diferenca = quantidade(pedido.get(produto_id, 0.0) - saiu.get(produto_id, 0.0))
+            try:
+                if diferenca > 0:
+                    self.catalogo.baixar(produto_id, diferenca, documento=depois.numero,
+                                         motivo=f"Alteração da venda {depois.numero}")
+                elif diferenca < 0:
+                    self.catalogo.devolver(produto_id, -diferenca, documento=depois.numero,
+                                           motivo=f"Alteração da venda {depois.numero}")
+            except Exception as erro:  # noqa: BLE001 - o estoque nunca derruba a venda
+                avisos.append(f"Produto {produto_id}: {erro}")
+                continue
+            saiu[produto_id] = saiu.get(produto_id, 0.0) + diferenca
+
+        for item in depois.itens:
+            item.baixado = 0.0
+            if item.do_estoque:
+                item.baixado = min(item.quantidade, max(saiu.get(item.produto_id, 0.0), 0.0))
+                saiu[item.produto_id] = saiu.get(item.produto_id, 0.0) - item.baixado
+            self.db.execute("UPDATE venda_itens SET baixado = ? WHERE id = ?",
+                            (quantidade(item.baixado), item.id))
         return avisos
 
     def _devolver_ao_estoque(
@@ -272,6 +347,8 @@ class VendasMixin:
                 raise VendaError(f"A quantidade de '{item.descricao}' precisa ser maior que zero.")
         if dinheiro(venda.desconto) > venda.subtotal:
             raise VendaError("O desconto não pode ser maior que o total dos itens.")
+        if venda.status == PENDENTE and not venda.cliente.strip():
+            raise VendaError("Informe o cliente: venda a prazo precisa de alguém para cobrar.")
         parcelado = venda.parcelamento
         if parcelado is not None:
             if not venda.cliente.strip():

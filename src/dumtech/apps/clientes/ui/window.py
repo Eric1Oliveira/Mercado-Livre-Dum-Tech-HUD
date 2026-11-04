@@ -22,8 +22,12 @@ class ClientesWindow(AppWindow):
 
     def build_views(self) -> None:
         self.dashboard_view = self.add_view("Painel", "dashboard", DashboardView(self.store))
-        self.clientes_view = self.add_view("Clientes", "users", ClientesView(self.store, mensageiro=self.mensagens))
-        self.parceiros_view = self.add_view("Parceiros", "link", ParceirosView(self.store))
+        self.clientes_view = self.add_view("Clientes", "users", ClientesView(self.store, mensageiro=self.mensagens,
+                                               consultas=self.context.consultas,
+                                               contas=self.context.contas))
+        self.parceiros_view = self.add_view(
+            "Parceiros", "link", ParceirosView(self.store, consultas=self.context.consultas,
+                                               contas=self.context.contas))
         for tela in (self.clientes_view, self.parceiros_view):
             tela.data_changed.connect(self.refresh_all)
 
