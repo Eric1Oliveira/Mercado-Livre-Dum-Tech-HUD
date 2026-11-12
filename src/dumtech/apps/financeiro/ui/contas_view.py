@@ -9,14 +9,19 @@ from ....ui import format as fmt
 from ....ui.theme import Space
 from ....ui.widgets.buttons import Button
 from ....ui.widgets.common import Card, IconBadge, label, repolish, tone_label
+from ....ui.widgets.confirmar import confirmar
 from ....ui.widgets.table import DIREITA, DataTable
-from ..models import CENTAVO, Conta, FinanceiroError
+from ..models import CENTAVO, AjusteSaldo, Conta, FinanceiroError, Transferencia
 from ..repository import FinanceiroRepository
-from .dialogos import ContaDialog, TransferenciaDialog
+from .dialogos import AjusteSaldoDialog, ContaDialog, TransferenciaDialog
+
+#: quantas linhas a lista de transferencias e ajustes mostra
+RECENTES = 20
+AJUSTE = "Ajuste de saldo"
 
 
 class ContasView(QWidget):
-    """Cadastro de contas, saldo de cada uma e transferencias."""
+    """Cadastro de contas, saldo de cada uma, transferencias e ajustes."""
 
     data_changed = Signal()
 
@@ -24,6 +29,8 @@ class ContasView(QWidget):
         super().__init__(parent)
         self.repository = repository
         self.contas: list[Conta] = []
+        #: as linhas da lista de baixo, na ordem da tela
+        self.movimentos: list[Transferencia | AjusteSaldo] = []
 
         raiz = QVBoxLayout(self)
         raiz.setContentsMargins(30, 26, 30, 24)
@@ -95,6 +102,11 @@ class ContasView(QWidget):
         self.aviso.setWordWrap(True)
         linha.addWidget(self.aviso, 1)
 
+        self.botao_ajustar = Button("Ajustar saldo", "money")
+        self.botao_ajustar.setToolTip("Deixar o saldo igual ao de verdade (ou zerar)")
+        self.botao_ajustar.clicked.connect(self._ajustar)
+        linha.addWidget(self.botao_ajustar)
+
         self.botao_editar = Button("Editar", "edit")
         self.botao_editar.clicked.connect(self._editar)
         linha.addWidget(self.botao_editar)
@@ -110,11 +122,20 @@ class ContasView(QWidget):
 
     def _card_transferencias(self) -> Card:
         card = Card(padding=Space.lg)
-        card.body.addWidget(label("Transferências recentes", "section"))
+        topo = QHBoxLayout()
+        topo.addWidget(label("Transferências e ajustes", "section"))
+        topo.addStretch(1)
+        self.botao_desfazer = Button("Desfazer", "back")
+        self.botao_desfazer.setToolTip("Lançou errado? Desfaça e o dinheiro volta para onde estava")
+        self.botao_desfazer.clicked.connect(self._desfazer)
+        topo.addWidget(self.botao_desfazer)
+        card.body.addLayout(topo)
+
         self.tabela_transferencias = DataTable(["Data", "De", "Para", "Motivo", "Valor"])
         self.tabela_transferencias.set_empty_message(
-            "Nenhuma transferência registrada."
+            "Nenhuma transferência ou ajuste de saldo registrado."
         )
+        self.tabela_transferencias.itemSelectionChanged.connect(self._atualizar_acoes)
         card.body.addWidget(self.tabela_transferencias)
         return card
 
@@ -156,31 +177,55 @@ class ContasView(QWidget):
         self._atualizar_acoes()
 
     def _preencher_transferencias(self) -> None:
+        """Transferencias e ajustes numa lista so, o mais recente em cima."""
+        movimentos: list[Transferencia | AjusteSaldo] = [
+            *self.repository.listar_transferencias(limite=RECENTES),
+            *self.repository.listar_ajustes(limite=RECENTES),
+        ]
+        movimentos.sort(key=lambda m: (m.data, m.criado_em), reverse=True)
+        self.movimentos = movimentos[:RECENTES]
+
         tabela = self.tabela_transferencias
-        tabela.fill(
-            [
-                [
-                    tabela.cell(fmt.data(t.data)),
-                    tabela.cell(t.origem_nome or "-"),
-                    tabela.cell(t.destino_nome or "-"),
-                    tabela.cell(t.observacao or "-"),
-                    tabela.cell(fmt.moeda(t.valor), DIREITA, bold=True),
-                ]
-                for t in self.repository.listar_transferencias(limite=20)
-            ],
-            {0: 120, 4: 140},
-        )
+        linhas = []
+        for m in self.movimentos:
+            if isinstance(m, AjusteSaldo):   # saiu: da conta para o ajuste; entrou: o contrario
+                conta = m.conta_nome or "-"
+                de, para = (conta, AJUSTE) if m.valor < 0 else (AJUSTE, conta)
+                linhas.append([
+                    tabela.cell(fmt.data(m.data)),
+                    tabela.cell(de, tone="text_muted" if de == AJUSTE else ""),
+                    tabela.cell(para, tone="text_muted" if para == AJUSTE else ""),
+                    tabela.cell(m.motivo or "-"),
+                    tabela.cell(fmt.moeda(abs(m.valor)), DIREITA, bold=True),
+                ])
+            else:
+                linhas.append([
+                    tabela.cell(fmt.data(m.data)),
+                    tabela.cell(m.origem_nome or "-"),
+                    tabela.cell(m.destino_nome or "-"),
+                    tabela.cell(m.observacao or "-"),
+                    tabela.cell(fmt.moeda(m.valor), DIREITA, bold=True),
+                ])
+        tabela.fill(linhas, {0: 120, 4: 140})
 
     def selecionada(self) -> Conta | None:
         linha = self.tabela.currentRow()
         return self.contas[linha] if 0 <= linha < len(self.contas) else None
 
+    def movimento_selecionado(self) -> Transferencia | AjusteSaldo | None:
+        if not self.tabela_transferencias.selectedItems():
+            return None
+        linha = self.tabela_transferencias.currentRow()
+        return self.movimentos[linha] if 0 <= linha < len(self.movimentos) else None
+
     def _atualizar_acoes(self) -> None:
         conta = self.selecionada()
         tem = conta is not None
+        self.botao_ajustar.setEnabled(tem and conta.ativo)
         self.botao_editar.setEnabled(tem)
         self.botao_ativar.setEnabled(tem)
         self.botao_excluir.setEnabled(tem)
+        self.botao_desfazer.setEnabled(self.movimento_selecionado() is not None)
         self.botao_transferir.setEnabled(len(self.repository.listar_contas()) >= 2)
         self.botao_ativar.setText("  Reativar" if tem and not conta.ativo else "  Inativar")
 
@@ -238,3 +283,49 @@ class ContasView(QWidget):
             self._dizer(str(erro), "danger")
             return
         self._abrir(dialogo)
+
+    def _ajustar(self) -> None:
+        conta = self.selecionada()
+        if conta is None or not conta.ativo:
+            return
+        dialogo = AjusteSaldoDialog(self.repository, conta, self)
+        if not dialogo.exec():
+            return
+        self.refresh()
+        saldo = conta.saldo + dialogo.ajuste.valor
+        self._dizer(
+            f"Saldo de '{conta.nome}' ajustado para {fmt.moeda(saldo)}. "
+            "Se precisar, desfaça na lista lá embaixo."
+        )
+        self.data_changed.emit()
+
+    def _desfazer(self) -> None:
+        movimento = self.movimento_selecionado()
+        if movimento is None:
+            return
+        if isinstance(movimento, AjusteSaldo):
+            titulo = "Desfazer o ajuste de saldo?"
+            mensagem = (
+                f"O saldo de '{movimento.conta_nome}' volta a ser o de antes do ajuste "
+                f"({'+' if movimento.valor > 0 else '-'}{fmt.moeda(abs(movimento.valor))})."
+            )
+        else:
+            titulo = "Desfazer a transferência?"
+            mensagem = (
+                f"Os {fmt.moeda(movimento.valor)} saem de '{movimento.destino_nome}' e "
+                f"voltam para '{movimento.origem_nome}'."
+            )
+        if not confirmar(self, titulo, mensagem, rotulo_ok="Desfazer",
+                         detalhe="A linha sai da lista. Se precisar, é só lançar de novo."):
+            return
+
+        if isinstance(movimento, AjusteSaldo):
+            self.repository.excluir_ajuste(movimento.id)
+            recado = f"Ajuste desfeito: o saldo de '{movimento.conta_nome}' voltou ao de antes."
+        else:
+            self.repository.excluir_transferencia(movimento.id)
+            recado = (f"Transferência desfeita: {fmt.moeda(movimento.valor)} voltaram para "
+                      f"'{movimento.origem_nome}'.")
+        self.refresh()
+        self._dizer(recado)
+        self.data_changed.emit()

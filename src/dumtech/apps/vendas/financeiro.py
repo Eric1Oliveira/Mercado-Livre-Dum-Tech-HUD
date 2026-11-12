@@ -47,6 +47,8 @@ def registrar(contas, venda) -> str:
                 return _parcelar(contas, venda)
             contas.lancar(_conta(venda, venda.total, venda.vencimento))
             if venda.status == PENDENTE:
+                # a entrada paga no balcao ja entrou: a conta cobra so o resto
+                _receber_o_que_ja_entrou(contas, venda)
                 return "  Conta a receber criada no Financeiro."
         elif venda.status == PENDENTE or venda.parcelamento is not None:
             # quitar aqui receberia uma parcela que ninguem pagou
@@ -56,6 +58,49 @@ def registrar(contas, venda) -> str:
         logger.exception("Nao foi possivel lancar a venda no Financeiro")
         return "  Não consegui lançar no Financeiro - lance na mão."
     return "  Recebimento lançado no Financeiro."
+
+
+def receber(contas, venda, recebidas) -> str:
+    """O cliente pagou a venda pendente - tudo ou uma parte. Nunca levanta.
+
+    Cada linha vira uma baixa com a sua forma e o seu dia: "100 no Pix e 50
+    em dinheiro" fica assim no Financeiro tambem.
+    """
+    if contas is None:
+        return ""
+    try:
+        if not contas.ja_lancado(venda.numero):
+            # venda de antes da ponte (ou que nao atravessou): nasce agora, ja
+            # com tudo o que foi pago ate aqui - a entrada do balcao inclusive
+            contas.lancar(_conta(venda, venda.total, venda.vencimento))
+            _receber_o_que_ja_entrou(contas, venda, tudo=True)
+        else:
+            for pagamento in recebidas:
+                contas.receber(venda.numero, pagamento.valor, forma=pagamento.forma,
+                               data=pagamento.recebido_em or venda.data)
+            if venda.status == CONCLUIDA:
+                # conta antiga, com a entrada cobrada junto: a venda quitou, ela fecha
+                contas.quitar(venda.numero, forma=venda.resumo_pagamento)
+    except Exception:  # noqa: BLE001 - o dinheiro ja esta gravado na venda
+        logger.exception("Nao foi possivel levar o recebimento ao Financeiro")
+        return "  Não consegui lançar no Financeiro - lance na mão."
+    if venda.status == PENDENTE:
+        return f"  Continua em aberto: {fmt.moeda(venda.em_aberto)}."
+    return "  Recebimento lançado no Financeiro."
+
+
+def _receber_o_que_ja_entrou(contas, venda, tudo: bool = False) -> None:
+    """A entrada da venda a prazo (paga junto com ela) e as partes pagas depois.
+
+    `tudo`: logo depois de um recebimento, toda linha que nao e Prazo foi paga
+    - mesmo a da venda que ja quitou e, por isso, nao tem mais linha Prazo.
+    """
+    for pagamento in venda.pagamentos:
+        if pagamento.a_prazo or pagamento.parcelado or pagamento.valor <= 0:
+            continue
+        if tudo or pagamento.recebido_em or venda.a_prazo:
+            contas.receber(venda.numero, pagamento.valor, forma=pagamento.forma,
+                           data=pagamento.recebido_em or venda.data)
 
 
 def devolver(contas, venda, devolucao) -> str:
@@ -104,12 +149,13 @@ def conciliar(vendas, contas) -> None:
             registrar(contas, venda)
         for venda in vendas.listar(status=PENDENTE, limite=-1):
             situacao = contas.situacao(venda.numero)
-            if situacao.quitado:
+            if situacao.quitado and venda.em_aberto > 0:
                 vendas.receber_pendente(
                     venda.id,
-                    [pagamento_unico(situacao.forma or RECEBIDO_NO_FINANCEIRO, venda.total)],
+                    [pagamento_unico(situacao.forma or RECEBIDO_NO_FINANCEIRO, venda.em_aberto)],
                     # o dinheiro entrou la atras: o caixa de hoje nao o viu
                     gaveta=False, quitada_por=QUITADA_NO_FINANCEIRO,
+                    quando=situacao.data,
                 )
     except Exception:  # noqa: BLE001 - acerto com defeito nao trava o balcao
         logger.exception("Nao foi possivel acertar as vendas no Financeiro")

@@ -24,6 +24,7 @@ from .models import (
     RECEBIDO_NO_FINANCEIRO,
     ItemVenda,
     Venda,
+    hoje_iso,
 )
 from .repository import VendasRepository, pagamento_unico
 
@@ -79,15 +80,52 @@ class DestinoVendas:
         return self._pendente(documento) is not None
 
     def conta_recebida(self, documento: str, forma: str = "", data: str = "") -> bool:
+        """A conta quitou: o que a venda ainda devia entra com esta forma."""
         venda = self._pendente(documento)
         if venda is None or venda.status != PENDENTE:
             return False
+        return self._receber(venda, forma, data, venda.em_aberto)
+
+    def conta_recebida_em_parte(self, documento: str, forma: str = "", data: str = "",
+                                valor: float = 0.0) -> bool:
+        """Uma parte foi paga no Financeiro: a venda continua devendo o resto."""
+        venda = self._pendente(documento)
+        if venda is None or venda.status != PENDENTE:
+            return False
+        return self._receber(venda, forma, data, min(float(valor or 0), venda.em_aberto))
+
+    def _receber(self, venda: Venda, forma: str, data: str, valor: float) -> bool:
+        if valor <= 0:
+            return False
+        dia = (data or hoje_iso())[:10]
         self.repository.receber_pendente(
-            venda.id, [pagamento_unico(forma or RECEBIDO_NO_FINANCEIRO, venda.total)],
-            quitada_por=QUITADA_NO_FINANCEIRO,
+            venda.id, [pagamento_unico(forma or RECEBIDO_NO_FINANCEIRO, valor)],
+            # baixa com data de outro dia e acerto: esse dinheiro nao esta
+            # entrando agora, e a gaveta de hoje nao pode conta-lo
+            gaveta=dia == hoje_iso(), quitada_por=QUITADA_NO_FINANCEIRO, quando=dia,
         )
         eventos.avisar(self.app_id)
         return True
+
+    def baixa_estornada(self, documento: str, forma: str = "", valor: float = 0.0,
+                        data: str = "") -> bool:
+        """Uma baixa foi desfeita no Financeiro: aquela parte volta a ser devida.
+
+        A entrada paga no balcao nao volta por aqui: ela passou pela gaveta na
+        hora da venda, e desfazer a baixa dela nao tira nota nenhuma de la.
+        """
+        venda = self._pendente(documento)
+        if venda is None:
+            return False
+        if self.repository.estornar_recebimento(venda.id, forma, valor, data) is not None:
+            eventos.avisar(self.app_id)
+            return True
+        # venda de antes desta versao (nenhuma parte com o dia em que foi
+        # paga): vale o de antes. Com marca, a baixa desfeita nao era de parte
+        # recebida depois - era a entrada - e a venda fica como esta
+        if not any(p.recebido_em for p in venda.pagamentos):
+            return self.conta_reaberta(documento)
+        return False
 
     def conta_reaberta(self, documento: str) -> bool:
         venda = self._pendente(documento)

@@ -249,14 +249,12 @@ class HomeView(QWidget):
         encontrados = []
         for entrada in disponiveis:
             encontrados += nucleo_indicadores.coletar(entrada.module, self.paths)
-        if not encontrados:
-            return
-
-        vitrine = VitrineDeSinais()
-        vitrine.abrir.connect(self._abrir_sinal)
         # a plataforma tambem tem o seu sinal: ele existe com um modulo ou com
         # sete, e e o que impede a vitrine de parecer pela metade no comeco
         encontrados = nucleo_indicadores.ordenar(encontrados) + [self._sinal_da_copia()]
+
+        vitrine = VitrineDeSinais()
+        vitrine.abrir.connect(self._abrir_sinal)
         vitrine.preencher(encontrados)
         self.coluna.addWidget(vitrine)
 

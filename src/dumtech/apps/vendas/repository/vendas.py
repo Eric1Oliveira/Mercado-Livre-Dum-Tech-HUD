@@ -148,7 +148,7 @@ class VendasMixin:
             )
         venda.forma_pagamento = valores[3]
         self._gravar_itens(venda)
-        self.gravar_pagamentos(venda.id, venda.pagamentos)
+        self.gravar_pagamentos(venda.id, venda.pagamentos, int(venda.caixa_id or 0))
         venda.itens = self.itens_de(venda.id)
         return venda
 

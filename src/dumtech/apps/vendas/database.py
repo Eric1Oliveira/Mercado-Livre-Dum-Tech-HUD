@@ -231,6 +231,23 @@ MIGRATIONS = (
             """,
         ),
     ),
+    Migration(
+        version=8,
+        name="cada pagamento no caixa em que entrou",
+        statements=(
+            # A venda a prazo passa a ser paga aos poucos ("da 100 dos 150"),
+            # e cada parte entra no caixa do dia em que chegou - com a sua
+            # forma: o Pix nao vira dinheiro na gaveta. O que ja existia fica
+            # no caixa da propria venda, que e onde o fechamento o contava.
+            """
+            ALTER TABLE pagamentos ADD COLUMN caixa_id INTEGER NOT NULL DEFAULT 0;
+            ALTER TABLE pagamentos ADD COLUMN recebido_em TEXT NOT NULL DEFAULT '';
+            UPDATE pagamentos SET caixa_id = COALESCE(
+                (SELECT v.caixa_id FROM vendas v WHERE v.id = pagamentos.venda_id), 0);
+            CREATE INDEX IF NOT EXISTS idx_pagamentos_caixa ON pagamentos(caixa_id);
+            """,
+        ),
+    ),
 )
 
 

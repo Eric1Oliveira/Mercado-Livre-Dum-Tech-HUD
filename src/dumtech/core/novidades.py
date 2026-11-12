@@ -45,6 +45,45 @@ class Novidade:
 #: versao -> o que mudou. So entra o que o cliente PERCEBE: correcao interna
 #: nao vira aviso. Escreva como quem explica no balcao, sem termo tecnico.
 VERSOES: dict[str, tuple[Novidade, ...]] = {
+    "1.13.0": (
+        Novidade(
+            "vendas", "Receba só uma parte da venda a prazo",
+            "Em Vendas, escolha a venda pendente e clique em Receber. Digite só o que o cliente "
+            "pagou agora (por exemplo, R$ 100,00 de uma conta de R$ 150,00) e clique em Receber "
+            "parte. O resto continua em aberto, na venda e no Financeiro, até ele voltar.",
+        ),
+        Novidade(
+            "vendas", "Parcelado com entrada",
+            "Ao escolher Parcelado, informe a entrada que o cliente paga hoje e de que jeito. "
+            "Exemplo: R$ 300,00 de entrada em dinheiro e mais 3 parcelas de R$ 350,00. O Hub faz "
+            "a conta, e cada parcela vira uma conta a receber no Financeiro.",
+        ),
+        Novidade(
+            "vendas", "Pix é Pix, dinheiro é dinheiro",
+            "Pagou de mais de um jeito? Lance cada forma separada, como R$ 100,00 no Pix e "
+            "R$ 50,00 em dinheiro. No Caixa, só o dinheiro conta para a gaveta, e o Pix aparece "
+            "separado no fechamento. Vale também quando a conta é recebida aos poucos.",
+        ),
+        Novidade(
+            "", "Comprovante inteiro na impressora térmica",
+            "O comprovante e o fechamento de caixa saem do tamanho certo na bobina de 58 mm ou de "
+            "80 mm, com os valores da direita aparecendo por inteiro.",
+        ),
+        Novidade(
+            "", "Janelas sempre inteiras na tela",
+            "As janelas se ajustam sozinhas ao que mostram. Ao escolher Pix ou Parcelado, por "
+            "exemplo, elas crescem para os dois lados, continuam no meio da tela e os botões de "
+            "confirmar ficam sempre à vista.",
+        ),
+    ),
+    "1.12.1": (
+        Novidade(
+            "financeiro", "Transferência errada tem volta",
+            "Em Contas bancárias, escolha a linha em Transferências e ajustes e clique em "
+            "Desfazer: o dinheiro volta para a conta de onde saiu. E o novo Ajustar saldo deixa "
+            "a conta com o valor de verdade (ou zerada), sem mexer no resultado do mês.",
+        ),
+    ),
     "1.11.1": (
         Novidade(
             "vendas", "Receber no Balcão sem erro",

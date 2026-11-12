@@ -10,7 +10,13 @@ from __future__ import annotations
 from PySide6.QtWidgets import QComboBox, QWidget
 
 from ....core.contas import MAXIMO_PARCELAS, vencimento_padrao
-from ....core.pagamentos import PARCELADO, formas_do_balcao
+from ....core.pagamentos import (
+    DINHEIRO,
+    PARCELADO,
+    PRAZO,
+    formas_a_vista,
+    formas_do_balcao,
+)
 from ....core.recorrencia import Recorrencia
 from ....ui import format as fmt
 from ....ui.widgets import form
@@ -18,8 +24,19 @@ from ....ui.widgets.form import FormDialog
 from ....ui.widgets.items_editor import ItemsEditor
 from ....ui.widgets.recorrencias import CampoRepetir
 from .. import financeiro, recorrencias
-from ..models import CONCLUIDA, PARCELAS_PADRAO, PENDENTE, STATUS_OPCOES, ItemVenda, Venda
+from ..models import (
+    CONCLUIDA,
+    PARCELAS_PADRAO,
+    PENDENTE,
+    STATUS_OPCOES,
+    ItemVenda,
+    Pagamento,
+    Venda,
+    VendaError,
+    hoje_iso,
+)
 from ..repository import VendasRepository, pagamento_unico
+from ..repository.comum import CENTAVO, dinheiro
 from .pagamento_dialog import nota_parcelas
 
 #: campos que o item carrega mas o editor nao mostra (ligacao com o Estoque)
@@ -48,6 +65,10 @@ class VendaDialog(FormDialog):
         self.so_dados = self.editando and self.venda.status != PENDENTE
         #: o que a tela mostra depois de fechar ("" = nada a dizer)
         self.recado = ""
+        #: o que a venda pendente ja recebeu (a entrada, as partes pagas): editar
+        #: os itens nao pode apagar dinheiro que entrou
+        self._ja_pagos = ([p for p in self.venda.pagamentos if not p.a_prazo]
+                          if self.editando else [])
         self.contratos = recorrencias.repositorio(repository.db)
         super().__init__(
             f"Venda {self.venda.numero}" if self.editando else "Lançar venda",
@@ -94,6 +115,17 @@ class VendaDialog(FormDialog):
         self.parcelas.valueChanged.connect(self._atualizar_total)
         self.add_row("Parcelas", self.parcelas)
         self.form.setRowVisible(self.parcelas, False)
+
+        # "300 hoje e mais 3 de 350": a entrada entra recebida, o resto parcela
+        self.entrada = form.dinheiro(0.0)
+        self.entrada.valueChanged.connect(self._atualizar_total)
+        self.forma_entrada = QComboBox()
+        self.forma_entrada.addItems(formas_a_vista())
+        self.forma_entrada.setCurrentText(DINHEIRO)
+        self.forma_entrada.currentTextChanged.connect(self._atualizar_total)
+        self.linha_entrada = form.linha(self.entrada, "em", self.forma_entrada)
+        self.add_row("Entrada", self.linha_entrada)
+        self.form.setRowVisible(self.linha_entrada, False)
 
         # repetir nasce com a venda: depois, quem cuida e a lista de Recorrentes
         self.repeticao = CampoRepetir(
@@ -149,6 +181,7 @@ class VendaDialog(FormDialog):
     def _forma_mudou(self, _texto: str = "") -> None:
         parcelado = self._em_parcelado()
         self.form.setRowVisible(self.parcelas, parcelado)
+        self.form.setRowVisible(self.linha_entrada, parcelado)
         # a venda fecha aqui; quem cobra cada mes e o Financeiro
         self.status.setEnabled(not parcelado)
         if parcelado:
@@ -171,7 +204,8 @@ class VendaDialog(FormDialog):
             f"      TOTAL DA VENDA: {fmt.moeda(total)}"
         )
         if self._em_parcelado():
-            texto += f"\n{nota_parcelas(total, self.parcelas.value())}"
+            texto += "\n" + nota_parcelas(total, self.parcelas.value(), self.entrada.value(),
+                                          self.forma_entrada.currentText())
         self._nota_total.setText(texto)
 
     def _contrato(self) -> Recorrencia | None:
@@ -192,6 +226,43 @@ class VendaDialog(FormDialog):
         self.contratos.conferir(contrato)
         self.venda.recorrencia = contrato.numero
         return contrato
+
+    def _pagamentos(self, parcelas: int) -> list[Pagamento]:
+        """As linhas da venda: uma forma so - mais a entrada, no parcelado.
+
+        A venda pendente que ja recebeu uma parte continua com ela; o que
+        falta fica como Prazo, ou na forma escolhida se ela for concluida aqui.
+        """
+        total = self.venda.total
+        ja = dinheiro(sum(p.valor for p in self._ja_pagos))
+        if ja > total + CENTAVO:
+            raise VendaError(f"Esta venda já recebeu {fmt.moeda(ja)}: o total não pode "
+                             "ficar menor que isso.")
+        resto = dinheiro(total - ja)
+        if self.venda.status != CONCLUIDA:
+            return list(self._ja_pagos) + (
+                [Pagamento(forma=PRAZO, valor=resto, recebido=resto)]
+                if self._ja_pagos and resto > 0 else []
+            )
+
+        entrada = dinheiro(self.entrada.value()) if parcelas else 0.0
+        if entrada and entrada + CENTAVO >= resto:
+            raise VendaError("A entrada precisa ser menor que o total: o resto é que vira "
+                             "parcelas.")
+        linhas = list(self._ja_pagos)
+        if entrada:
+            linhas.append(pagamento_unico(self.forma_entrada.currentText(), entrada))
+        if resto - entrada > 0:
+            linha = pagamento_unico(self.venda.forma_pagamento, dinheiro(resto - entrada),
+                                    parcelas=parcelas)
+            if self.editando:
+                # a pendente concluida aqui foi paga agora: entra no caixa de
+                # hoje, como no Receber - e nao no da venda, que ja fechou
+                caixa = self.repository.caixa_aberto()
+                linha.caixa_id = caixa.id if caixa is not None else 0
+                linha.recebido_em = hoje_iso()
+            linhas.append(linha)
+        return linhas
 
     def salvar(self) -> None:
         if self.so_dados:
@@ -223,11 +294,7 @@ class VendaDialog(FormDialog):
             for item in self.itens.items()
         ]
         # lancamento manual tem uma forma so; venda paga entra nas contas do dia
-        self.venda.pagamentos = (
-            [pagamento_unico(self.venda.forma_pagamento, self.venda.total, parcelas=parcelas)]
-            if self.venda.status == CONCLUIDA
-            else []
-        )
+        self.venda.pagamentos = self._pagamentos(parcelas)
         contrato = self._contrato()
         # paga agora: baixa o estoque ja; pendente baixa quando o cliente pagar
         self.venda = (self.repository.alterar_pendente(self.venda) if self.editando

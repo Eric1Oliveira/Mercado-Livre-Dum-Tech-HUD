@@ -428,7 +428,7 @@ class FluxoDeCaixaTestCase(unittest.TestCase):
 
     def _limpar_banco(self) -> None:
         """Os aplicativos compartilham o mesmo financeiro.db durante a suite."""
-        for tabela in ("baixas", "transferencias", "lancamentos", "contas"):
+        for tabela in ("baixas", "transferencias", "ajustes_saldo", "lancamentos", "contas"):
             self.repo.db.execute(f"DELETE FROM {tabela}")
         self.casca.refresh_all()
 
@@ -612,6 +612,55 @@ class FluxoDeCaixaTestCase(unittest.TestCase):
         contas._excluir()
         self.assertIn("já tem movimento", contas.aviso.text())
         self.assertEqual(contas.tabela.rowCount(), 1)
+
+    def test_desfazer_transferencia_e_zerar_o_saldo(self) -> None:
+        """O caso do cliente: duas transferencias por engano, depois o saldo zerado."""
+        from unittest import mock
+
+        from dumtech.apps.financeiro.models import CAIXA, Conta
+        from dumtech.apps.financeiro.ui import contas_view as modulo
+        from dumtech.apps.financeiro.ui.dialogos import AjusteSaldoDialog
+
+        caixa = self.repo.criar_conta(Conta(nome="CAIXA LOJA", tipo=CAIXA, saldo_inicial=1410.90))
+        test = self.repo.criar_conta(Conta(nome="TEST"))
+        for _ in range(2):
+            self.repo.transferir(caixa.id, test.id, 12919.0)
+
+        contas = self.casca.contas_view
+        contas.refresh()
+        self.assertEqual(contas.tabela_transferencias.rowCount(), 2)
+        self.assertFalse(contas.botao_desfazer.isEnabled())   # nada escolhido ainda
+
+        with mock.patch.object(modulo, "confirmar", return_value=True) as pergunta:
+            for _ in range(2):
+                contas.tabela_transferencias.selectRow(0)
+                self.assertTrue(contas.botao_desfazer.isEnabled())
+                contas._desfazer()
+        self.assertEqual(pergunta.call_count, 2)
+        self.assertEqual(contas.tabela_transferencias.rowCount(), 0)
+        self.assertIn("voltaram para 'CAIXA LOJA'", contas.aviso.text())
+        self.assertEqual(self.repo.obter_conta(test.id).saldo, 0.0)
+
+        # zerar o caixa: o ajuste aparece na lista, sem virar despesa
+        linha = next(i for i, c in enumerate(contas.contas) if c.id == caixa.id)
+        contas.tabela.selectRow(linha)
+        self.assertTrue(contas.botao_ajustar.isEnabled())
+        dialogo = AjusteSaldoDialog(self.repo, contas.selecionada(), contas)
+        dialogo.saldo_certo.setValue(0.0)
+        self.assertIn("R$ 1.410,90 (saída)", dialogo._nota.text())
+        dialogo.salvar()
+        dialogo.deleteLater()
+        contas.refresh()
+        self.assertEqual(contas.total.text(), "R$ 0,00")
+        self.assertEqual(contas.tabela_transferencias.item(0, 1).text(), "CAIXA LOJA")
+        self.assertEqual(contas.tabela_transferencias.item(0, 2).text(), "Ajuste de saldo")
+        self.assertEqual(self.repo.resumo().pago_mes, 0.0)
+
+        # desfeito o ajuste, o saldo volta
+        with mock.patch.object(modulo, "confirmar", return_value=True):
+            contas.tabela_transferencias.selectRow(0)
+            contas._desfazer()
+        self.assertEqual(self.repo.obter_conta(caixa.id).saldo, 1410.90)
 
 
 class OficinaTestCase(unittest.TestCase):

@@ -36,7 +36,7 @@ from PySide6.QtWidgets import (
 
 from ...core.database import aviso_so_consulta, e_so_consulta
 from .. import format as fmt
-from ..tela import caber_na_tela
+from ..tela import caber_na_tela, natural_com_miolo, vigiar
 from ..theme import Control, Space, apply_window_theme, palette_for
 from .buttons import Button
 from .common import label, separator
@@ -396,6 +396,9 @@ class FormDialog(QDialog):
         self._interno.setLayout(miolo)
         self._area = rolavel_no_dialogo(self._interno)
         raiz.addWidget(self._area, 1)
+        # linha que aparece depois de aberto (Parcelas, o QR do Pix): a janela
+        # cresce centrada, em vez de esconder o campo novo atras da rolagem
+        vigiar(self, self._interno)
 
         rodape = QHBoxLayout()
         rodape.setSpacing(Space.sm + 2)
@@ -418,28 +421,13 @@ class FormDialog(QDialog):
         # mesmo dialogo encontra o tamanho que deixou
         if not self._ajustado:
             self._ajustado = True
-            self.resize(self._tamanho_natural())
+            self.resize(self.tamanho_natural())
             caber_na_tela(self, centralizar=True)
         super().showEvent(evento)
 
-    def _tamanho_natural(self) -> QSize:
-        """O tamanho em que tudo aparece sem rolar (a tela ainda pode aparar).
-
-        A area de rolagem nao serve de regua: o Qt limita o "tamanho ideal"
-        dela a algumas linhas, e o dialogo nascia apertado. A conta e feita com
-        o conteudo de verdade, na largura em que ele vai ficar.
-        """
-        margens = self.layout().contentsMargins()
-        lados = margens.left() + margens.right()
-        # a largura de sempre; so cresce se o conteudo nao couber nela
-        largura = max(self._largura, self.minimumWidth(),
-                      self._interno.minimumSizeHint().width() + lados)
-        miolo = self._interno.layout()
-        altura = (miolo.totalHeightForWidth(largura - lados) if miolo.hasHeightForWidth()
-                  else self._interno.sizeHint().height())
-        moldura = self.layout().sizeHint().height() - self._area.sizeHint().height()
-        # a margem extra evita uma barra de rolagem por arredondamento
-        return QSize(largura, altura + moldura + 2)
+    def tamanho_natural(self) -> QSize:
+        """O tamanho em que tudo aparece sem rolar (a tela ainda pode aparar)."""
+        return natural_com_miolo(self, self._interno, self._area, self._largura)
 
     def add_row(self, rotulo: str, campo) -> None:
         # o rotulo e apoio, nao conteudo: tom baixo, peso medio - o que se le

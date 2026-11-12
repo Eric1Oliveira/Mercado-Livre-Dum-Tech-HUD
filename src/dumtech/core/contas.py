@@ -130,6 +130,14 @@ class Origem(Protocol):
     def conta_reaberta(self, documento: str) -> bool:
         """A baixa foi desfeita no Financeiro. True se o documento reabriu."""
 
+    # Opcionais (o Financeiro pergunta se existem antes de chamar):
+    #
+    #   conta_recebida_em_parte(documento, forma, data, valor) -> bool
+    #       uma baixa que NAO quitou a conta; quem nao tem, so fica sabendo
+    #       quando ela quitar (conta_recebida)
+    #   baixa_estornada(documento, forma, valor) -> bool
+    #       qual baixa foi desfeita; quem nao tem, recebe conta_reaberta
+
 
 @runtime_checkable
 class Contas(Protocol):
@@ -173,6 +181,13 @@ class Contas(Protocol):
         Sem isto a ponte criaria uma divida que ninguem fecha: o cliente volta,
         paga no balcao, e o Financeiro continuaria cobrando. `False` quando nao
         existe conta daquele documento - situacao normal, nao erro.
+        """
+
+    def receber(self, documento: str, valor: float, forma: str = "", data: str = "") -> bool:
+        """Da baixa de UMA PARTE da conta deste documento ("pagou 100 dos 150").
+
+        Cada parte com a sua forma e o seu dia: o Pix fica como Pix. `False`
+        quando nao ha conta em aberto daquele documento.
         """
 
     def ajustar(

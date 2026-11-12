@@ -153,7 +153,15 @@ class CaixaMixin:
 
     # --------------------------------------------------------------- conferencia
     def conferencia(self, caixa_id: int | None = None) -> ConferenciaCaixa:
-        """A conta da gaveta, parte por parte."""
+        """A conta da gaveta, parte por parte.
+
+        As vendas feitas neste caixa dao o "Total vendido" (a que nasceu fora
+        de caixa, como a da proposta, conta no caixa em que foi quitada). O
+        dinheiro e contado pelas linhas de pagamento que ENTRARAM nele -
+        inclusive a parte de uma venda a prazo antiga paga hoje, cada uma na
+        sua forma. A linha "Prazo" e o que ainda falta das vendas a prazo
+        feitas aqui: diminui conforme o cliente paga.
+        """
         caixa = self.obter_caixa(caixa_id) if caixa_id else self.caixa_aberto()
         if caixa is None:
             return ConferenciaCaixa()
@@ -163,13 +171,14 @@ class CaixaMixin:
 
         por_forma: dict[str, float] = {}
         vendas_dinheiro = 0.0
-        for venda in vendas:
-            for pagamento in venda.pagamentos:
-                por_forma[pagamento.forma] = por_forma.get(pagamento.forma, 0.0) + pagamento.valor
-                if pagamento.em_dinheiro:
-                    # `valor` ja vem sem o troco: somar ele e tirar `trocos` de
-                    # novo cobrava o troco duas vezes
-                    vendas_dinheiro += max(pagamento.recebido, pagamento.valor)
+        trocos = 0.0
+        for pagamento in self.pagamentos_do_caixa(caixa.id):
+            por_forma[pagamento.forma] = por_forma.get(pagamento.forma, 0.0) + pagamento.valor
+            if pagamento.em_dinheiro:
+                # `valor` ja vem sem o troco: somar ele e tirar `trocos` de
+                # novo cobrava o troco duas vezes
+                vendas_dinheiro += max(pagamento.recebido, pagamento.valor)
+                trocos += max(pagamento.recebido - pagamento.valor, 0.0)
 
         devolvido = float(
             self.db.scalar(
@@ -183,7 +192,7 @@ class CaixaMixin:
             caixa=caixa,
             abertura=caixa.valor_abertura,
             vendas_dinheiro=dinheiro(vendas_dinheiro),
-            trocos=dinheiro(sum(v.troco for v in vendas)),
+            trocos=dinheiro(trocos),
             recebimentos=dinheiro(
                 sum(m.valor for m in movimentos if m.tipo == TIPO_RECEBIMENTO)
             ),

@@ -16,7 +16,7 @@ from ....ui.widgets.comprovante import ComprovanteDialog
 from ....ui.widgets.mensagem import mandar
 from ....ui.widgets.table import DIREITA
 from .. import financeiro
-from ..models import PENDENTE, STATUS_LABEL, Venda
+from ..models import PENDENTE, STATUS_LABEL, Venda, VendaError
 from ..recibo import comprovante
 from ..repository import VendasRepository
 from .caixa_dialogs import MotivoDialog
@@ -130,6 +130,9 @@ class VendasView(CrudView):
         """Uma devolucao parcial nao muda o status, mas precisa aparecer."""
         if venda.devolvido and venda.status not in ("cancelada", "devolvida"):
             return f"{venda.status_label} · devolvido {fmt.moeda(venda.devolvido)}"
+        # paga em parte: o quanto falta e o que a pessoa procura aqui
+        if venda.status == PENDENTE and venda.em_aberto + 0.005 < venda.total:
+            return f"{venda.status_label} · falta {fmt.moeda(venda.em_aberto)}"
         return venda.status_label
 
     def _atualizar_acoes(self) -> None:
@@ -201,27 +204,41 @@ class VendasView(CrudView):
         }, contatos=self.contatos)
 
     def _receber(self) -> None:
+        """O cliente voltou para pagar: tudo, ou so uma parte ("da 100 dos 150")."""
         venda = self.registro_selecionado()
         if venda is None:
             return
+        ja_pago = round(venda.total - venda.em_aberto, 2)
+        detalhe = (f"  ·  já pagou {fmt.moeda(ja_pago)} de {fmt.moeda(venda.total)}"
+                   if ja_pago > 0 else "")
         dialogo = PagamentoDialog(
-            venda.total,
-            f"Venda {venda.numero}  ·  {venda.cliente or 'Consumidor'}",
-            conferir=self.repository.conferir_pagamento,
+            venda.em_aberto,
+            f"Venda {venda.numero}  ·  {venda.cliente or 'Consumidor'}{detalhe}",
+            conferir=self.repository.conferir_recebimento,
             parent=self,
             # sem isto o QR Code do Pix nascia em branco aqui: a chave e da
             # empresa, e o dialogo nao tem como adivinha-la sozinho
             empresa=self.empresa,
+            parcial=True,
         )
         if not dialogo.exec():
             return
-        recebida = self.repository.receber_pendente(venda.id, dialogo.pagamentos)
-        # a conta que a ponte criou tem que fechar junto, senao o Financeiro
-        # continua cobrando uma venda que ja foi paga; e a venda que veio da
-        # proposta, sem conta nenhuma, entra ja recebida
-        recado = financeiro.registrar(self.contas, recebida)
+        try:
+            recebida = self.repository.receber_pendente(venda.id, dialogo.pagamentos)
+        except VendaError as erro:
+            self.mostrar_aviso(str(erro), "danger")
+            return
+        # cada parte vira uma baixa no Financeiro, com a sua forma; a venda que
+        # veio da proposta, sem conta nenhuma, ganha a conta ja com o que entrou
+        recado = financeiro.receber(self.contas, recebida, dialogo.pagamentos)
         self.refresh()
-        self.mostrar_aviso(f"Venda {venda.numero} recebida.{recado}", "success")
+        pago = fmt.moeda(sum(p.valor for p in dialogo.pagamentos))
+        texto = (f"Venda {venda.numero}: recebido {pago}.{recado}"
+                 if recebida.status == PENDENTE else f"Venda {venda.numero} recebida.{recado}")
+        troco = self.repository.troco_de(dialogo.pagamentos)
+        if troco:
+            texto += f"  TROCO: {fmt.moeda(troco)}."
+        self.mostrar_aviso(texto, "success")
         self.data_changed.emit()
 
     def _devolver(self) -> None:

@@ -31,6 +31,7 @@ from .. import documento as doc
 from ..theme import Space, apply_window_theme, palette_for
 from .buttons import Button
 from .common import label, repolish, separator
+from .comprovante import imprimir_bobina
 
 FOLHA = 0
 BOBINA = 1
@@ -206,10 +207,14 @@ class DocumentoDialog(QDialog):
         if dialogo.exec() != QDialog.DialogCode.Accepted:
             return
 
-        if self.paginas.currentIndex() == BOBINA:
-            self.tira.print_(impressora)
-        else:
-            doc.imprimir(self.html, impressora, self.empresa, self.paths)
+        try:
+            if self.paginas.currentIndex() == BOBINA:
+                imprimir_bobina(self.texto_bobina, impressora)
+            else:
+                doc.imprimir(self.html, impressora, self.empresa, self.paths)
+        except OSError as erro:
+            self._dizer(str(erro), "danger")
+            return
         self._dizer("Enviado para a impressora.", "success")
 
 

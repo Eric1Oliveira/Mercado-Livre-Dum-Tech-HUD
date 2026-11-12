@@ -27,7 +27,7 @@ from ...core.contas import (
     MovimentoDeCaixa,
     Situacao,
 )
-from ...core.pagamentos import DINHEIRO
+from ...core.pagamentos import DINHEIRO, forma_canonica
 from ...ui import format as fmt
 from .database import open_database
 from .models import BANCO, CADA_30_DIAS, CAIXA, DESPESA, RECEITA, RECORRENCIA, Lancamento
@@ -138,6 +138,28 @@ class ContasFinanceiro:
         self.repository.quitar(
             lancamento.id, conta_id=self._conta_da_baixa(lancamento), forma=forma
         )
+        eventos.avisar(APP_ID)
+        return True
+
+    def receber(self, documento: str, valor: float, forma: str = "", data: str = "") -> bool:
+        """O cliente pagou uma parte: baixa so ela, com a forma e o dia dela.
+
+        Documento com mais de uma conta em aberto paga a que vence primeiro.
+        """
+        valor = dinheiro(valor)
+        abertas = sorted((conta for conta in self._receitas(documento) if not conta.pago),
+                         key=lambda conta: (conta.vencimento, conta.id))
+        if valor <= 0 or not abertas:
+            return False
+        for conta in abertas:
+            parte = min(valor, dinheiro(conta.em_aberto))
+            if parte <= 0:
+                continue
+            self.repository.baixar(conta.id, parte, data=data,
+                                   conta_id=self._conta_da_baixa(conta), forma=forma)
+            valor = dinheiro(valor - parte)
+            if valor <= 0:
+                break
         eventos.avisar(APP_ID)
         return True
 
@@ -359,9 +381,12 @@ def ligar_modulos(repository, origens=(), gaveta=None) -> None:
         documento = documento_de(lancamento)
         origem = dona(documento)
         if origem is not None:
+            # cada parte chega com a forma dela: a ultima nao fala pelas outras
             if lancamento.pago:
                 origem.conta_recebida(documento, baixa.forma, baixa.data)
-        elif gaveta is not None and baixa.forma.strip() == DINHEIRO:
+            elif hasattr(origem, "conta_recebida_em_parte"):
+                origem.conta_recebida_em_parte(documento, baixa.forma, baixa.data, baixa.valor)
+        elif gaveta is not None and forma_canonica(baixa.forma) == DINHEIRO:
             gaveta.entrada(baixa.valor, lancamento.descricao, documento or f"LANC-{lancamento_id}")
 
     def estornou(lancamento_id: int, baixa) -> None:
@@ -371,8 +396,11 @@ def ligar_modulos(repository, origens=(), gaveta=None) -> None:
         documento = documento_de(lancamento)
         origem = dona(documento)
         if origem is not None:
-            origem.conta_reaberta(documento)
-        elif gaveta is not None and baixa.forma.strip() == DINHEIRO:
+            if hasattr(origem, "baixa_estornada"):
+                origem.baixa_estornada(documento, baixa.forma, baixa.valor, baixa.data)
+            else:
+                origem.conta_reaberta(documento)
+        elif gaveta is not None and forma_canonica(baixa.forma) == DINHEIRO:
             gaveta.desfazer(baixa.valor, documento or f"LANC-{lancamento_id}")
 
     repository.ao_baixar = baixou

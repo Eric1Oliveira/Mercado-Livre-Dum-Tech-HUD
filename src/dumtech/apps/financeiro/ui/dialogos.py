@@ -8,10 +8,12 @@ from ....ui import format as fmt
 from ....ui.widgets import form
 from ....ui.widgets.buttons import Button
 from ....core.pagamentos import PIX
+from ....ui.widgets.common import label
 from ....ui.widgets.form import FormDialog
 from ....ui.widgets.painel_pix import PainelPix
 from ....ui.widgets.table import DIREITA, DataTable
 from ..models import (
+    CENTAVO,
     CONTA_OPCOES,
     FREQUENCIAS,
     PARCELAMENTO,
@@ -247,6 +249,63 @@ class TransferenciaDialog(FormDialog):
             self.valor.value(),
             data=form.iso_da_data(self.data),
             observacao=self.observacao.text(),
+        )
+
+
+class AjusteSaldoDialog(FormDialog):
+    """O saldo do sistema nao bate com o de verdade: acerta para o valor certo."""
+
+    def __init__(
+        self,
+        repository: FinanceiroRepository,
+        conta: Conta,
+        parent: QWidget | None = None,
+    ) -> None:
+        self.repository = repository
+        self.conta = conta
+        super().__init__("Ajustar saldo", conta.nome, parent, largura=500)
+
+        self.add_row("No sistema", label(fmt.moeda(conta.saldo), "body"))
+
+        self.saldo_certo = form.dinheiro()
+        self.saldo_certo.setRange(-99_999_999, 99_999_999)   # cartao fica no vermelho
+        self.saldo_certo.setValue(conta.saldo)
+        self.saldo_certo.textChanged.connect(
+            lambda texto: self._atualizar_nota(fmt.para_numero(texto))
+        )
+        self.data = form.data()
+        self.add_row("Saldo certo", form.linha(self.saldo_certo, "Data", self.data))
+
+        self.motivo = form.texto("", "Opcional. Ex.: conferência do caixa")
+        self.add_row("Motivo", self.motivo)
+
+        self.add_note("")
+        self._nota = self.extras.itemAt(0).widget()
+        self._atualizar_nota(conta.saldo)
+        self.saldo_certo.setFocus()
+
+    def _atualizar_nota(self, saldo_certo: float) -> None:
+        diferenca = round(saldo_certo - self.conta.saldo, 2)
+        if abs(diferenca) < CENTAVO:
+            self._nota.setText(
+                "Digite quanto tem de verdade nesta conta hoje (para zerar, digite 0). "
+                "O ajuste não entra no resultado do mês: só acerta o saldo."
+            )
+            return
+        sentido = "entrada" if diferenca > 0 else "saída"
+        self._nota.setText(
+            f"O Hub lança um ajuste de {fmt.moeda(abs(diferenca))} ({sentido}) e o saldo "
+            f"fica em {fmt.moeda(saldo_certo)}. Não entra no resultado do mês e pode "
+            "ser desfeito depois."
+        )
+
+    def salvar(self) -> None:
+        self.saldo_certo.interpretText()
+        self.ajuste = self.repository.ajustar_saldo(
+            self.conta.id,
+            self.saldo_certo.value(),
+            data=form.iso_da_data(self.data),
+            motivo=self.motivo.text(),
         )
 
 

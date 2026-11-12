@@ -1,15 +1,18 @@
 """Contas: onde o dinheiro esta, e como ele anda de uma para outra.
 
 Saldo = saldo inicial + baixas de receita - baixas de despesa + transferencias
-recebidas - enviadas. Transferencia **nao** e receita nem despesa: sacar do
-banco para o caixa nao pode inflar o resultado do mes.
+recebidas - enviadas + ajustes de saldo. Transferencia e ajuste **nao** sao
+receita nem despesa: sacar do banco para o caixa, ou acertar o saldo com o
+caixa contado, nao pode mexer no resultado do mes.
 """
 
 from __future__ import annotations
 
 from ..models import (
     CAIXA,
+    CENTAVO,
     CONTA_LABEL,
+    AjusteSaldo,
     Conta,
     FinanceiroError,
     Transferencia,
@@ -27,8 +30,15 @@ SELECT_CONTA = """
         ), 0)
         + COALESCE((SELECT SUM(t.valor) FROM transferencias t WHERE t.destino_id = c.id), 0)
         - COALESCE((SELECT SUM(t.valor) FROM transferencias t WHERE t.origem_id = c.id), 0)
+        + COALESCE((SELECT SUM(a.valor) FROM ajustes_saldo a WHERE a.conta_id = c.id), 0)
         AS saldo
     FROM contas c
+"""
+
+SELECT_AJUSTE = """
+    SELECT a.*, COALESCE(c.nome, '') AS conta_nome
+    FROM ajustes_saldo a
+    LEFT JOIN contas c ON c.id = a.conta_id
 """
 
 SELECT_TRANSFERENCIA = """
@@ -122,10 +132,15 @@ class ContasMixin:
 
     def excluir_conta(self, conta_id: int) -> None:
         """Conta com movimento nao some: vira inativa, como o produto no Estoque."""
-        if self._tem_movimento(conta_id):
+        if self.db.scalar("SELECT COUNT(*) FROM baixas WHERE conta_id = ?", (conta_id,)):
             raise FinanceiroError(
                 "Esta conta já tem movimento. Use 'Inativar' para tirá-la da lista "
                 "sem perder o histórico."
+            )
+        if self._tem_movimento(conta_id):   # so transferencia ou ajuste: tem volta
+            raise FinanceiroError(
+                "Esta conta já tem movimento: desfaça as transferências e os ajustes "
+                "dela, lá embaixo, ou use 'Inativar' para tirá-la da lista."
             )
         self.db.execute("DELETE FROM contas WHERE id = ?", (conta_id,))
 
@@ -184,7 +199,60 @@ class ContasMixin:
         ]
 
     def excluir_transferencia(self, transferencia_id: int) -> None:
+        """Desfaz a transferencia: o dinheiro volta para a conta de onde saiu."""
         self.db.execute("DELETE FROM transferencias WHERE id = ?", (transferencia_id,))
+
+    # --------------------------------------------------------- ajuste de saldo
+    def ajustar_saldo(
+        self,
+        conta_id: int,
+        saldo_certo: float,
+        data: str = "",
+        motivo: str = "",
+    ) -> AjusteSaldo:
+        """Deixa o saldo da conta em `saldo_certo`, guardando so a diferenca."""
+        conta = self.obter_conta(conta_id)
+        if conta is None:
+            raise FinanceiroError("Escolha a conta que vai ser ajustada.")
+        diferenca = dinheiro(dinheiro(saldo_certo) - dinheiro(conta.saldo))
+        if abs(diferenca) < CENTAVO:
+            raise FinanceiroError(
+                "O saldo desta conta já é esse valor: não há nada para ajustar."
+            )
+        data = data or hoje_iso()
+        if ler_data(data) is None:
+            raise FinanceiroError("Data do ajuste inválida.")
+
+        momento = agora()
+        cursor = self.db.execute(
+            """
+            INSERT INTO ajustes_saldo (conta_id, data, valor, motivo, criado_em)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (conta_id, data, diferenca, motivo.strip(), momento),
+        )
+        return AjusteSaldo(
+            id=int(cursor.lastrowid),
+            conta_id=conta_id,
+            data=data,
+            valor=diferenca,
+            motivo=motivo.strip(),
+            criado_em=momento,
+            conta_nome=conta.nome,
+        )
+
+    def listar_ajustes(self, limite: int = 50) -> list[AjusteSaldo]:
+        return [
+            AjusteSaldo.from_row(row)
+            for row in self.db.query(
+                f"{SELECT_AJUSTE} ORDER BY date(a.data) DESC, a.id DESC LIMIT ?",
+                (int(limite),),
+            )
+        ]
+
+    def excluir_ajuste(self, ajuste_id: int) -> None:
+        """Desfaz o ajuste: o saldo volta a ser o de antes dele."""
+        self.db.execute("DELETE FROM ajustes_saldo WHERE id = ?", (ajuste_id,))
 
     # ------------------------------------------------------------------ interno
     def _tem_movimento(self, conta_id: int) -> bool:
@@ -193,6 +261,9 @@ class ContasMixin:
             or self.db.scalar(
                 "SELECT COUNT(*) FROM transferencias WHERE origem_id = ? OR destino_id = ?",
                 (conta_id, conta_id),
+            )
+            or self.db.scalar(
+                "SELECT COUNT(*) FROM ajustes_saldo WHERE conta_id = ?", (conta_id,)
             )
         )
 

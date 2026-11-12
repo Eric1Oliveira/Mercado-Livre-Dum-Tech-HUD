@@ -257,6 +257,68 @@ class ContasTestCase(FinanceiroBase):
         with self.assertRaises(FinanceiroError):
             self.repo.transferir(conta.id, conta.id, 100.0)
 
+    def test_desfazer_transferencia_devolve_o_dinheiro(self) -> None:
+        caixa = self._conta("Caixa", tipo=CAIXA, saldo_inicial=1410.90)
+        banco = self._conta("Test")
+        primeira = self.repo.transferir(caixa.id, banco.id, 12919.0)
+        self.repo.transferir(caixa.id, banco.id, 12919.0)
+
+        self.repo.excluir_transferencia(primeira.id)
+
+        self.assertAlmostEqual(self.repo.obter_conta(caixa.id).saldo, -11508.10, places=2)
+        self.assertEqual(self.repo.obter_conta(banco.id).saldo, 12919.0)
+        self.assertEqual(len(self.repo.listar_transferencias()), 1)
+
+    def test_ajuste_deixa_o_saldo_no_valor_certo_sem_mexer_no_resultado(self) -> None:
+        caixa = self._conta("Caixa", tipo=CAIXA, saldo_inicial=100.0)
+        receita = self._lancamento(valor=200.10)
+        self.repo.baixar(receita.id, conta_id=caixa.id)
+        antes = self.repo.resumo()
+
+        ajuste = self.repo.ajustar_saldo(caixa.id, 0.0, motivo="Conferência do caixa")
+
+        self.assertEqual(ajuste.valor, -300.10)
+        self.assertEqual(ajuste.conta_nome, "Caixa")
+        self.assertEqual(self.repo.obter_conta(caixa.id).saldo, 0.0)
+        self.assertEqual(self.repo.saldo_total(), 0.0)
+        # acerto de saldo nao e receita nem despesa
+        depois = self.repo.resumo()
+        self.assertEqual(depois.recebido_mes, antes.recebido_mes)
+        self.assertEqual(depois.pago_mes, antes.pago_mes)
+        self.assertEqual([a.motivo for a in self.repo.listar_ajustes()], ["Conferência do caixa"])
+
+    def test_ajuste_aceita_saldo_negativo_e_pode_ser_desfeito(self) -> None:
+        cartao = self._conta("Cartão", saldo_inicial=50.0)
+        ajuste = self.repo.ajustar_saldo(cartao.id, -120.0)
+        self.assertEqual(self.repo.obter_conta(cartao.id).saldo, -120.0)
+
+        self.repo.excluir_ajuste(ajuste.id)
+        self.assertEqual(self.repo.obter_conta(cartao.id).saldo, 50.0)
+        self.assertEqual(self.repo.listar_ajustes(), [])
+
+    def test_ajuste_sem_diferenca_e_recusado(self) -> None:
+        conta = self._conta(saldo_inicial=80.0)
+        with self.assertRaises(FinanceiroError):
+            self.repo.ajustar_saldo(conta.id, 80.0)
+        with self.assertRaises(FinanceiroError):
+            self.repo.ajustar_saldo(9999, 0.0)
+
+    def test_conta_so_com_transferencia_some_depois_de_desfazer(self) -> None:
+        caixa = self._conta("Caixa", tipo=CAIXA, saldo_inicial=500.0)
+        errada = self._conta("Conta errada")
+        transferencia = self.repo.transferir(caixa.id, errada.id, 100.0)
+        ajuste = self.repo.ajustar_saldo(errada.id, 0.0)
+
+        with self.assertRaises(FinanceiroError) as erro:
+            self.repo.excluir_conta(errada.id)
+        self.assertIn("desfaça", str(erro.exception))
+
+        self.repo.excluir_ajuste(ajuste.id)
+        self.repo.excluir_transferencia(transferencia.id)
+        self.repo.excluir_conta(errada.id)
+        self.assertIsNone(self.repo.obter_conta(errada.id))
+        self.assertEqual(self.repo.obter_conta(caixa.id).saldo, 500.0)
+
     def test_conta_padrao_prefere_o_caixa(self) -> None:
         self._conta("Banco")
         caixa = self._conta("Caixa", tipo=CAIXA)
@@ -434,7 +496,7 @@ class MigracaoTestCase(unittest.TestCase):
         db = open_database(arquivo)
         self.addCleanup(db.close)
         repo = FinanceiroRepository(db)
-        self.assertEqual(db.schema_version, 4)
+        self.assertEqual(db.schema_version, 5)
 
         paga = repo.obter(1)
         self.assertEqual(paga.descricao, "Venda antiga")
@@ -460,6 +522,8 @@ class MigracaoTestCase(unittest.TestCase):
         conta = repo.criar_conta(Conta(nome="Caixa", tipo=CAIXA, saldo_inicial=50.0))
         repo.baixar(2, 100.0, conta_id=conta.id)
         self.assertEqual(repo.obter_conta(conta.id).saldo, -50.0)
+        repo.ajustar_saldo(conta.id, 0.0)
+        self.assertEqual(repo.obter_conta(conta.id).saldo, 0.0)
 
 
 if __name__ == "__main__":

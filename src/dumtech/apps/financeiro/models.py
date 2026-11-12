@@ -100,7 +100,8 @@ class Conta:
             observacoes=row["observacoes"] or "",
             ativo=bool(row["ativo"]),
             criado_em=row["criado_em"],
-            saldo=float(row["saldo"]) if "saldo" in campos else 0.0,
+            # em centavos: a soma em ponto flutuante deixa 0,00 virar "-R$ 0,00"
+            saldo=round(float(row["saldo"]), 2) if "saldo" in campos else 0.0,
         )
 
 
@@ -162,6 +163,34 @@ class Transferencia:
             criado_em=row["criado_em"],
             origem_nome=row["origem_nome"] if "origem_nome" in campos else "",
             destino_nome=row["destino_nome"] if "destino_nome" in campos else "",
+        )
+
+
+@dataclass
+class AjusteSaldo:
+    """O saldo da conta acertado para o valor de verdade (contou o caixa, viu o
+    extrato). `valor` e a diferenca: positivo entrou, negativo saiu. Como a
+    transferencia, nao e receita nem despesa."""
+
+    id: int | None = None
+    conta_id: int = 0
+    data: str = field(default_factory=hoje_iso)
+    valor: float = 0.0
+    motivo: str = ""
+    criado_em: str = ""
+    conta_nome: str = ""
+
+    @classmethod
+    def from_row(cls, row: Row) -> "AjusteSaldo":
+        campos = row.keys()
+        return cls(
+            id=row["id"],
+            conta_id=row["conta_id"],
+            data=row["data"],
+            valor=float(row["valor"]),
+            motivo=row["motivo"] or "",
+            criado_em=row["criado_em"],
+            conta_nome=row["conta_nome"] if "conta_nome" in campos else "",
         )
 
 

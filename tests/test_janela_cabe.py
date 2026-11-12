@@ -17,7 +17,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from PySide6.QtCore import QRect
+from PySide6.QtCore import QRect, QSize
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QDialog, QLabel, QPushButton, QScrollArea
 
@@ -170,6 +170,152 @@ class OutrosDialogosTestCase(unittest.TestCase):
 
         texto = "\n".join(f"Linha {i}" for i in range(80))
         self.assertEqual(self._conferir(ComprovanteDialog(texto)), [])
+
+    def test_pix_no_receber_nao_esconde_os_botoes_no_notebook(self) -> None:
+        """O caso da cliente: escolher Pix abria o QR e o Receber sumia."""
+        from dumtech.apps.vendas.ui.pagamento_dialog import PagamentoDialog
+
+        dialogo = PagamentoDialog(150.0, "Venda")
+        self.addCleanup(dialogo.deleteLater)
+        self.addCleanup(dialogo.close)
+        with _na_tela(NOTEBOOK):
+            dialogo.show()
+            QTest.qWait(40)
+            dialogo.forma.setCurrentText("Pix")
+            QTest.qWait(60)
+            self.assertTrue(dialogo.painel_pix.isVisible())
+            self.assertEqual(_problemas(dialogo, NOTEBOOK), [])
+            self.assertTrue(dialogo.botao_receber.isVisible())
+
+    def _centro(self, dialogo) -> tuple[int, int]:
+        centro = dialogo.geometry().center()
+        return centro.x(), centro.y()
+
+    def test_janela_cresce_e_volta_sem_sair_do_centro(self) -> None:
+        from dumtech.apps.vendas.ui.pagamento_dialog import PagamentoDialog
+
+        dialogo = PagamentoDialog(150.0, "Venda")
+        self.addCleanup(dialogo.deleteLater)
+        self.addCleanup(dialogo.close)
+        with _na_tela(MONITOR):
+            dialogo.show()
+            QTest.qWait(40)
+            altura, centro = dialogo.height(), self._centro(dialogo)
+
+            dialogo.forma.setCurrentText("Pix")
+            QTest.qWait(60)
+            self.assertGreater(dialogo.height(), altura + 150, "o QR inteiro a vista")
+            self.assertEqual(dialogo._area.verticalScrollBar().maximum(), 0)
+            x, y = self._centro(dialogo)
+            self.assertLessEqual(abs(x - centro[0]) + abs(y - centro[1]), 4,
+                                 "cresce para os dois lados, nao so para baixo")
+
+            dialogo.forma.setCurrentText("Dinheiro")
+            QTest.qWait(60)
+            self.assertEqual(dialogo.height(), altura)
+            self.assertEqual(_problemas(dialogo, MONITOR), [])
+
+    def test_formulario_que_ganha_campo_cresce_centrado(self) -> None:
+        from dumtech.ui.widgets import form
+
+        class Formulario(form.FormDialog):
+            def __init__(self) -> None:
+                super().__init__("Teste", "", None, largura=480)
+                self.add_row("Nome", form.texto("", ""))
+                self.extra = QLabel("campo que aparece depois")
+                self.extra.setFixedHeight(220)
+                self.extra.setVisible(False)
+                self.extras.addWidget(self.extra)
+
+            def salvar(self) -> None:
+                return None
+
+        dialogo = Formulario()
+        self.addCleanup(dialogo.deleteLater)
+        self.addCleanup(dialogo.close)
+        with _na_tela(MONITOR):
+            dialogo.show()
+            QTest.qWait(40)
+            altura, centro = dialogo.height(), self._centro(dialogo)
+            dialogo.extra.setVisible(True)
+            QTest.qWait(60)
+            self.assertGreaterEqual(dialogo.height(), altura + 200)
+            x, y = self._centro(dialogo)
+            self.assertLessEqual(abs(x - centro[0]) + abs(y - centro[1]), 4)
+            dialogo.extra.setVisible(False)
+            QTest.qWait(60)
+            self.assertEqual(dialogo.height(), altura)
+
+    def test_tamanho_escolhido_pela_pessoa_fica(self) -> None:
+        """Quem puxou a borda nao ve a janela voltar sozinha ao tamanho de antes."""
+        from dumtech.ui.widgets import form
+
+        class Formulario(form.FormDialog):
+            def __init__(self) -> None:
+                super().__init__("Teste", "", None, largura=480)
+                self.add_row("Nome", form.texto("", ""))
+                self.aviso = QLabel("")
+                self.extras.addWidget(self.aviso)
+
+            def salvar(self) -> None:
+                return None
+
+        dialogo = Formulario()
+        self.addCleanup(dialogo.deleteLater)
+        self.addCleanup(dialogo.close)
+        with _na_tela(MONITOR):
+            dialogo.show()
+            QTest.qWait(40)
+            escolhido = dialogo.size() + QSize(120, 160)
+            dialogo.resize(escolhido)
+            QTest.qWait(40)
+            dialogo.aviso.setText("Algo mudou\nem duas linhas")
+            QTest.qWait(60)
+            self.assertEqual(dialogo.size(), escolhido)
+
+    def test_dialogo_sem_rolagem_tambem_cresce_centrado(self) -> None:
+        from PySide6.QtWidgets import QVBoxLayout
+
+        from dumtech.ui.theme import apply_window_theme, palette_for
+
+        dialogo = QDialog()
+        self.addCleanup(dialogo.deleteLater)
+        self.addCleanup(dialogo.close)
+        coluna = QVBoxLayout(dialogo)
+        coluna.addWidget(QLabel("Sempre aqui"))
+        extra = QLabel("aparece depois")
+        extra.setFixedHeight(240)
+        extra.setVisible(False)
+        coluna.addWidget(extra)
+        apply_window_theme(dialogo, palette_for(None))
+        with _na_tela(MONITOR):
+            dialogo.show()
+            QTest.qWait(40)
+            # no meio da tela, como sobre o Hub: colada na borda, crescer em
+            # volta do centro a jogaria para fora - e ai caber vem primeiro
+            dialogo.move(800, 400)
+            QTest.qWait(20)
+            centro = self._centro(dialogo)
+            extra.setVisible(True)
+            QTest.qWait(60)
+            self.assertGreaterEqual(dialogo.height(), 240)
+            x, y = self._centro(dialogo)
+            self.assertLessEqual(abs(x - centro[0]) + abs(y - centro[1]), 4)
+
+    def test_aviso_nao_encolhe_janela_que_abriu_grande(self) -> None:
+        from dumtech.ui.widgets.comprovante import ComprovanteDialog
+
+        dialogo = ComprovanteDialog("Linha")
+        self.addCleanup(dialogo.deleteLater)
+        self.addCleanup(dialogo.close)
+        with _na_tela(MONITOR):
+            dialogo.resize(700, 800)
+            dialogo.show()
+            QTest.qWait(40)
+            tamanho = dialogo.size()
+            dialogo._dizer("Comprovante copiado.", "success")
+            QTest.qWait(60)
+            self.assertEqual(dialogo.size(), tamanho)
 
     def test_janela_que_ja_cabe_fica_onde_estava(self) -> None:
         from dumtech.ui.tela import caber_na_tela

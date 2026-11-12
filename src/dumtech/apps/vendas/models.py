@@ -7,7 +7,7 @@ from datetime import date, datetime, timedelta
 from sqlite3 import Row
 
 from ...core.errors import RegraError
-from ...core.pagamentos import DINHEIRO, FORMAS, PARCELADO, PIX  # noqa: F401 - a lista mora la
+from ...core.pagamentos import DINHEIRO, FORMAS, PARCELADO, PIX, PRAZO  # noqa: F401 - a lista mora la
 
 CONCLUIDA = "concluida"
 PENDENTE = "pendente"
@@ -138,6 +138,13 @@ class Pagamento:
     recebido: float = 0.0
     #: em quantas vezes esta linha foi dividida; cada vez e uma conta no Financeiro
     parcelas: int = 0
+    #: o caixa em que este dinheiro entrou (0 = nenhum; None = o da venda). E
+    #: por linha porque a venda a prazo e paga aos poucos, em caixas diferentes
+    caixa_id: int | None = None
+    #: dia em que o cliente pagou esta parte, quando foi depois da venda
+    #: ("" = pago junto com a venda). So esta linha pode ser estornada
+    recebido_em: str = ""
+    criado_em: str = ""
 
     @property
     def em_dinheiro(self) -> bool:
@@ -148,18 +155,27 @@ class Pagamento:
         return self.parcelas > 1
 
     @property
+    def a_prazo(self) -> bool:
+        """A parte que o cliente ainda deve."""
+        return self.forma.strip().casefold() == PRAZO.casefold()
+
+    @property
     def rotulo(self) -> str:
         """A forma como a pessoa le: Pix, Parcelado 12x."""
         return f"{self.forma} {self.parcelas}x" if self.parcelado else self.forma
 
     @classmethod
     def from_row(cls, row: Row) -> "Pagamento":
+        campos = row.keys()
         return cls(
             id=row["id"],
             forma=row["forma"],
             valor=float(row["valor"]),
             recebido=float(row["recebido"] or 0),
             parcelas=int(row["parcelas"] or 0),
+            caixa_id=int(row["caixa_id"] or 0) if "caixa_id" in campos else None,
+            recebido_em=(row["recebido_em"] or "") if "recebido_em" in campos else "",
+            criado_em=(row["criado_em"] or "") if "criado_em" in campos else "",
         )
 
 
@@ -221,7 +237,19 @@ class Venda:
 
     @property
     def a_prazo(self) -> bool:
-        return any(p.forma.strip().lower() == "prazo" for p in self.pagamentos)
+        return any(p.a_prazo for p in self.pagamentos)
+
+    @property
+    def em_aberto(self) -> float:
+        """Quanto o cliente ainda deve. So a venda pendente deve alguma coisa.
+
+        Venda que chegou sem linha de pagamento (da proposta, do "Lancar
+        venda") deve o total; a do balcao deve o que nao foi pago na hora.
+        """
+        if self.status != PENDENTE:
+            return 0.0
+        pago = sum(p.valor for p in self.pagamentos if not p.a_prazo)
+        return round(max(self.total - pago, 0.0), 2)
 
     @property
     def conta(self) -> bool:

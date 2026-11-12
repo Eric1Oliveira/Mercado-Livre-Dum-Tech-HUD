@@ -115,6 +115,25 @@ MIGRATIONS = (
             """,
         ),
     ),
+    Migration(
+        version=5,
+        name="ajuste de saldo",
+        statements=(
+            # o saldo do sistema e o do caixa contado nao batem: o acerto e a
+            # diferenca, guardada com data e motivo (e pode ser desfeito)
+            """
+            CREATE TABLE IF NOT EXISTS ajustes_saldo (
+                id        INTEGER PRIMARY KEY AUTOINCREMENT,
+                conta_id  INTEGER NOT NULL REFERENCES contas(id) ON DELETE CASCADE,
+                data      TEXT    NOT NULL,
+                valor     REAL    NOT NULL DEFAULT 0,
+                motivo    TEXT    NOT NULL DEFAULT '',
+                criado_em TEXT    NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_ajustes_conta ON ajustes_saldo(conta_id);
+            """,
+        ),
+    ),
 )
 
 

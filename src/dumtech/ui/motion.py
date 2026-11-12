@@ -266,9 +266,12 @@ class _Vigia(QObject):
 
             chrome.pintar(obj, palette_for(obj))
             if isinstance(obj, QDialog):
-                from .tela import caber_na_tela
+                from .tela import caber_na_tela, vigiar
 
                 caber_na_tela(obj)
+                # a busca rapida e os avisos sem moldura cuidam do proprio lugar
+                if not obj.windowFlags() & Qt.WindowType.FramelessWindowHint:
+                    vigiar(obj).anotar_base()
                 abrir_janela(obj)
         return False
 

@@ -67,7 +67,20 @@ PIX = "Pix"
 #: Cada parcela vira uma conta a receber: so existe onde ha Financeiro para cobrar.
 PARCELADO = "Parcelado"
 
-FORMAS = (DINHEIRO, PIX, "Cartao de debito", "Cartao de credito", "Boleto", "Prazo", PARCELADO)
+#: O cliente leva e paga depois: a parte que fica devendo.
+PRAZO = "Prazo"
+
+FORMAS = (DINHEIRO, PIX, "Cartao de debito", "Cartao de credito", "Boleto", PRAZO, PARCELADO)
+
+
+def forma_canonica(texto: str) -> str:
+    """'dinheiro', ' PIX ' -> 'Dinheiro', 'Pix'.
+
+    No Financeiro a forma e digitada. Sem isto, "dinheiro" escrito em minuscula
+    nao entrava na gaveta - e so o Dinheiro entra.
+    """
+    limpo = (texto or "").strip()
+    return next((forma for forma in FORMAS if forma.casefold() == limpo.casefold()), limpo)
 
 SEM_INTERNET = (
     "Você está sem internet. Conecte o computador para mexer em Pagamentos - "
@@ -106,6 +119,16 @@ def formas_do_balcao(ocultas=(), parcelavel: bool = False) -> list[str]:
     if not parcelavel:
         escondidas.add(PARCELADO)
     visiveis = [forma for forma in FORMAS if forma not in escondidas]
+    return visiveis or [DINHEIRO]
+
+
+def formas_a_vista(ocultas=()) -> list[str]:
+    """As formas do dinheiro que entra agora: sem Prazo e sem Parcelado.
+
+    A entrada do parcelado e o cliente que volta para pagar a venda pendente
+    pagam com uma destas - o que faltar continua em aberto sozinho.
+    """
+    visiveis = [forma for forma in formas_do_balcao(ocultas) if forma != PRAZO]
     return visiveis or [DINHEIRO]
 
 

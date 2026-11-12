@@ -104,6 +104,9 @@ def fechamento(conferencia: ConferenciaCaixa, empresa=None) -> str:
         lado_a_lado("Suprimentos", fmt.moeda(conferencia.suprimentos)),
         lado_a_lado("Sangrias", f"-{fmt.moeda(conferencia.sangrias)}"),
     ]
+    # entra no ESPERADO: sem a linha, a conta do papel nao fechava
+    if conferencia.recebimentos:
+        linhas.append(lado_a_lado("Recebimentos", fmt.moeda(conferencia.recebimentos)))
     if conferencia.devolucoes_dinheiro:
         linhas.append(
             lado_a_lado("Devoluções", f"-{fmt.moeda(conferencia.devolucoes_dinheiro)}")
